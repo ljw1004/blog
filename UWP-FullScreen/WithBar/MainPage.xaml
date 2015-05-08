@@ -1,0 +1,19 @@
+﻿<Page
+    x:Class="WithBar.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:WithBar"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <StackPanel Background="Blue">
+        <Button x:Name="button1" Content="FullScreen"/>
+        <TextBlock x:Name="label1" FontSize="20"/>
+        <TextBlock x:Name="label2" FontSize="20"/>
+        <TextBlock x:Name="label3" FontSize="20"/>
+        <TextBlock x:Name="label4" FontSize="20"/>
+        <TextBlock x:Name="label5" FontSize="20"/>
+        <TextBlock x:Name="label6" FontSize="20"/>
+    </StackPanel>
+</Page>
