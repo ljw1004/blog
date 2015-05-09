@@ -4,17 +4,6 @@ Imports Microsoft.Graphics.Canvas.Effects
 Imports Microsoft.Graphics.Canvas.UI.Xaml
 Imports Windows.UI
 
-'DisplayInformation.NativeOrientation : Surface = Landscape, Phone=Portrait
-
-'DispayInformation.Orientation:
-'Surface can switch between Landscape, LandscapeFlipped, Portrait, PortraitFlipped
-'Phone omits PortraitFlipped
-
-'My bitmap Is always 640x480
-
-'The NativeOrientation says what the "ground state" Is.
-'...
-
 
 Public NotInheritable Class MainPage
     Inherits Page
