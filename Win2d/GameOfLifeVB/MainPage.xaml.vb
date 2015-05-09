@@ -12,10 +12,10 @@ Imports Windows.UI
 Public NotInheritable Class MainPage
     Inherits Page
 
-    Const simulationW = 100
-    Const simulationH = 60
+    Const simulationW = 640
+    Const simulationH = 480
 
-    Const UseGPU = True
+    Dim UseGPU As Boolean = True
 
     ' For traditional CPU-based calculation: it's done by swapping back and forth two arrays to do the
     ' cellular-automaton calculation, then copying them onto a Win2D surface that can be scaled
@@ -36,11 +36,6 @@ Public NotInheritable Class MainPage
     Dim DontUpdateUntilFrameIsDrawn As New SemaphoreSlim(0) ' so we don't run too fast
     Dim times As New LinkedList(Of TimeSpan) ' for the frame-counter
 
-    ' TODO: figure out why we're not getting mouse events.
-    ' It might be related to the Grid.
-    ' Maybe the briefest solution is to get rid of the grid, and dynamically
-    ' create/remove the canvas as "Me.Content"
-
     ' Responding to mouse input:
     Dim lastPointerX, lastPointerY As Integer
 
@@ -57,6 +52,11 @@ Public NotInheritable Class MainPage
         canvas1 = Nothing
     End Sub
 
+    Sub Button1_Click() Handles button1.Click
+        UseGPU = Not UseGPU
+        button1.Content = If(UseGPU, "GPU", "CPU")
+        times.Clear()
+    End Sub
 
     Async Sub StartSimulationAsync()
         ' TODO: remove the timer and the count, to make the code clean
@@ -125,9 +125,10 @@ Public NotInheritable Class MainPage
         '  - if exactly three, the cell become alive
         '  - if more than three, the cell dies from overcrowding
         Await Task.Run(Sub()
-                           For y = 1 To simulationH - 2
-                               For x = 1 To simulationW - 2
+                           For y = 0 To simulationH - 1
+                               For x = 0 To simulationW - 1
                                    Dim i = y * simulationW + x
+                                   If y = 0 OrElse y = simulationH - 1 OrElse x = 0 OrElse x = simulationW - 1 Then cols2(i) = Colors.Black : Continue For
                                    Dim numNeighbours = 0
                                    For Each ni In neighbourOffsets
                                        numNeighbours += If(cols1(i + ni).R > 0, 1, 0)
@@ -270,7 +271,7 @@ Public NotInheritable Class MainPage
 
 
     ' Toggles the color of cells when they are clicked/drgged on
-    Sub ProcessPointerInput(sender As Object, e As PointerRoutedEventArgs) Handles grid1.PointerPressed, grid1.PointerMoved
+    Sub ProcessPointerInput(sender As Object, e As PointerRoutedEventArgs) Handles grid1.PointerPressed, grid1.PointerMoved, grid1.PointerReleased
         If Not e.Pointer.IsInContact Then lastPointerX = 0 : lastPointerY = 0 : Return
 
         ' Invert the display transform, to convert pointer positions into simulation rendertarget space.
@@ -287,13 +288,16 @@ Public NotInheritable Class MainPage
         If x = lastPointerX OrElse y = lastPointerY Then Return
 
         ' Read the current color.
-        Dim cellColor = surface1.GetPixelColors(x, y, 1, 1)
+        Dim cellColorGPU = surface1.GetPixelColors(x, y, 1, 1).First
+        Dim cellColorCPU = cols1(y * simulationW + x)
 
         ' Toggle the value.
-        cellColor(0) = If(cellColor(0).R > 0, Colors.Black, Colors.White)
+        cellColorGPU = If(cellColorGPU.R > 0, Colors.Black, Colors.White)
+        cellColorCPU = If(cellColorCPU.R > 0, Colors.Black, Colors.White)
 
         ' Set the new color.
-        surface1.SetPixelColors(cellColor, x, y, 1, 1)
+        surface1.SetPixelColors({cellColorGPU}, x, y, 1, 1)
+        cols1(y * simulationW + x) = cellColorCPU
 
         lastPointerX = x
         lastPointerY = y

@@ -10,6 +10,7 @@
 
     <Grid x:Name="grid1" Background="Transparent">
         <TextBlock x:Name="label1" Text="fps" Foreground="Red" FontSize="20" FontWeight="ExtraBold"/>
+        <Button x:Name="button1" VerticalAlignment="Top" Content="GPU" Margin="0,40,0,0"/>
     </Grid>
 
 
