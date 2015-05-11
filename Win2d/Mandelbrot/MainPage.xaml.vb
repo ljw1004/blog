@@ -3,6 +3,7 @@ Imports Microsoft.Graphics.Canvas
 Imports Microsoft.Graphics.Canvas.Effects
 Imports Microsoft.Graphics.Canvas.UI.Xaml
 Imports Windows.Graphics.DirectX
+Imports Windows.UI
 
 ' In this experiment I attempted to calculate the Mandelbrot set on the GPU
 ' using R32G32B32A32Float surfaces (i.e. single precision floats).
@@ -80,6 +81,8 @@ Public NotInheritable Class MainPage
         Dim ex As New LinearTransferEffect With {.Source = unitX, .AlphaDisable = True, .RedOffset = xmin, .RedSlope = xscale, .GreenOffset = xmin, .GreenSlope = xscale, .BlueOffset = xmin, .BlueSlope = xscale}
         Dim ey As New LinearTransferEffect With {.Source = unitY, .AlphaDisable = True, .RedOffset = ymin, .RedSlope = yscale, .GreenOffset = ymin, .GreenSlope = yscale, .BlueOffset = ymin, .BlueSlope = yscale}
         Using dsx = scaleX.CreateDrawingSession(), dsy = scaleY.CreateDrawingSession()
+            dsx.Blend = CanvasBlend.Copy
+            dsy.Blend = CanvasBlend.Copy
             dsx.DrawImage(ex)
             dsy.DrawImage(ey)
         End Using
@@ -104,13 +107,12 @@ Public NotInheritable Class MainPage
         Dim probeY1 = probeX0 * probeY0 * 2 + probeYval
 
         Using dx = surfaceX2.CreateDrawingSession(), dy = surfaceY2.CreateDrawingSession()
+            dx.Blend = CanvasBlend.Copy
+            dy.Blend = CanvasBlend.Copy
             dx.DrawImage(e3)
             dy.DrawImage(e5)
         End Using
         Dim probeX2 = surfaceX2.GetGreyscale(probeX, probeY), probeY2 = surfaceY2.GetGreyscale(probeX, probeY)
-
-        If Math.Abs(probeX2 - probeX1) > 0.01 Then Stop
-        If Math.Abs(probeY2 - probeY1) > 0.01 Then Stop
 
         Swap(surfaceX1, surfaceX2)
         Swap(surfaceY1, surfaceY2)
@@ -150,10 +152,60 @@ Public NotInheritable Class MainPage
 End Class
 
 
+Public Structure ColorF
+    Public R As Single
+    Public G As Single
+    Public B As Single
+    Public A As Single
+    Shared Function FromRGBA(R As Single, G As Single, B As Single, A As Single) As ColorF
+        Return New ColorF With {.R = R, .G = G, .B = B, .A = A}
+    End Function
+    Function GetBytes() As Byte()
+        Dim buf = New Byte(15) {}
+        Array.Copy(BitConverter.GetBytes(R), 0, buf, 0, 4)
+        Array.Copy(BitConverter.GetBytes(G), 0, buf, 4, 4)
+        Array.Copy(BitConverter.GetBytes(B), 0, buf, 8, 4)
+        Array.Copy(BitConverter.GetBytes(A), 0, buf, 12, 4)
+        Return buf
+    End Function
+    Public Overrides Function ToString() As String
+        Return $"R={R:0.0} G={G:0.0} B={B:0.0} A={A:0.0}"
+    End Function
+End Structure
+
+Public Structure ColorB
+    Public R As Byte
+    Public G As Byte
+    Public B As Byte
+    Public A As Byte
+    Shared Function FromRGBA(R As Byte, G As Byte, B As Byte, A As Byte) As ColorB
+        Return New ColorB With {.R = R, .G = G, .B = B, .A = A}
+    End Function
+    Function GetBytes() As Byte()
+        Return {B, G, R, A}
+    End Function
+    Public Overrides Function ToString() As String
+        Return $"R={R:x2} G={G:x2} B={B:x2} A={A:x2}"
+    End Function
+End Structure
+
+
 Public Module Utils
     Public Sub Swap(Of T)(ByRef x As T, ByRef y As T)
         Dim temp = x : x = y : y = temp
     End Sub
+
+    <Extension>
+    Function ToColorF(buf As Byte()) As ColorF()
+        Dim c = New ColorF(buf.Length \ 16) {}
+        For i = 0 To buf.Length - 1 Step 16
+            c(i).R = BitConverter.ToSingle(buf, i * 16 + 0)
+            c(i).G = BitConverter.ToSingle(buf, i * 16 + 4)
+            c(i).B = BitConverter.ToSingle(buf, i * 16 + 8)
+            c(i).A = BitConverter.ToSingle(buf, i * 16 + 12)
+        Next
+        Return c
+    End Function
 
     Sub EncodeR32G32B32A32Float(R As Single, G As Single, B As Single, A As Single, buf As Byte(), offset As Integer)
         Dim fr = BitConverter.GetBytes(R), fg = BitConverter.GetBytes(G), fb = BitConverter.GetBytes(B), fa = BitConverter.GetBytes(A)
