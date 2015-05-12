@@ -7,15 +7,14 @@ Imports Windows.UI
 
 ' In this experiment I attempted to calculate the Mandelbrot set on the GPU
 ' using R32G32B32A32Float surfaces (i.e. single precision floats).
-' The experiment failed because the combing effects (CompositeEffect, ArithmeticCompositeEffect)
-' don't seem to treat negatives right: for instance, -3.0 + 0.5 yields -3.5 rather than -2.5
 '
 ' The rules of mandelbrot set for each pixel (x0,y0) are:
 ' let x=0,y=0. Repeatedly apply the formula x' := x*x - y*y + x0 and y' := 2*x*y + y0
 ' until x*x + y*y > 4, or until we've done enough iterations.
-' Color the pixel according to the number of iterations.
+' For now (work-in-progress) color the pixel with brightness x^2 * x^2
+' Eventual plan is to color the pixel with how many iterations it took to get too big.
 '
-' My plan was to initialize several surfaces:
+' I initialize several surfaces:
 '   surfaceScaleX: every pixel (x0,y0) has value RGB(x0,x0,x0) 
 '   surfaceScaleY: every pixel (x0,y0) has value RGB(y0,y0,y0)
 '   surfaceX, surfaceY: every pixel is initialized to black
@@ -23,7 +22,8 @@ Imports Windows.UI
 '   surfaceX' = surfaceX1*surfaceX1 - surfaceY1*surfaceY1 + surfaceScaleX
 '   surfaceY' = 2*surfaceX1*surfaceY1 + surfaceScaleY
 ' The multiplies can be done with ArithmeticCompositeEffect, the additions by CompositeEffect.
-' Or at least I thought they could, but the additions don't seem to work.
+'
+' TODO: coloring it properly according to how many iterations it took to go out-of-bounds
 
 Public NotInheritable Class MainPage
     Inherits Page
