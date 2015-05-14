@@ -1,153 +1,276 @@
 ﻿Imports System.Numerics
+Imports System.Threading
 Imports Microsoft.Graphics.Canvas
 Imports Microsoft.Graphics.Canvas.Effects
 Imports Microsoft.Graphics.Canvas.UI.Xaml
 Imports Windows.Graphics.DirectX
+Imports Windows.Graphics.Effects
 Imports Windows.UI
 
-' In this experiment I attempted to calculate the Mandelbrot set on the GPU
-' using R32G32B32A32Float surfaces (i.e. single precision floats).
+' In this toy program I calculate the Mandelbrot set on the GPU using D2D effects
+' and single-precision floats
 '
 ' The rules of mandelbrot set for each pixel (x0,y0) are:
 ' let x=0,y=0. Repeatedly apply the formula x' := x*x - y*y + x0 and y' := 2*x*y + y0
 ' until x*x + y*y > 4, or until we've done enough iterations.
-' For now (work-in-progress) color the pixel with brightness x^2 * x^2
-' Eventual plan is to color the pixel with how many iterations it took to get too big.
 '
-' I initialize several surfaces:
-'   surfaceScaleX: every pixel (x0,y0) has value RGB(x0,x0,x0) 
-'   surfaceScaleY: every pixel (x0,y0) has value RGB(y0,y0,y0)
-'   surfaceX, surfaceY: every pixel is initialized to black
-' Then on each iteration apply this formula:
-'   surfaceX' = surfaceX1*surfaceX1 - surfaceY1*surfaceY1 + surfaceScaleX
-'   surfaceY' = 2*surfaceX1*surfaceY1 + surfaceScaleY
-' The multiplies can be done with ArithmeticCompositeEffect, the additions by CompositeEffect.
+' TODO: move the RecalculateAsync out of a standalone method, and into event-driven Draw
+' capped at 60fps. That will let it update progressively and not have any bad D2D effects.
 '
-' TODO: coloring it properly according to how many iterations it took to go out-of-bounds
+' TODO: figure out how to reconcile greyscale of coarse (=50 iters) and fine (=100 or more).
+' It'd be great if we had histogram, but that's absent from win2d.
+' Actually, maybe the "coarse rendering" would more appropriately be a zoomed-in version
+' of the previous fine, rather than an entire coarse calculation.
+'
+' TODO: pinch-and-drag.
+'
 
 Public NotInheritable Class MainPage
     Inherits Page
 
-    Const CHEIGHT = 400
-    Const CWIDTH = 400
+    Const CSIZE = 200, CITER = 50
+    Const FSIZE = 640, FITER = 100
+
+    Dim MTop As Single = -1
+    Dim MLeft As Single = -2.5
+    Dim MWidth As Single = 3.5
+    Dim MHeight As Single = 2
 
     WithEvents canvas1 As CanvasControl
-    Dim unitX, unitY, scaleX, scaleY, surfaceX1, surfaceX2, surfaceY1, surfaceY2 As CanvasRenderTarget
+    Dim unitXcoarse, unitYcoarse, rangeXcoarse, rangeYcoarse, iterX1coarse, iterX2coarse, iterY1coarse, iterY2coarse, render1coarse, render2coarse As CanvasRenderTarget
+    Dim unitXfine, unitYfine, rangeXfine, rangeYfine, iterX1fine, iterX2fine, iterY1fine, iterY2fine, render1fine, render2fine As CanvasRenderTarget
+    Dim drawEffect As EffectWrapper(Of CanvasRenderTarget, Vector2)
+    Dim cancelFine As CancellationTokenSource
+    Dim calculateFineTask As Task
 
     Sub New()
         InitializeComponent()
-        canvas1 = New CanvasControl With {.Width = 300, .Height = 300}
+        canvas1 = New CanvasControl
         container1.Children.Add(canvas1)
     End Sub
 
-
     Sub Canvas_CreateResources(sender As CanvasControl, args As Object) Handles canvas1.CreateResources
         Const defaultDpi = 96.0F
-        unitX = New CanvasRenderTarget(canvas1, CWIDTH, CHEIGHT, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
-        unitY = New CanvasRenderTarget(canvas1, CWIDTH, CHEIGHT, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
-        scaleX = New CanvasRenderTarget(canvas1, CWIDTH, CHEIGHT, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
-        scaleY = New CanvasRenderTarget(canvas1, CWIDTH, CHEIGHT, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
-        surfaceX1 = New CanvasRenderTarget(canvas1, CWIDTH, CHEIGHT, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
-        surfaceX2 = New CanvasRenderTarget(canvas1, CWIDTH, CHEIGHT, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
-        surfaceY1 = New CanvasRenderTarget(canvas1, CWIDTH, CHEIGHT, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
-        surfaceY2 = New CanvasRenderTarget(canvas1, CWIDTH, CHEIGHT, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        unitXcoarse = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        unitYcoarse = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        rangeXcoarse = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        rangeYcoarse = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        iterX1coarse = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        iterX2coarse = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        iterY1coarse = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        iterY2coarse = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        render1coarse = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Ignore)
+        render2coarse = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Ignore)
+        '
+        unitXfine = New CanvasRenderTarget(canvas1, FSIZE, FSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        unitYfine = New CanvasRenderTarget(canvas1, FSIZE, FSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        rangeXfine = New CanvasRenderTarget(canvas1, FSIZE, FSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        rangeYfine = New CanvasRenderTarget(canvas1, FSIZE, FSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        iterX1fine = New CanvasRenderTarget(canvas1, FSIZE, FSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        iterX2fine = New CanvasRenderTarget(canvas1, FSIZE, FSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        iterY1fine = New CanvasRenderTarget(canvas1, FSIZE, FSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        iterY2fine = New CanvasRenderTarget(canvas1, FSIZE, FSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        render1fine = New CanvasRenderTarget(canvas1, FSIZE, FSIZE, defaultDpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Ignore)
+        render2fine = New CanvasRenderTarget(canvas1, FSIZE, FSIZE, defaultDpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Ignore)
 
-        Dim greyx = New Byte(16 * CWIDTH - 1) {}
-        Dim blackx = New Byte(16 * CWIDTH - 1) {}
-        For x = 0 To CWIDTH - 1
-            Dim f = CSng(x / (CWIDTH - 1))
-            EncodeR32G32B32A32Float(f, f, f, 1.0, greyx, x * 16)
-            EncodeR32G32B32A32Float(0, 0, 0, 1.0, blackx, x * 16)
+        ' Initialize the "unitX and unitY" surfaces.
+        ' I could have done it more elegantly with the "ColorF" structure, but this code avoids most allocations...
+        Dim rangecoarse = New Byte(16 * CSIZE - 1) {}
+        Dim rangefine = New Byte(16 * FSIZE - 1) {}
+        Dim buf1 = BitConverter.GetBytes(1.0F)
+        For i = 0 To CSIZE - 1
+            Dim f = CSng(i / (CSIZE - 1))
+            Dim buf = BitConverter.GetBytes(f)
+            Array.Copy(buf, 0, rangecoarse, i * 16 + 0, 4)
+            Array.Copy(buf, 0, rangecoarse, i * 16 + 4, 4)
+            Array.Copy(buf, 0, rangecoarse, i * 16 + 8, 4)
+            Array.Copy(buf1, 0, rangecoarse, i * 16 + 12, 4)
         Next
-        For y = 0 To CHEIGHT - 1
-            unitX.SetPixelBytes(greyx, 0, y, CWIDTH, 1)
-            surfaceX1.SetPixelBytes(blackx, 0, y, CWIDTH, 1)
+        For i = 0 To FSIZE - 1
+            Dim f = CSng(i / (FSIZE - 1))
+            Dim buf = BitConverter.GetBytes(f)
+            Array.Copy(buf, 0, rangefine, i * 16 + 0, 4)
+            Array.Copy(buf, 0, rangefine, i * 16 + 4, 4)
+            Array.Copy(buf, 0, rangefine, i * 16 + 8, 4)
+            Array.Copy(buf1, 0, rangefine, i * 16 + 12, 4)
+        Next
+        For i = 0 To CSIZE - 1
+            unitXcoarse.SetPixelBytes(rangecoarse, 0, i, CSIZE, 1)
+            unitYcoarse.SetPixelBytes(rangecoarse, i, 0, 1, CSIZE)
+        Next
+        For i = 0 To FSIZE - 1
+            unitXfine.SetPixelBytes(rangefine, 0, i, FSIZE, 1)
+            unitYfine.SetPixelBytes(rangefine, i, 0, 1, FSIZE)
         Next
 
-        Dim colsy = New Byte(16 * CHEIGHT - 1) {}
-        Dim blacky = New Byte(16 * CHEIGHT - 1) {}
-        For y = 0 To CHEIGHT - 1
-            Dim f = CSng(y / (CHEIGHT - 1))
-            EncodeR32G32B32A32Float(f, f, f, 1.0, colsy, y * 16)
-            EncodeR32G32B32A32Float(0, 0, 0, 1.0, blacky, y * 16)
-        Next
-        For x = 0 To CWIDTH - 1
-            unitY.SetPixelBytes(colsy, x, 0, 1, CHEIGHT)
-            surfaceY1.SetPixelBytes(blacky, x, 0, 1, CHEIGHT)
-        Next
+        ' This is how drawing gets done, in the Canvas_Draw event
+        Dim draw1 As New DpiCompensationEffect With {.SourceDpi = New Vector2(canvas1.Dpi)}
+        Dim draw2 As New Transform2DEffect With {.Source = draw1, .InterpolationMode = CanvasImageInterpolation.NearestNeighbor}
+        drawEffect = New EffectWrapper(Of CanvasRenderTarget, Vector2)(draw2, Sub(src, scale)
+                                                                                  draw1.Source = src
+                                                                                  draw2.TransformMatrix = Matrix3x2.CreateScale(scale)
+                                                                              End Sub)
 
-        Dim xmin = -2.0F, xmax = -0.5F, ymin = -0.4F, ymax = 0.4F
-        Dim xscale = xmax - xmin, yscale = ymax - ymin
-        Dim ex As New LinearTransferEffect With {.Source = unitX, .AlphaDisable = True, .RedOffset = xmin, .RedSlope = xscale, .GreenOffset = xmin, .GreenSlope = xscale, .BlueOffset = xmin, .BlueSlope = xscale}
-        Dim ey As New LinearTransferEffect With {.Source = unitY, .AlphaDisable = True, .RedOffset = ymin, .RedSlope = yscale, .GreenOffset = ymin, .GreenSlope = yscale, .BlueOffset = ymin, .BlueSlope = yscale}
-        Using dsx = scaleX.CreateDrawingSession(), dsy = scaleY.CreateDrawingSession()
+        RestartCalculate()
+    End Sub
+
+    Sub RestartCalculate()
+        'CalculateInner(MLeft, MTop, MWidth, MHeight, True, Nothing)
+        'Using ds = render1coarse.CreateDrawingSession()
+        '                            ds.Blend = CanvasBlend.Copy
+        '                            ds.DrawImage(render2coarse)
+        '                        End Using
+        '                        canvas1.Invalidate()
+        CalculateInner(MLeft, MTop, MWidth, MHeight, False, Nothing)
+        Using ds = render1fine.CreateDrawingSession()
+            ds.Blend = CanvasBlend.Copy
+            ds.DrawImage(render2fine)
+        End Using
+        canvas1.Invalidate()
+    End Sub
+
+    Sub CalculateInner(left As Single, top As Single, width As Single, height As Single, isFast As Boolean, cancel As CancellationToken)
+        Dim sw = Stopwatch.StartNew()
+
+        Dim unitX, unitY, rangeX, rangeY, iterX1, iterX2, iterY1, iterY2, render1, render2 As CanvasRenderTarget
+        Dim niter As Integer
+        If isFast Then
+            unitX = unitXcoarse : unitY = unitYcoarse : rangeX = rangeXcoarse : rangeY = rangeYcoarse
+            iterX1 = iterX1coarse : iterX2 = iterX2coarse : iterY1 = iterY1coarse : iterY2 = iterY2coarse
+            render1 = render1coarse : render2 = render2coarse
+            niter = CITER
+        Else
+            unitX = unitXfine : unitY = unitYfine : rangeX = rangeXfine : rangeY = rangeYfine
+            iterX1 = iterX1fine : iterX2 = iterX2fine : iterY1 = iterY1fine : iterY2 = iterY2fine
+            render1 = render1fine : render2 = render2fine
+            niter = FITER
+        End If
+
+        ' Set up rangeX and rangeY
+        Dim ex As New LinearTransferEffect With {.Source = unitX, .AlphaDisable = True, .RedOffset = left, .RedSlope = width, .GreenOffset = left, .GreenSlope = width, .BlueOffset = left, .BlueSlope = width}
+        Dim ey As New LinearTransferEffect With {.Source = unitY, .AlphaDisable = True, .RedOffset = top, .RedSlope = height, .GreenOffset = top, .GreenSlope = height, .BlueOffset = top, .BlueSlope = height}
+        Using dsx = rangeX.CreateDrawingSession(), dsy = rangeY.CreateDrawingSession()
             dsx.Blend = CanvasBlend.Copy
             dsy.Blend = CanvasBlend.Copy
             dsx.DrawImage(ex)
             dsy.DrawImage(ey)
         End Using
 
-
-    End Sub
-
-    Sub DoStep() Handles button1.Click
-        Dim probeX = 20, probeY = 220
-        Dim probeXval = scaleX.GetGreyscale(probeX, probeY), probeYval = scaleY.GetGreyscale(probeX, probeY)
-        Dim probeX0 = surfaceX1.GetGreyscale(probeX, probeY), probeY0 = surfaceY1.GetGreyscale(probeX, probeY)
-
-        Dim e1 As New ArithmeticCompositeEffect With {.Source1 = surfaceX1, .Source2 = surfaceX1}
-        Dim e2 As New ArithmeticCompositeEffect With {.Source1 = surfaceY1, .Source2 = surfaceY1, .MultiplyAmount = -1}
-        Dim e3 As New CompositeEffect With {.Mode = CanvasComposite.Add}
-        e3.Sources.Add(e1) : e3.Sources.Add(e2) : e3.Sources.Add(scaleX)
-        Dim probeX1 = probeX0 * probeX0 - probeY0 * probeY0 + probeXval
-
-        Dim e4 As New ArithmeticCompositeEffect With {.Source1 = surfaceX1, .Source2 = surfaceY1, .MultiplyAmount = 2}
-        Dim e5 As New CompositeEffect With {.Mode = CanvasComposite.Add}
-        e5.Sources.Add(e4) : e5.Sources.Add(scaleY)
-        Dim probeY1 = probeX0 * probeY0 * 2 + probeYval
-
-        Using dx = surfaceX2.CreateDrawingSession(), dy = surfaceY2.CreateDrawingSession()
-            dx.Blend = CanvasBlend.Copy
-            dy.Blend = CanvasBlend.Copy
-            dx.DrawImage(e3)
-            dy.DrawImage(e5)
+        ' Initialize the iteration and the accumulator
+        Dim eblack As New ColorSourceEffect With {.Color = Colors.Black}
+        Using dsx = iterX1.CreateDrawingSession(), dsy = iterY1.CreateDrawingSession(), dsa = render2.CreateDrawingSession()
+            dsx.Blend = CanvasBlend.Copy
+            dsy.Blend = CanvasBlend.Copy
+            dsa.Blend = CanvasBlend.Copy
+            dsx.DrawImage(eblack)
+            dsy.DrawImage(eblack)
+            dsa.DrawImage(eblack)
         End Using
-        Dim probeX2 = surfaceX2.GetGreyscale(probeX, probeY), probeY2 = surfaceY2.GetGreyscale(probeX, probeY)
 
-        Swap(surfaceX1, surfaceX2)
-        Swap(surfaceY1, surfaceY2)
-        canvas1.Invalidate()
+        Dim oldx = iterX1, oldy = iterY1
+
+        ' newx = x*x - y*y + x0
+        Dim _x2 As New ArithmeticCompositeEffect With {.Source1 = oldx, .Source2 = oldx}
+        Dim _y2neg As New ArithmeticCompositeEffect With {.Source1 = oldy, .Source2 = oldy, .MultiplyAmount = -1}
+        Dim newx As New CompositeEffect With {.Mode = CanvasComposite.Add}
+        newx.Sources.Add(_x2) : newx.Sources.Add(_y2neg) : newx.Sources.Add(rangeX)
+
+        ' newy = 2xy + y0
+        Dim _2xy As New ArithmeticCompositeEffect With {.Source1 = oldx, .Source2 = oldy, .MultiplyAmount = 2}
+        Dim newy As New CompositeEffect With {.Mode = CanvasComposite.Add}
+        newy.Sources.Add(_2xy) : newy.Sources.Add(rangeY)
+
+        ' For display... the thing is that we wish to treat "NaN" and "x^2+y^2>4" as equivalent,
+        ' since both diverge. Therefore we have to clamp. But clamping always turns NaN into 0.
+        ' So we'll negate it, "clamp(1 - 0.25*x*x*y*y)", which will turn NaN into 0, and
+        ' large x^2+y^2>4 into 0, and small xy into the range 0..1
+        ' We need to correct alpha prior (via color-matix) prior to the final step,
+        ' a discrete transfer effect to turn 0 into "1", and everything else into "0"
+        Dim dinvert As New ArithmeticCompositeEffect With {.Source1 = _x2, .Source2 = _y2neg, .MultiplyAmount = 0, .Source1Amount = -0.25, .Source2Amount = 0.25, .Offset = 1, .ClampOutput = True}
+        Dim dm As New Matrix5x4 With {.M11 = 1, .M22 = 1, .M33 = 1, .M44 = 0, .M54 = 1}
+        Dim dalpha As New ColorMatrixEffect With {.Source = dinvert, .AlphaMode = CanvasAlphaMode.Straight, .ColorMatrix = dm}
+        Dim dt As Single() = {CSng(1 / niter), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+        Dim d1and0 As New DiscreteTransferEffect With {.Source = dalpha, .RedTable = dt, .GreenTable = dt, .BlueTable = dt, .AlphaTable = {1}}
+
+        For iter = 0 To niter - 1
+            cancel.ThrowIfCancellationRequested()
+
+            Using dx = iterX2.CreateDrawingSession(), dy = iterY2.CreateDrawingSession(), da = render2.CreateDrawingSession
+                dx.Blend = CanvasBlend.Copy : dy.Blend = CanvasBlend.Copy : da.Blend = CanvasBlend.Add
+                dx.DrawImage(newx)
+                dy.DrawImage(newy)
+                da.DrawImage(d1and0)
+            End Using
+
+            Swap(iterX1, iterX2)
+            Swap(iterY1, iterY2)
+            _x2.Source1 = iterX1
+            _x2.Source2 = iterX1
+            _y2neg.Source1 = iterY1
+            _y2neg.Source2 = iterY1
+            _2xy.Source1 = iterX1
+            _2xy.Source2 = iterY1
+            dt(0) *= 1
+            d1and0.RedTable = dt
+            d1and0.GreenTable = dt
+            d1and0.BlueTable = dt
+        Next
+
+        label1.Text = $"{sw.Elapsed.TotalMilliseconds:0}ms, ({MLeft},{MTop})-({MLeft + MWidth},{MTop + MHeight})"
     End Sub
 
+    Sub Page_SizeChanged() Handles Me.SizeChanged
+        canvas1.Width = container1.ActualWidth
+        canvas1.Height = container1.ActualHeight
+    End Sub
 
     Sub Canvas1_Draw(sender As CanvasControl, args As CanvasDrawEventArgs) Handles canvas1.Draw
-        Dim sourceSizeDips As New Vector2(canvas1.ConvertPixelsToDips(CWIDTH), canvas1.ConvertPixelsToDips(CHEIGHT))
+        'If calculateFineTask Is Nothing OrElse Not calculateFineTask.IsCompleted Then
+        '    Dim sourceSizeDips As New Vector2(canvas1.ConvertPixelsToDips(CSIZE), canvas1.ConvertPixelsToDips(CSIZE))
+        '    Dim canvasSizeDips As New Vector2(CSng(canvas1.ActualWidth), CSng(canvas1.ActualHeight))
+        '    Dim scale = canvasSizeDips / sourceSizeDips
+        '    args.DrawingSession.DrawImage(drawEffect.Update(render1coarse, scale))
+        'Else
+        Dim sourceSizeDips As New Vector2(canvas1.ConvertPixelsToDips(FSIZE), canvas1.ConvertPixelsToDips(FSIZE))
         Dim canvasSizeDips As New Vector2(CSng(canvas1.ActualWidth), CSng(canvas1.ActualHeight))
         Dim scale = canvasSizeDips / sourceSizeDips
-
-        Dim effect0x As New ArithmeticCompositeEffect With {.Source1 = surfaceX1, .Source2 = surfaceX1}
-        Dim effect0y As New ArithmeticCompositeEffect With {.Source1 = surfaceY1, .Source2 = surfaceY1}
-        Dim effect0 As New CompositeEffect With {.Mode = CanvasComposite.Add}
-        effect0.Sources.Add(effect0x)
-        effect0.Sources.Add(effect0y)
-        Dim effect1 As New DpiCompensationEffect With {.Source = effect0, .SourceDpi = New Vector2(canvas1.Dpi)}
-        Dim effect2 As New Transform2DEffect With {.Source = effect1, .TransformMatrix = Matrix3x2.CreateScale(scale), .InterpolationMode = CanvasImageInterpolation.NearestNeighbor}
-        args.DrawingSession.DrawImage(effect2)
+        args.DrawingSession.DrawImage(drawEffect.Update(render1fine, scale))
+        'End If
     End Sub
 
 
-    Sub Canvas_Pointer(sender As Object, e As PointerRoutedEventArgs) Handles canvas1.PointerPressed
-        Dim sourceSizeDips As New Vector2(canvas1.ConvertPixelsToDips(CWIDTH), canvas1.ConvertPixelsToDips(CHEIGHT))
+    Sub Canvas_Pointer(sender As Object, e As PointerRoutedEventArgs) Handles canvas1.PointerMoved
+        Dim sourceSizeDips As New Vector2(canvas1.ConvertPixelsToDips(CSIZE), canvas1.ConvertPixelsToDips(CSIZE))
         Dim canvasSizeDips As New Vector2(CSng(canvas1.ActualWidth), CSng(canvas1.ActualHeight))
-        Dim scale = canvasSizeDips.X / sourceSizeDips.X
+        Dim scale = canvasSizeDips / sourceSizeDips
         Dim canvasPointDips = e.GetCurrentPoint(canvas1).Position.ToVector2() / canvas1.ConvertPixelsToDips(1)
         Dim sourcePointDips = canvasPointDips / scale
         Dim x = CInt(Math.Floor(sourcePointDips.X))
         Dim y = CInt(Math.Floor(sourcePointDips.Y))
-        If e.Pointer.IsInContact AndAlso x >= 0 AndAlso y >= 0 AndAlso x < CWIDTH AndAlso y < CHEIGHT Then
-            canvas1.Invalidate()
-        End If
+        If x < 0 OrElse y < 0 OrElse x >= CSIZE OrElse y >= CSIZE Then Return
+        'Dim px = rangeX.GetPixelColorFs(x, y, 1, 1).First
+        'Dim py = rangeY.GetPixelColorFs(x, y, 1, 1).First
+        'Dim cx = iterX1.GetPixelColorFs(x, y, 1, 1).First
+        'Dim cy = iterY1.GetPixelColorFs(x, y, 1, 1).First
+        'Dim c = render1coarse.GetPixelColors(x, y, 1, 1).First
+        'label1.Text = $"({px.R:0.0},{py.R:0.0}) -> R={c.R:0.0} A={c.A:0.0} ({elapsed.TotalMilliseconds:0}ms)"
+        'label1.Text = $"R={c.R:0.0} A={c.A:0.0} ({elapsed.TotalMilliseconds:0}ms)"
     End Sub
+
+    Sub Canvas_PointerPressed(sender As Object, e As PointerRoutedEventArgs) Handles canvas1.PointerPressed
+        Dim pt = e.GetCurrentPoint(canvas1).Position
+        Dim fx = pt.X / canvas1.ActualWidth
+        Dim fy = pt.Y / canvas1.ActualHeight
+        Dim cx = MLeft + fx * MWidth
+        Dim cy = MTop + fy * MHeight
+        Dim scale = If(e.GetCurrentPoint(canvas1).Properties.IsRightButtonPressed, 2, 0.5F)
+        MWidth = MWidth * scale
+        MHeight = MHeight * scale
+        MLeft = CSng(cx - MWidth / 2)
+        MTop = CSng(cy - MHeight / 2)
+        RestartCalculate()
+    End Sub
+
 
 End Class
 
@@ -173,6 +296,7 @@ Public Structure ColorF
     End Function
 End Structure
 
+
 Public Structure ColorB
     Public R As Byte
     Public G As Byte
@@ -189,6 +313,38 @@ Public Structure ColorB
     End Function
 End Structure
 
+Public Structure ColorH
+    Public R As Single
+    Public G As Single
+    Public B As Single
+    Public A As Single
+    Shared Function FromRGBA(R As Single, G As Single, B As Single, A As Single) As ColorF
+        Return New ColorF With {.R = R, .G = G, .B = B, .A = A}
+    End Function
+    Function GetBytes() As Byte()
+        Dim buf = New Byte(7) {}
+        Array.Copy(ToHalfFloat(R), 0, buf, 0, 2)
+        Array.Copy(ToHalfFloat(G), 0, buf, 2, 2)
+        Array.Copy(ToHalfFloat(B), 0, buf, 4, 2)
+        Array.Copy(ToHalfFloat(A), 0, buf, 6, 2)
+        Return buf
+    End Function
+    Public Overrides Function ToString() As String
+        Return $"R={R:0.0} G={G:0.0} B={B:0.0} A={A:0.0}"
+    End Function
+
+    Public Shared Function ToHalfFloat(value As Single) As Byte()
+        If value < 0 Then Throw New ArgumentOutOfRangeException(NameOf(value), "negatives not implemented")
+        Dim fbits = BitConverter.ToUInt32(BitConverter.GetBytes(CSng(value)), 0)
+        Dim val = (fbits And &H7FFFFFFFUI) + &H1000
+        If val >= &H47800000 Then Throw New ArgumentOutOfRangeException(NameOf(value), "NaN/Inf/overflow not implemented")
+        If val >= &H38800000 Then Return BitConverter.GetBytes(CUShort((val - &H38000000) >> 13))
+        If val < &H33000000 Then Return {0, 0}
+        Throw New ArgumentOutOfRangeException(NameOf(value), "subnormals not implemented")
+    End Function
+
+End Structure
+
 
 Public Module Utils
     Public Sub Swap(Of T)(ByRef x As T, ByRef y As T)
@@ -196,7 +352,8 @@ Public Module Utils
     End Sub
 
     <Extension>
-    Function ToColorF(buf As Byte()) As ColorF()
+    Function GetPixelColorFs(bmp As CanvasBitmap) As ColorF()
+        Dim buf = bmp.GetPixelBytes()
         Dim c = New ColorF(buf.Length \ 16) {}
         For i = 0 To buf.Length - 1 Step 16
             c(i).R = BitConverter.ToSingle(buf, i * 16 + 0)
@@ -207,46 +364,45 @@ Public Module Utils
         Return c
     End Function
 
-    Sub EncodeR32G32B32A32Float(R As Single, G As Single, B As Single, A As Single, buf As Byte(), offset As Integer)
-        Dim fr = BitConverter.GetBytes(R), fg = BitConverter.GetBytes(G), fb = BitConverter.GetBytes(B), fa = BitConverter.GetBytes(A)
-        Array.Copy(fr, 0, buf, offset + 0, 4)
-        Array.Copy(fg, 0, buf, offset + 4, 4)
-        Array.Copy(fb, 0, buf, offset + 8, 4)
-        Array.Copy(fa, 0, buf, offset + 12, 4)
-    End Sub
-
-    'Sub EncodeR16G16B16A16Float(R As Single, G As Single, B As Single, A As Single, buf As Byte(), offset As Integer)
-    '    Dim hr = ToHalfFloat(R), hg = ToHalfFloat(G), hb = ToHalfFloat(B), ha = ToHalfFloat(A)
-    '    Array.Copy(hr, 0, buf, offset + 0, 2)
-    '    Array.Copy(hg, 0, buf, offset + 2, 2)
-    '    Array.Copy(hb, 0, buf, offset + 4, 2)
-    '    Array.Copy(ha, 0, buf, offset + 6, 2)
-    'End Sub
-
-    'Function ToHalfFloat(value As Single) As Byte()
-    '    Dim fbits = BitConverter.ToUInt32(BitConverter.GetBytes(CSng(value)), 0)
-    '    Dim val = (fbits And &H7FFFFFFFUI) + &H1000
-    '    If value < 0 Then
-    '        Throw New ArgumentOutOfRangeException(NameOf(value), "negatives not implemented")
-    '    ElseIf val >= &H47800000 Then
-    '        Throw New ArgumentOutOfRangeException(NameOf(value), "NaN/Inf/overflow not implemented")
-    '    ElseIf val >= &H38800000 Then
-    '        Return BitConverter.GetBytes(CUShort((val - &H38000000) >> 13))
-    '    ElseIf val < &H33000000 Then
-    '        Return {0, 0}
-    '    Else
-    '        Throw New ArgumentOutOfRangeException(NameOf(value), "subnormals not implemented")
-    '    End If
-    'End Function
+    <Extension>
+    Function GetPixelColorFs(bmp As CanvasBitmap, left As Integer, top As Integer, width As Integer, height As Integer) As ColorF()
+        Dim buf = bmp.GetPixelBytes(left, top, width, height)
+        Dim c = New ColorF(buf.Length \ 16) {}
+        For i = 0 To buf.Length - 1 Step 16
+            c(i).R = BitConverter.ToSingle(buf, i * 16 + 0)
+            c(i).G = BitConverter.ToSingle(buf, i * 16 + 4)
+            c(i).B = BitConverter.ToSingle(buf, i * 16 + 8)
+            c(i).A = BitConverter.ToSingle(buf, i * 16 + 12)
+        Next
+        Return c
+    End Function
 
     <Extension>
-    Function GetGreyscale(c As CanvasRenderTarget, x As Integer, y As Integer) As Single
-        If c.Format <> DirectXPixelFormat.R32G32B32A32Float Then Throw New ArgumentException("wrong pixel format")
-        Dim buf = c.GetPixelBytes(x, y, 1, 1)
-        Dim R = BitConverter.ToSingle(buf, 0)
-        Dim G = BitConverter.ToSingle(buf, 4)
-        Dim B = BitConverter.ToSingle(buf, 8)
-        Dim A = BitConverter.ToSingle(buf, 12)
-        Return R
-    End Function
+    Sub SetPixelColorFs(bmp As CanvasBitmap, colors As IEnumerable(Of ColorF))
+        Dim buf = From c In colors From b In c.GetBytes Select b
+        bmp.SetPixelBytes(buf.ToArray)
+    End Sub
+
+    <Extension>
+    Sub SetPixelColorFs(bmp As CanvasBitmap, colors As IEnumerable(Of ColorF), left As Integer, top As Integer, width As Integer, height As Integer)
+        Dim buf = From c In colors From b In c.GetBytes Select b
+        bmp.SetPixelBytes(buf.ToArray, left, top, width, height)
+    End Sub
+
 End Module
+
+
+Class EffectWrapper(Of T, U)
+    Private EndEffect As ICanvasImage
+    Private FixSources As Action(Of T, U)
+
+    Sub New(endEffect As ICanvasImage, fixSources As Action(Of T, U))
+        Me.EndEffect = endEffect
+        Me.FixSources = fixSources
+    End Sub
+
+    Function Update(val1 As T, val2 As U) As ICanvasImage
+        FixSources(val1, val2)
+        Return EndEffect
+    End Function
+End Class

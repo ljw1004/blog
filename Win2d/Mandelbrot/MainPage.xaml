@@ -7,8 +7,8 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Canvas x:Name="container1" Width="300" Height="300" HorizontalAlignment="Left" VerticalAlignment="Top" Background="Cyan">
-        <Button Foreground="Green" x:Name="button1" Canvas.ZIndex="99" Content="Step"/>
+    <Canvas x:Name="container1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="DarkBlue">
+        <TextBlock Foreground="Red" x:Name="label1" Canvas.ZIndex="99"/>
     </Canvas>
 
 </Page>
