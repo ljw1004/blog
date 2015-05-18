@@ -3,8 +3,10 @@ Imports System.Threading
 Imports Microsoft.Graphics.Canvas
 Imports Microsoft.Graphics.Canvas.Effects
 Imports Microsoft.Graphics.Canvas.UI.Xaml
+Imports Windows.Foundation.Metadata
 Imports Windows.Graphics.DirectX
 Imports Windows.Graphics.Effects
+Imports Windows.Phone.UI.Input
 Imports Windows.UI
 
 ' In this toy program I calculate the Mandelbrot set on the GPU using D2D effects
@@ -18,10 +20,11 @@ Imports Windows.UI
 Public NotInheritable Class MainPage
     Inherits Page
 
-    Const CSIZE = 300, CITER = 50
+    Dim CSIZE As Integer = 300
+    Dim CITER As Integer = 50
 
-    Dim MTopLeft As New Vector2(-2.5, -1)
-    Dim MSize As New Vector2(3.5, 2)
+    Dim MTopLeft As New Vector2(-2, -2)
+    Dim MSize As New Vector2(4, 4)
 
     WithEvents canvas1 As CanvasControl
     Dim unitX, unitY, rangeX, rangeY, iterX1, iterX2, iterY1, iterY2, render1, render2 As CanvasRenderTarget
@@ -31,6 +34,9 @@ Public NotInheritable Class MainPage
         InitializeComponent()
         canvas1 = New CanvasControl
         container1.Children.Add(canvas1)
+        If ApiInformation.IsTypePresent("Windows.Phone.UI.Input.HardwareButtons") Then
+            AddHandler HardwareButtons.BackPressed, AddressOf Canvas_BackPressed
+        End If
     End Sub
 
     Sub Canvas_CreateResources(sender As CanvasControl, args As Object) Handles canvas1.CreateResources
@@ -171,9 +177,13 @@ Public NotInheritable Class MainPage
         Calculate()
     End Sub
 
+    Sub Canvas_BackPressed(sender As Object, e As BackPressedEventArgs)
+        Dim MCenter = MTopLeft + 0.5 * MSize
+        MSize *= 2
+        MTopLeft = MCenter - MSize / 2
+        Calculate()
+        If MSize.Length <= 6 Then e.Handled = True
+    End Sub
 
 End Class
-
-
-
 
