@@ -1,0 +1,28 @@
+﻿<Page
+    x:Class="DesignTimeData.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:DesignTimeData"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <local:SamplePatientData x:Key="data1"/>
+    </Page.Resources>
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <ListView x:Name="listview1" ItemsSource="{Binding}" d:DataContext="{StaticResource data1}">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Grid Background="LightBlue" Width="200">
+                        <TextBlock VerticalAlignment="Top" Text="{Binding Name}" FontSize="25"/>
+                        <TextBlock VerticalAlignment="Bottom" Text="{Binding Health}"/>
+                        <Image HorizontalAlignment="Right" Source="{Binding Thumbnail}" Width="40" Height="50"/>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+    </Grid>
+</Page>
