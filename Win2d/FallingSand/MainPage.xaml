@@ -7,11 +7,40 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
     
-    <Canvas x:Name="container1" Width="300" Height="300" HorizontalAlignment="Left" VerticalAlignment="Top" Background="Cyan">
-        <Button Foreground="Green" x:Name="buttonDown" Canvas.ZIndex="99" Content="Down"/>
-        <Button Canvas.Left="80" Foreground="Green" x:Name="buttonRight" Canvas.ZIndex="99" Content="Right"/>
-        <Button Canvas.Left="160" Foreground="Green" x:Name="buttonLeft" Canvas.ZIndex="99" Content="Left"/>
-        <Button Canvas.Left="240" Foreground="Green" x:Name="buttonUp" Canvas.ZIndex="99" Content="Up"/>
-    </Canvas>
+    <Grid x:Name="container1" Background="Black">
+        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top">
+            <Button x:Name="btnBrick" Background="Transparent">
+                <Border CornerRadius="40" Width="40" Height="40" BorderBrush="DarkGray" BorderThickness="1">
+                    <Rectangle Width="12" Height="12" Fill="White"/>
+                </Border>
+            </Button>
+            <Button x:Name="btnSand" Background="Transparent">
+                <Border CornerRadius="40" Width="40" Height="40" BorderBrush="DarkGray" BorderThickness="1">
+                    <Rectangle Width="12" Height="12" Fill="Yellow"/>
+                </Border>
+            </Button>
+            <Button x:Name="btnNothing" Background="Transparent">
+                <Border CornerRadius="40" Width="40" Height="40" BorderBrush="DarkGray" BorderThickness="1">
+                    <Border  Width="12" Height="12" BorderBrush="Gray" BorderThickness="1" Background="Black"/>
+                </Border>
+            </Button>
+            <Button x:Name="btnRotateLeft" Background="Transparent">
+                <Border CornerRadius="40" Width="40" Height="40" BorderBrush="DarkGray" BorderThickness="1">
+                    <TextBlock FontFamily="Segoe UI Symbol" FontSize="30" Margin="7,-4,0,0" Text="&#x21BA;"/>
+                </Border>
+            </Button>
+            <Button x:Name="btnRotateRight" Background="Transparent">
+                <Border CornerRadius="40" Width="40" Height="40" BorderBrush="DarkGray" BorderThickness="1">
+                    <TextBlock FontFamily="Segoe UI Symbol" FontSize="30" Margin="7,-4,0,0" Text="&#x21BB;"/>
+                </Border>
+            </Button>
+            <Button x:Name="btnFullScreen" Background="Transparent">
+                <Border CornerRadius="40" Width="40" Height="40" BorderBrush="DarkGray" BorderThickness="1">
+                    <TextBlock FontFamily="Segoe UI Symbol" FontSize="20" Margin="8,5,0,0" Text="&#xE158;"/>
+                </Border>
+            </Button>
+        </StackPanel>
+
+    </Grid>
 
 </Page>

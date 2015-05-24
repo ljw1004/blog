@@ -8,43 +8,53 @@ Imports Windows.UI
 Public NotInheritable Class MainPage
     Inherits Page
 
-    Const CHEIGHT = 8
-    Const CWIDTH = 8
-
+    WithEvents App As App = App.Current
     WithEvents canvas1 As CanvasControl
-    Dim surfaceTruth1, surfaceTruth2 As CanvasRenderTarget
-    Dim surfaceRender As CanvasRenderTarget
-    Dim UseDL As Boolean = True
+    Dim surface1, surface2 As CanvasRenderTarget
+    Dim StepEffect(Kernel._Last, 1) As EffectWrapper
+    Dim renderEffect1 As New DiscreteTransferEffect With {.RedTable = {0, 1, 1}, .GreenTable = {0, 0.8, 1}, .BlueTable = {0.4, 0.1, 1}}
+    Dim renderEffect2 As New DpiCompensationEffect With {.Source = renderEffect1}
+    Dim renderEffect3 As New Transform2DEffect With {.Source = renderEffect2, .InterpolationMode = CanvasImageInterpolation.NearestNeighbor}
+
+    Dim timer As Stopwatch = Stopwatch.StartNew()
+    Dim lastTime As TimeSpan
+
+    Dim _penMode As Integer = 0
+    Dim penHoverBrush As New SolidColorBrush(Colors.DarkGray)
+    Dim penSelectedBrush As New SolidColorBrush(Colors.Blue)
+    Dim penUnselectedBrush As New SolidColorBrush(Color.FromArgb(255, 70, 70, 70))
+
 
     Sub New()
         InitializeComponent()
-        canvas1 = New CanvasControl With {.Width = 300, .Height = 300}
-        container1.Children.Add(canvas1)
+        canvas1 = New CanvasControl
+        container1.Children.Insert(0, canvas1)
+        PenMode = 2
     End Sub
 
+
+    Property PenMode As Integer
+        Get
+            Return _penMode
+        End Get
+        Set(value As Integer)
+            _penMode = value
+            CType(btnNothing.Content, Border).BorderBrush = If(_penMode = 0, penSelectedBrush, penUnselectedBrush)
+            CType(btnBrick.Content, Border).BorderBrush = If(_penMode = 1, penSelectedBrush, penUnselectedBrush)
+            CType(btnSand.Content, Border).BorderBrush = If(_penMode = 2, penSelectedBrush, penUnselectedBrush)
+        End Set
+    End Property
+
+    Sub Pen_Clicked(sender As Object, e As RoutedEventArgs) Handles btnBrick.Click, btnSand.Click, btnNothing.Click
+        PenMode = If(sender Is btnBrick, 1, If(sender Is btnSand, 2, 0))
+    End Sub
 
     Sub Canvas_CreateResources(sender As CanvasControl, args As Object) Handles canvas1.CreateResources
         Const defaultDpi = 96.0F
-        surfaceTruth1 = New CanvasRenderTarget(canvas1, CWIDTH, CHEIGHT, defaultDpi)
-        surfaceTruth2 = New CanvasRenderTarget(canvas1, CWIDTH, CHEIGHT, defaultDpi)
-        surfaceRender = New CanvasRenderTarget(canvas1, CWIDTH, CHEIGHT, defaultDpi)
-        surfaceTruth1.SetPixelColors(Enumerable.Repeat(Colors.Black, CWIDTH * CHEIGHT).ToArray, 0, 0, CWIDTH, CHEIGHT)
-
-        surfaceTruth1.SetPixelColors({Colors.Red, Colors.Green, Colors.Blue, Colors.White}, 0, 0, 4, 1)
-        surfaceTruth1.SetPixelColors({Colors.White, Colors.LightGray, Colors.DarkGray, Colors.DarkSlateBlue}, 0, 1, 4, 1)
-        surfaceTruth1.SetPixelColors({Colors.White}, 2, 2, 1, 1)
-        surfaceTruth1.SetPixelColors({Colors.Gray}, 5, 2, 1, 1)
-
-        UpdateRender()
-    End Sub
-
-    Sub UpdateRender()
-        Using ds = surfaceRender.CreateDrawingSession()
-            ds.DrawImage(surfaceTruth1)
-        End Using
-    End Sub
-
-    Sub DoStep() Handles buttonDown.Click
+        surface1 = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)
+        surface2 = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)
+        renderEffect2.SourceDpi = New Vector2(canvas1.Dpi)
+        App_Loaded()
 
         Dim ingressDL = KernelTracker.Generate({0, 0.5, 1},
                                         {Kernel.Center, Kernel.Up, Kernel.UpRight, Kernel.Right},
@@ -64,7 +74,7 @@ Public NotInheritable Class MainPage
                                             If k(Kernel.Center) = 0.5 AndAlso k(Kernel.DownLeft) = 0 AndAlso k(Kernel.Left) <> 0.5 Then Return 0
                                             Return 0.5
                                         End Function)
-        Dim effectDL = KernelTracker.MakeEffect(ingressDL, egressDL)
+        StepEffect(Kernel.Down, 0) = KernelTracker.MakeEffect(ingressDL, egressDL)
 
 
         Dim ingressDR = KernelTracker.Generate({0, 0.5, 1},
@@ -85,54 +95,121 @@ Public NotInheritable Class MainPage
                                             If k(Kernel.Center) = 0.5 AndAlso k(Kernel.DownRight) = 0 AndAlso k(Kernel.Right) <> 0.5 Then Return 0
                                             Return 0.5
                                         End Function)
-        Dim effectDR = KernelTracker.MakeEffect(ingressDR, egressDR)
+        StepEffect(Kernel.Down, 1) = KernelTracker.MakeEffect(ingressDR, egressDR)
 
 
-        Using ds = surfaceTruth2.CreateDrawingSession()
-            ds.DrawImage(If(UseDL, effectDL, effectDR).FromSource(surfaceTruth1))
-            UseDL = Not UseDL
+    End Sub
+
+    Sub App_Loaded() Handles App.Loaded
+        If surface1 Is Nothing Then Return
+        Dim c = New Color(App.pixels.Length - 1) {}
+        For i = 0 To App.pixels.Length - 1
+            c(i) = If(App.pixels(i) = 1, Colors.White, If(App.pixels(i) = 2, Colors.Gray, Colors.Black))
+        Next
+        surface1.SetPixelColors(c, 0, 0, App.CWIDTH, App.CHEIGHT)
+    End Sub
+
+    Sub App_Unloading() Handles App.Unloading
+        If surface1 Is Nothing Then Return
+        Dim c = surface1.GetPixelColors()
+        If c.Length <> App.Pixels.Length Then Stop
+        For i = 0 To Math.Min(c.Length, App.Pixels.Length) - 1
+            App.Pixels(i) = If(c(i) = Colors.White, CByte(1), If(c(i) = Colors.Gray, CByte(2), CByte(0)))
+        Next
+    End Sub
+
+
+    Sub DoStep()
+        Static Dim i As Integer = 0
+        Using ds = surface2.CreateDrawingSession()
+            ds.DrawImage(StepEffect(Kernel.Down, i).FromSource(surface1))
+            i = 1 - i
         End Using
-        Swap(surfaceTruth1, surfaceTruth2)
-        UpdateRender()
+        Swap(surface1, surface2)
 
         canvas1.Invalidate()
     End Sub
 
+    Sub Page_SizeChanged(sender As Object, e As SizeChangedEventArgs) Handles Me.SizeChanged
+        Dim isFullScreen = ApplicationView.GetForCurrentView.IsFullScreenMode
+        Dim isTablet = (UIViewSettings.GetForCurrentView().UserInteractionMode = UserInteractionMode.Touch)
+
+        Dim xform0 = GetDisplayTransform()
+        renderEffect3.TransformMatrix = New Matrix3x2(xform0.Scale, 0, 0, xform0.Scale, xform0.Offset.X, xform0.Offset.Y)
+        ' Should be Matrix3x2.CreateScale(scale) * Matrix3x2.CreateTranslation(offset) but there's currently a bug in x64 .NET Native
+
+        btnRotateLeft.Visibility = (Not isTablet).AsVisibility
+        btnRotateRight.Visibility = (Not isTablet).AsVisibility
+        btnFullScreen.Visibility = (Not isTablet).AsVisibility
+    End Sub
+
 
     Sub Canvas1_Draw(sender As CanvasControl, args As CanvasDrawEventArgs) Handles canvas1.Draw
-        Dim sourceSizeDips As New Vector2(canvas1.ConvertPixelsToDips(CWIDTH), canvas1.ConvertPixelsToDips(CHEIGHT))
-        Dim canvasSizeDips As New Vector2(CSng(canvas1.ActualWidth), CSng(canvas1.ActualHeight))
-        Dim scale = canvasSizeDips / sourceSizeDips
-
-        Dim effect1 As New DiscreteTransferEffect With {.Source = surfaceTruth1, .RedTable = {0, 0, 1}, .GreenTable = {0, 0.5, 1}, .BlueTable = {0, 0.8, 1}}
-        Dim effect2 As New DpiCompensationEffect With {.Source = effect1, .SourceDpi = New Vector2(canvas1.Dpi)}
-        Dim effect3 As New Transform2DEffect With {.Source = effect2, .TransformMatrix = Matrix3x2.CreateScale(scale), .InterpolationMode = CanvasImageInterpolation.NearestNeighbor}
-        args.DrawingSession.DrawImage(effect3)
-    End Sub
-
-
-    Sub Canvas_Pointer(sender As Object, e As PointerRoutedEventArgs) Handles canvas1.PointerPressed
-        Dim sourceSizeDips As New Vector2(canvas1.ConvertPixelsToDips(CWIDTH), canvas1.ConvertPixelsToDips(CHEIGHT))
-        Dim canvasSizeDips As New Vector2(CSng(canvas1.ActualWidth), CSng(canvas1.ActualHeight))
-        Dim scale = canvasSizeDips.X / sourceSizeDips.X
-        Dim canvasPointDips = e.GetCurrentPoint(canvas1).Position.ToVector2() / canvas1.ConvertPixelsToDips(1)
-        Dim sourcePointDips = canvasPointDips / scale
-        Dim x = CInt(Math.Floor(sourcePointDips.X))
-        Dim y = CInt(Math.Floor(sourcePointDips.Y))
-        If e.Pointer.IsInContact AndAlso x >= 0 AndAlso y >= 0 AndAlso x < CWIDTH AndAlso y < CHEIGHT Then
-            Dim c = surfaceTruth1.GetPixelColors(x, y, 1, 1).First
-            If e.GetCurrentPoint(canvas1).Properties.IsRightButtonPressed Then
-                c = Colors.Black
-            ElseIf c = Colors.Gray Then
-                c = Colors.White
-            Else
-                c = Colors.Gray
-            End If
-            surfaceTruth1.SetPixelColors({c}, x, y, 1, 1)
-            UpdateRender()
-            canvas1.Invalidate()
+        Dim currentTime = timer.Elapsed
+        Dim elapsed = (currentTime - lastTime).TotalSeconds
+        If elapsed > 1 / 60 Then
+            DoStep() : DoStep() : DoStep()
+            lastTime = currentTime
         End If
+
+        renderEffect1.Source = surface1
+        args.DrawingSession.DrawImage(renderEffect3)
+        sender.Invalidate()
     End Sub
+
+
+    Sub Canvas_Pointer(sender As Object, e As PointerRoutedEventArgs) Handles canvas1.PointerPressed, canvas1.PointerMoved
+        If Not e.Pointer.IsInContact Then Return
+
+        Dim xform = GetDisplayTransform()
+        Dim canvasPointDips = e.GetCurrentPoint(canvas1).Position.ToVector2() - xform.Offset
+        canvasPointDips /= canvas1.ConvertPixelsToDips(1)
+        Dim sourcePointDips = canvasPointDips / xform.Scale
+        Dim cx = CInt(Math.Floor(sourcePointDips.X))
+        Dim cy = CInt(Math.Floor(sourcePointDips.Y))
+        Dim radius = CType(btnBrick.Content, Border).ActualWidth / 2 / xform.Scale
+
+        Dim b = CInt(radius * 2)
+        Static Dim cols As Color()
+        If cols Is Nothing OrElse cols.Length <> b * b - 1 Then
+            cols = New Color(b * b - 1) {}
+            Dim c = If(PenMode = 1, Colors.White, If(PenMode = 2, Colors.Gray, Colors.Black))
+            For i = 0 To cols.Length - 1
+                cols(i) = c
+            Next
+        End If
+        surface1.SetPixelColors(cols, cx - b \ 2, cy - b \ 2, b, b)
+        'For y = CInt(cy - radius) To CInt(cy + radius)
+        '    For x = CInt(cx - radius) To CInt(cx + radius)
+        '        If x < 0 OrElse x >= App.CWIDTH OrElse y < 0 OrElse y >= App.CHEIGHT Then Continue For
+        '        If (y - cy) * (y - cy) + (x - cx) * (x - cx) > radius * radius Then Continue For
+        '        Dim c = If(PenMode = 1, Colors.White, If(PenMode = 2, Colors.Gray, Colors.Black))
+        '        surface1.SetPixelColors({c}, x, y, 1, 1)
+        '    Next
+        'Next
+
+    End Sub
+
+    Structure DisplayTransform
+        Public Scale As Single
+        Public Offset As Vector2
+    End Structure
+
+    Function GetDisplayTransform() As DisplayTransform
+        Dim bitmapSizeDips As New Vector2(canvas1.ConvertPixelsToDips(App.CWIDTH), canvas1.ConvertPixelsToDips(App.CHEIGHT))
+        Dim canvasSizeDips As New Vector2(CSng(canvas1.ActualWidth), CSng(canvas1.ActualHeight))
+        Dim scale = canvasSizeDips / bitmapSizeDips
+        Dim offset = Vector2.Zero
+
+        If scale.X > scale.Y Then
+            scale.X = scale.Y
+            offset.X = (canvasSizeDips.X - bitmapSizeDips.X * scale.X) / 2
+        Else
+            scale.Y = scale.X
+            offset.Y = (canvasSizeDips.Y - bitmapSizeDips.Y * scale.Y) / 2
+        End If
+        Return New DisplayTransform With {.Scale = scale.X, .Offset = offset}
+    End Function
 
 End Class
 
@@ -148,6 +225,30 @@ Public Module Utils
 
     Public Sub Swap(Of T)(ByRef x As T, ByRef y As T)
         Dim temp = x : x = y : y = temp
+    End Sub
+
+    <Extension>
+    Public Function AsVisibility(b As Boolean) As Visibility
+        Return If(b, Visibility.Visible, Visibility.Collapsed)
+    End Function
+
+    <Extension>
+    Public Function Fmt(v As Vector2) As String
+        Return $"<{v.X:0.0},{v.Y:0.0}>"
+    End Function
+
+    <Extension>
+    Public Function Fmt(m As Matrix3x2) As String
+        Return $"<{m.M11:0.0},{m.M12:0.0} / {m.M21:0.0},{m.M22:0.0} + {m.M31:0.0},{m.M32:0.0}"
+    End Function
+
+    <Extension>
+    Async Sub FireAndForget(t As Task)
+        Try
+            Await t
+        Catch ex As Exception
+            Stop
+        End Try
     End Sub
 
 End Module

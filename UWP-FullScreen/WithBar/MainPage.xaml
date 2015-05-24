@@ -7,7 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <StackPanel Background="Blue">
+    <StackPanel Background="LightBlue">
         <Button x:Name="button1" Content="FullScreen"/>
         <TextBlock x:Name="label1" FontSize="20"/>
         <TextBlock x:Name="label2" FontSize="20"/>

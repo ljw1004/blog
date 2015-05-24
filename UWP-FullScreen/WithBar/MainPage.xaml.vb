@@ -38,33 +38,36 @@ Public NotInheritable Class MainPage
     ' How will users get out of my game?
     '  - Mobile: they can press the hardware Home or Back buttons. If their phone only
     '    has soft Home/Back buttons, well, my app isn't full-screen so they can use that too.
-    '  - Desktop Tablet Mode: the taskbar will be there. They can also mouse to the top,
-    '    or swipe from the top or sides. They can also press Esc.
+    '  - Desktop Tablet Mode: the taskbar will be there with Home and Back buttons.
+    '    They can also mouse To the top, or swipe from the top or sides. They can also press Esc.
     '  - Desktop Full Screen Mode: they can mouse to the top, or swipe from the top or sides,
     '    or press Esc.
     '  - Desktop Windowed Mode: they can use the Minimize/Maximimize/Close buttons, or the
     '    taskbar.
     '
     '  * KNOWN OS BUG: TryEnterFullScreen doesnt yet work on Mobile. It is supposed to.
-    '  * KNOWN OS BUG: If app does TryEnterFullScreenMode in desktop mode, then user
+    '  * FIXED IN 10122: If app does TryEnterFullScreenMode in desktop mode, then user
     '    switches to Tablet mode, it should get a SizeChanged event but doesn't.
-    '  * KNOWN OS BUG: If app does TryEnterFullScreenMode in desktop mode, then user
+    '    (as of 10122 it does)
+    '  * FIXED IN 10122: If app does TryEnterFullScreenMode in desktop mode, then user
     '    switches to Tablet mode, then app does ExitFullScreenMode, then the app
     '    sometimes gets turned into an overlapped window, and sometimes gets turned
     '    into a proper Tablet mode window but with a permanently-on title bar that wrongly
-    '    has a minimize button.
-    '  * KNOWN OS BUG 2162940: as of Win10 build 10074, when device orientation changes
-    '    and you're in tablet mode, apps fail to resize to the new orientation. This is
-    '    supposed to happen automatically.
-    '  * KNOWN OS BUG 2635736: as of Win10 build 10074, if you enter full-screen then leave it
+    '    has a minimize button. (as of 10122 it always ends up as a proper Tablet window)
+    '  * FIXED IN 10122: when device orientation changes and you're in tablet mode, apps
+    '    fail to resize to the new orientation. This is supposed to happen automatically.
+    '    (it now does)
+    '  * KNOWN OS BUG 2635736: if you enter full-screen then leave it
     '    correctly resizes back to the size you were before; but if you enter a second time
     '    and leave again a second time then it fails to resize back to what you were before.
-    '    It's supposed to.
+    '    It's supposed to. (it still does this in 10122)
     '  * KNOWN OS BUG 2635736: as of Win10 build 10074, sometimes when you launch the app it launches
     '    at the wrong size. It's supposed to remember what size it was before and launch at
-    '    that size.
-    '  * KNOWN OS BUG 2280327: as of Win10 build 10074, on mobile and desktop,
+    '    that size. (I still see weird behavior in 10122 if I exit the app while in Tablet
+    '    mode, but relaunch it where it goes windowed but as large as possible).
+    '  * KNOWN OS BUG 2280327: on mobile and desktop,
     '    ApplicationView.Orientation often gives the wrong answers. You can't trust it.
+    '    (still has this bug in 10122)
 
     Sub New()
         InitializeComponent()
@@ -89,18 +92,17 @@ Public NotInheritable Class MainPage
     End Sub
 
     Sub UpdateStatus() Handles Me.SizeChanged
-        Dim isFullScreen = ApplicationView.GetForCurrentView.IsFullScreenMode
-        Dim isTabletMode = (UIViewSettings.GetForCurrentView().UserInteractionMode = UserInteractionMode.Touch)
-        Dim isLandscape = (Window.Current.Bounds.Width >= Window.Current.Bounds.Height)
-
-        'button1.Visibility = If(isTabletMode, Visibility.Collapsed, Visibility.Visible)
-        button1.Content = If(isFullScreen, "ExitFullScreenMode", "TryEnterFullScreenMode")
-        label1.Text = $"IsFullScreen: {isFullScreen}"
-        label2.Text = $"IsTabletMode: {isTabletMode}"
-        label3.Text = $"WindowOrientation: {If(isLandscape, "Landscape", "Portrait")}"
+        label1.Text = $"IsFullScreen: {ApplicationView.GetForCurrentView.IsFullScreenMode}"
+        label2.Text = $"IsTabletMode: {UIViewSettings.GetForCurrentView.UserInteractionMode = UserInteractionMode.Touch}"
+        label3.Text = $"WindowOrientation: {ApplicationView.GetForCurrentView().Orientation}"
         label4.Text = $"Window.Bounds: ({Window.Current.Bounds.Width:0.0}, {Window.Current.Bounds.Height:0.0})"
         label5.Text = $"CurrentRotation: {DisplayInformation.GetForCurrentView.CurrentOrientation}"
         label6.Text = $"NativeRotation: {DisplayInformation.GetForCurrentView.NativeOrientation}"
+
+        Dim isFullScreen = ApplicationView.GetForCurrentView.IsFullScreenMode
+        Dim isTablet = (UIViewSettings.GetForCurrentView().UserInteractionMode = UserInteractionMode.Touch)
+        button1.Visibility = If(isFullScreen OrElse Not isTablet, Visibility.Visible, Visibility.Collapsed)
+        button1.Content = If(isFullScreen, "ExitFullScreenMode", "TryEnterFullScreenMode")
     End Sub
 
     Sub FullScreenButton() Handles button1.Click
