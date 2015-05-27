@@ -4,8 +4,8 @@ Imports Windows.UI
 NotInheritable Class App
     Inherits Application
 
-    Public Const CHEIGHT = 480
-    Public Const CWIDTH = 640
+    Public Const CHEIGHT = 240
+    Public Const CWIDTH = 320
     Public Property Pixels As Byte()
 
     Public Event Loaded As Action
@@ -30,15 +30,25 @@ NotInheritable Class App
     End Sub
 
     Async Function LoadAsync() As Task
-        Try
-            Dim file = Await ApplicationData.Current.LocalFolder.GetFileAsync($"pixels_{CWIDTH}x{CHEIGHT}.dat")
+        Dim fn = $"pixels_{CWIDTH}x{CHEIGHT}.dat"
+        Dim file = Await TryGetFileAsync(ApplicationData.Current.LocalFolder, fn)
+        file = Nothing
+        If file Is Nothing Then file = Await TryGetFileAsync(Package.Current.InstalledLocation, fn)
+        If file IsNot Nothing Then
             Using stream = Await file.OpenStreamForReadAsync()
-                Dim red = Await stream.ReadAsync(pixels, 0, pixels.Length)
-                If red <> pixels.Length Then Stop
+                Dim red = Await stream.ReadAsync(Pixels, 0, Pixels.Length)
+                If red <> Pixels.Length Then Stop
             End Using
-        Catch ex As FileNotFoundException
-        End Try
+        End If
         RaiseEvent Loaded()
+    End Function
+
+    Private Async Function TryGetFileAsync(folder As StorageFolder, fn As String) As Task(Of StorageFile)
+        Try
+            Return Await folder.GetFileAsync(fn)
+        Catch ex As FileNotFoundException
+            Return Nothing
+        End Try
     End Function
 
     Private Async Sub OnSuspending(sender As Object, e As SuspendingEventArgs) Handles Me.Suspending

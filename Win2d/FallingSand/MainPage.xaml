@@ -15,7 +15,7 @@
                 </Border>
             </Button>
             <Button x:Name="btnSand" Background="Transparent">
-                <Border CornerRadius="40" Width="40" Height="40" BorderBrush="DarkGray" BorderThickness="1">
+                <Border CornerRadius="40" Width="40" Height="40" BorderBrush="Blue" BorderThickness="1">
                     <Rectangle Width="12" Height="12" Fill="Yellow"/>
                 </Border>
             </Button>
