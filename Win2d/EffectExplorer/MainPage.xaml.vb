@@ -82,6 +82,30 @@ Public NotInheritable Class MainPage
         dtb.Text = String.Join(" ", App.model.DiscreteTransferTableBlue.Select(Function(s) s.ToString()))
     End Sub
 
+    Sub Preset_Click(sender As Object, e As RoutedEventArgs) Handles pre_ingressDL3.Click, pre_ingressDL4.Click
+        If sender Is pre_ingressDL3 Then
+            App.model.ConvolveMatrixEnabled = True
+            App.model.ConvolveMatrixKernel = {0, 0, 0, 1, 27, 0, 3, 9, 0}
+            App.model.ConvolveMatrixDivisor = 40
+            App.model.DiscreteTransferEnabled = True
+            Dim table As Single() = {0, 0, 0, 0, 0.5, 0.5, 0, 0, 0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+            App.model.DiscreteTransferTableRed = table
+            App.model.DiscreteTransferTableGreen = table
+            App.model.DiscreteTransferTableBlue = table
+            WriteModelToUI()
+        ElseIf sender Is pre_ingressDL4 Then
+            App.model.ConvolveMatrixEnabled = True
+            App.model.ConvolveMatrixKernel = {0, 0, 0, 1, 64, 0, 4, 16, 0}
+            App.model.ConvolveMatrixDivisor = 85
+            App.model.DiscreteTransferEnabled = True
+            Dim table As Single() = {0, 0, 0, 0, 0, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+            App.model.DiscreteTransferTableRed = table
+            App.model.DiscreteTransferTableGreen = table
+            App.model.DiscreteTransferTableBlue = table
+            WriteModelToUI()
+        End If
+    End Sub
+
     Sub Canvas_CreateResources(sender As CanvasControl, args As Object) Handles canvas1.CreateResources
         Const defaultDpi = 96.0F
         surface1 = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)

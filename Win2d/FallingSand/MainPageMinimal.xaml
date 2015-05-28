@@ -1,0 +1,19 @@
+﻿<Page
+    x:Class="FallingSand.MainPageMinimal"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:FallingSand"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid x:Name="container1" Background="Black">
+        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top">
+            <Button x:Name="btnBrick" Content="brick" Margin="4"/>
+            <Button x:Name="btnSand" Foreground="Yellow" Content="sand" Margin="4"/>
+            <Button x:Name="btnNothing" Content="erase" Margin="4"/>
+        </StackPanel>
+
+    </Grid>
+
+</Page>

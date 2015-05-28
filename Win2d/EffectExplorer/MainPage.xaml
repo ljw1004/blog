@@ -12,99 +12,110 @@
             <RowDefinition Height="1*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="1*"/>
-            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="125"/>
+            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        <StackPanel x:Name="effects1" Grid.Row="0" Grid.Column="0" >
-            <StackPanel Orientation="Horizontal" Background="Black">
-                <Rectangle Fill="#000000" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-                <Rectangle Fill="#FF0000" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-                <Rectangle Fill="#00FF00" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-                <Rectangle Fill="#0000FF" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-                <Rectangle Fill="#FFFF00" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-                <Rectangle Fill="#FF00FF" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-                <Rectangle Fill="#00FFFF" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-                <Rectangle Fill="#FFFFFF" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
+        <ScrollViewer Grid.Row="0" Grid.Column="0" Background="Black" 
+                      HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto"
+                      VerticalScrollMode="Enabled">
+            <StackPanel x:Name="effects1"  >
+                <StackPanel Orientation="Horizontal">
+                    <Rectangle Fill="#000000" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                    <Rectangle Fill="#808080" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                    <Rectangle Fill="#FFFFFF" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                    <Rectangle Fill="#00FFFF" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                    <Rectangle Fill="#008080" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" >
+                    <Rectangle Fill="#FF0000" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                    <Rectangle Fill="#00FF00" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                    <Rectangle Fill="#0000FF" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                    <Rectangle Fill="#FFFF00" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                    <Rectangle Fill="#FF00FF" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" >
+                    <Rectangle Fill="#800000" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                    <Rectangle Fill="#008000" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                    <Rectangle Fill="#000080" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                    <Rectangle Fill="#808000" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                    <Rectangle Fill="#800080" Width="25" Height="25" PointerPressed="Rectangle_PointerPressed"/>
+                </StackPanel>
+                <Grid Background="LightBlue">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+                    <CheckBox x:Name="cmx" Grid.Row="0" Grid.Column="0" />
+                    <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" FontSize="15" FontWeight="Bold" Margin="30,0,0,0">Convolve</TextBlock>
+                    <TextBox x:Name="cmk0" Grid.Row="1" Grid.Column="0"/>
+                    <TextBox x:Name="cmk1" Grid.Row="1" Grid.Column="1"/>
+                    <TextBox x:Name="cmk2" Grid.Row="1" Grid.Column="2"/>
+                    <TextBox x:Name="cmk3" Grid.Row="2" Grid.Column="0"/>
+                    <TextBox x:Name="cmk4" Grid.Row="2" Grid.Column="1"/>
+                    <TextBox x:Name="cmk5" Grid.Row="2" Grid.Column="2"/>
+                    <TextBox x:Name="cmk6" Grid.Row="3" Grid.Column="0"/>
+                    <TextBox x:Name="cmk7" Grid.Row="3" Grid.Column="1"/>
+                    <TextBox x:Name="cmk8" Grid.Row="3" Grid.Column="2"/>
+                    <TextBlock Grid.Row="4" Grid.ColumnSpan="2" Text="Divisor:" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    <TextBox x:Name="cmd" Grid.Row="4" Grid.Column="2"/>
+                </Grid>
+                <Grid Background="LightGreen">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+                    <CheckBox x:Name="dtx" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"/>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" FontSize="15" FontWeight="Bold" Margin="40,0,0,0">DiscreteTransfer</TextBlock>
+                    <TextBlock Grid.Row="1" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center" Text="R"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center" Text="G"/>
+                    <TextBlock Grid.Row="3" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center" Text="B"/>
+                    <TextBox x:Name="dtr" Grid.Row="1" Grid.Column="1"/>
+                    <TextBox x:Name="dtg" Grid.Row="2" Grid.Column="1"/>
+                    <TextBox x:Name="dtb" Grid.Row="3" Grid.Column="1"/>
+                </Grid>
+                <Grid Background="LightGoldenrodYellow">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" FontSize="15" FontWeight="Bold">Pointer</TextBlock>
+                    <TextBox x:Name="ptr1" Grid.Row="1" Grid.Column="0" />
+                    <TextBox x:Name="ptr2" Grid.Row="2" Grid.Column="0" />
+                    <TextBox x:Name="ptr3" Grid.Row="3" Grid.Column="0" />
+                </Grid>
+                <TextBlock x:Name="status1" FontSize="12" Foreground="Red"/>
+                <StackPanel Background="LightGray" Orientation="Vertical">
+                    <TextBlock FontSize="15" FontWeight="Bold" Text="Presets"/>
+                    <Button x:Name="pre_ingressDL3" Content="ingressDL3" Margin="4,4,4,4"/>
+                    <Button x:Name="pre_ingressDL4" Content="ingressDL4" Margin="4,4,4,4"/>
+                    <Button x:Name="pre_egressDL3" Content="eressDL3" Margin="4,4,4,4"/>
+                    <Button x:Name="pre_egressDL4" Content="gressDL4" Margin="4,4,4,4"/>
+                </StackPanel>
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Background="Black">
-                <Rectangle Fill="#808080" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-                <Rectangle Fill="#800000" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-                <Rectangle Fill="#008000" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-                <Rectangle Fill="#000080" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-                <Rectangle Fill="#808000" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-                <Rectangle Fill="#800080" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-                <Rectangle Fill="#008080" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-                <Rectangle Fill="#808080" Width="30" Height="30" PointerPressed="Rectangle_PointerPressed"/>
-            </StackPanel>
-            <Grid Background="LightBlue">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="1*"/>
-                    <RowDefinition Height="1*"/>
-                    <RowDefinition Height="1*"/>
-                    <RowDefinition Height="1*"/>
-                    <RowDefinition Height="1*"/>
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1*"/>
-                    <ColumnDefinition Width="1*"/>
-                    <ColumnDefinition Width="1*"/>
-                </Grid.ColumnDefinitions>
-                <CheckBox x:Name="cmx" Grid.Row="0" Grid.Column="0" />
-                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" FontSize="30" FontWeight="Bold" Margin="30,0,0,0">Convolve</TextBlock>
-                <TextBox x:Name="cmk0" Grid.Row="1" Grid.Column="0"/>
-                <TextBox x:Name="cmk1" Grid.Row="1" Grid.Column="1"/>
-                <TextBox x:Name="cmk2" Grid.Row="1" Grid.Column="2"/>
-                <TextBox x:Name="cmk3" Grid.Row="2" Grid.Column="0"/>
-                <TextBox x:Name="cmk4" Grid.Row="2" Grid.Column="1"/>
-                <TextBox x:Name="cmk5" Grid.Row="2" Grid.Column="2"/>
-                <TextBox x:Name="cmk6" Grid.Row="3" Grid.Column="0"/>
-                <TextBox x:Name="cmk7" Grid.Row="3" Grid.Column="1"/>
-                <TextBox x:Name="cmk8" Grid.Row="3" Grid.Column="2"/>
-                <TextBlock Grid.Row="4" Grid.Column="1" Text="Divisor:" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                <TextBox x:Name="cmd" Grid.Row="4" Grid.Column="2"/>
-            </Grid>
-            <Grid Background="LightGreen">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="1*"/>
-                    <RowDefinition Height="1*"/>
-                    <RowDefinition Height="1*"/>
-                    <RowDefinition Height="1*"/>
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="1*"/>
-                </Grid.ColumnDefinitions>
-                <CheckBox x:Name="dtx" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"/>
-                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" FontSize="30" FontWeight="Bold" Margin="40,0,0,0">DiscreteTransfer</TextBlock>
-                <TextBlock Grid.Row="1" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center" Text="R"/>
-                <TextBlock Grid.Row="2" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center" Text="G"/>
-                <TextBlock Grid.Row="3" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center" Text="B"/>
-                <TextBox x:Name="dtr" Grid.Row="1" Grid.Column="1"/>
-                <TextBox x:Name="dtg" Grid.Row="2" Grid.Column="1"/>
-                <TextBox x:Name="dtb" Grid.Row="3" Grid.Column="1"/>
-            </Grid>
-            <Grid Background="LightGoldenrodYellow">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="1*"/>
-                    <RowDefinition Height="1*"/>
-                    <RowDefinition Height="1*"/>
-                    <RowDefinition Height="1*"/>
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1*"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Row="0" Grid.Column="0" FontSize="30" FontWeight="Bold">Pointer</TextBlock>
-                <TextBox x:Name="ptr1" Grid.Row="1" Grid.Column="0" />
-                <TextBox x:Name="ptr2" Grid.Row="2" Grid.Column="0" />
-                <TextBox x:Name="ptr3" Grid.Row="3" Grid.Column="0" />
-            </Grid>
-            <TextBlock x:Name="status1" FontSize="12" Foreground="Red"/>
-        </StackPanel>
-
+        </ScrollViewer>
         <Border x:Name="content1" Grid.Row="0" Grid.Column="1" Width="200" Height="425" BorderBrush="Blue" BorderThickness="1" VerticalAlignment="Top" Margin="0,10,0,0">
             <TextBlock Text="before and after"/>
         </Border>
 
     </Grid>
-    
+
 </Page>
