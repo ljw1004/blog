@@ -32,7 +32,6 @@ NotInheritable Class App
     Async Function LoadAsync() As Task
         Dim fn = $"pixels_{CWIDTH}x{CHEIGHT}.dat"
         Dim file = Await TryGetFileAsync(ApplicationData.Current.LocalFolder, fn)
-        file = Nothing
         If file Is Nothing Then file = Await TryGetFileAsync(Package.Current.InstalledLocation, fn)
         If file IsNot Nothing Then
             Using stream = Await file.OpenStreamForReadAsync()
