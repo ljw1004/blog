@@ -7,11 +7,12 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid x:Name="container1" Background="Black">
+    <Grid x:Name="container1">
         <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top">
             <Button x:Name="btnBrick" Content="brick" Margin="4"/>
-            <Button x:Name="btnSand" Foreground="Yellow" Content="sand" Margin="4"/>
+            <Button x:Name="btnSand" Content="sand" Margin="4"/>
             <Button x:Name="btnNothing" Content="erase" Margin="4"/>
+            <Button x:Name="btnStep" Content="step" Margin="4"/>
         </StackPanel>
 
     </Grid>
