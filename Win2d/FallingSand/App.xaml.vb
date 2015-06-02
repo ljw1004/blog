@@ -20,7 +20,7 @@ NotInheritable Class App
         End Get
     End Property
 
-    Protected Overrides Sub OnLaunched(e As Windows.ApplicationModel.Activation.LaunchActivatedEventArgs)
+    Protected Overrides Sub OnLaunched(e As LaunchActivatedEventArgs)
         Dim rootFrame As Frame = TryCast(Window.Current.Content, Frame)
         If rootFrame Is Nothing Then
             rootFrame = New Frame()
@@ -28,7 +28,7 @@ NotInheritable Class App
             Pixels = New Color(CHEIGHT * CWIDTH - 1) {}
             LoadAsync().FireAndForget()
         End If
-        If rootFrame.Content Is Nothing Then rootFrame.Navigate(GetType(MainPageV1), e.Arguments)
+        If rootFrame.Content Is Nothing Then rootFrame.Navigate(GetType(MainPageV3), e.Arguments)
         Window.Current.Activate()
     End Sub
 
@@ -41,7 +41,7 @@ NotInheritable Class App
                 Dim buf = New Byte(Pixels.Length * 4 - 1) {}
                 Await stream.ReadAsync(buf, 0, buf.Length)
                 For i = 0 To Pixels.Length - 1
-                    Pixels(i) = Color.FromArgb(buf(i * 4 + 0), buf(i * 4 + 1), buf(i * 4 + 2), buf(i * 4 + 3))
+                    Pixels(i) = Color.FromArgb(255, buf(i * 4 + 1), buf(i * 4 + 2), buf(i * 4 + 3))
                 Next
             End Using
         End If
@@ -63,7 +63,7 @@ NotInheritable Class App
         Using stream = Await file.OpenStreamForWriteAsync()
             Dim buf = New Byte(Pixels.Length * 4 - 1) {}
             For i = 0 To Pixels.Length - 1
-                buf(4 * i + 0) = Pixels(i).A : buf(4 * i + 1) = Pixels(i).R : buf(4 * i + 2) = Pixels(i).G : buf(4 * i + 3) = Pixels(i).B
+                buf(4 * i + 0) = 255 : buf(4 * i + 1) = Pixels(i).R : buf(4 * i + 2) = Pixels(i).G : buf(4 * i + 3) = Pixels(i).B
             Next
             Await stream.WriteAsync(buf, 0, buf.Length)
         End Using
@@ -133,12 +133,12 @@ Public Class KernelTracker
     Public _Matrix As Single()
     Public _Touched As Boolean()
     '
-    Public ConvolveMatrix As Single()
     Public ConvolveDivisor As Integer
     Public TransferTable As Single()
+    Public ConvolveMatrix As Single()
 
-    Private Shared Function Rotate(m As Single(), o As Orientation) As Single()
-        If m.Length <> 9 Then Throw New ArgumentOutOfRangeException("m", "Only works with 3x3 matrices")
+    Public Function ConvolveMatrixRotated(o As Orientation) As Single()
+        Dim m = ConvolveMatrix
         Select Case o
             Case Orientation.Landscape : Return {m(0), m(1), m(2), m(3), m(4), m(5), m(6), m(7), m(8)}
             Case Orientation.Portrait : Return {m(2), m(5), m(8), m(1), m(4), m(7), m(0), m(3), m(6)}
@@ -146,19 +146,6 @@ Public Class KernelTracker
             Case Orientation.PortraitFlipped : Return {m(6), m(3), m(0), m(7), m(4), m(1), m(8), m(5), m(2)}
             Case Else : Throw New ArgumentOutOfRangeException("o")
         End Select
-    End Function
-
-    Shared Function MakeEffect(src1 As KernelTracker, src2 As KernelTracker, o As Orientation) As EffectWrapper(Of ICanvasImage)
-        Dim conv1 As New ConvolveMatrixEffect With {.KernelMatrix = Rotate(src1.ConvolveMatrix, o), .Divisor = src1.ConvolveDivisor, .PreserveAlpha = True}
-        Dim tran1 As New DiscreteTransferEffect With {.Source = conv1, .RedTable = src1.TransferTable, .GreenTable = src1.TransferTable, .BlueTable = src1.TransferTable}
-        Dim conv2 As New ConvolveMatrixEffect With {.KernelMatrix = Rotate(src2.ConvolveMatrix, o), .Divisor = src2.ConvolveDivisor, .PreserveAlpha = True}
-        Dim tran2 As New DiscreteTransferEffect With {.Source = conv2, .RedTable = src2.TransferTable, .GreenTable = src2.TransferTable, .BlueTable = src2.TransferTable}
-
-        Dim compo As New CompositeEffect With {.Mode = CanvasComposite.Add}
-        compo.Sources.Add(tran1)
-        compo.Sources.Add(tran2)
-
-        Return New EffectWrapper(Of ICanvasImage)(compo, Sub(s) If True Then conv1.Source = s : conv2.Source = s)
     End Function
 
     Shared Function Generate(values As IEnumerable(Of Single), touches As IEnumerable(Of Kernel), lambda As Func(Of Func(Of Integer, Single), Single)) As KernelTracker
@@ -193,6 +180,7 @@ Public Class KernelTracker
             m *= values_Count
         Next
         '
+        'If k.ConvolveDivisor > 20 Then Throw New ArgumentException("This kernel is complicated. It likely won't work on DX9 devices such as Lumia635 which just don't guarantee the necessary GPU precision")
         For i = Kernel._First To Kernel._Last
             If k._Touched(i) AndAlso Not touches.Contains(i) Then Throw New ArgumentException($"Failed to declare that this kernel touches {i}")
             If Not k._Touched(i) AndAlso touches.Contains(i) Then Throw New ArgumentException($"Declared that this kernel touches {i} but it doesn't")

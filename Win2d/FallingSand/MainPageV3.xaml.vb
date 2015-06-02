@@ -11,160 +11,216 @@ Public NotInheritable Class MainPageV3
     WithEvents App As App = App.Current
     WithEvents canvas1 As CanvasControl
 
-    Dim surface1, surface2, surfaceR As CanvasRenderTarget
-    Dim StepEffect(Orientation._Last, Phase._Last) As EffectWrapper(Of ICanvasImage)
-    Dim RenderEffect, DrawEffect As EffectWrapper(Of ICanvasImage)
+    Dim SurfaceR, Surface, SurfaceId, SurfaceAddFromUp, SurfaceAddFromDiag, SurfaceRemToDown, SurfaceRemToDiag As CanvasRenderTarget
+    Dim StepEffect, StepAddFromUp(Orientation._Last, Phase._Last), StepAddFromDiag(Orientation._Last, Phase._Last), StepRemToDown(Orientation._Last, Phase._Last), StepRemToDiag(Orientation._Last, Phase._Last) As ICanvasImage
+    Dim RenderEffect As ICanvasImage
+    Dim DrawEffect As Transform2DEffect
     Dim _displayTransform As DisplayTransform
 
-    Dim WindowedOrientation As Orientation
-    Dim _penMode As Integer = 0
+    Dim _WindowedOrientation As Orientation
+    Dim _pen As Color
 
     Sub New()
         InitializeComponent()
         canvas1 = New CanvasControl
         container1.Children.Insert(0, canvas1)
-        PenMode = 2
+        Pen = Colors.Gray
     End Sub
 
 
     Sub App_Loaded() Handles App.Loaded
-        If surface1 Is Nothing Then Return
-        ' TODO
-        'Dim c = New Color(App.Pixels.Length - 1) {}
-        'For i = 0 To App.Pixels.Length - 1
-        '    c(i) = If(App.Pixels(i) = 1, Colors.White, If(App.Pixels(i) = 2, Colors.Gray, Colors.Black))
-        'Next
-        'surface1.SetPixelColors(c, 0, 0, App.CWIDTH, App.CHEIGHT)
+        If Surface Is Nothing Then Return
+        Surface.SetPixelColors(App.Pixels)
     End Sub
 
     Sub App_Unloading() Handles App.Unloading
-        If surface1 Is Nothing Then Return
-        Dim c = surface1.GetPixelColors()
-        If c.Length <> App.Pixels.Length Then Stop
-        For i = 0 To Math.Min(c.Length, App.Pixels.Length) - 1
-            ' TODO
-            'App.Pixels(i) = If(c(i) = Colors.White, CByte(1), If(c(i) = Colors.Gray, CByte(2), CByte(0)))
-        Next
+        If Surface Is Nothing Then Return
+        App.Pixels = Surface.GetPixelColors()
     End Sub
 
 
     Sub Canvas_CreateResources(sender As CanvasControl, args As Object) Handles canvas1.CreateResources
         Const defaultDpi = 96.0F
-        surface1 = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)
-        surface2 = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)
-        surfaceR = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)
+        SurfaceR = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)
+        Surface = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)
+        SurfaceId = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)
+        SurfaceAddFromUp = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)
+        SurfaceAddFromDiag = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)
+        SurfaceRemToDown = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)
+        SurfaceRemToDiag = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)
         App_Loaded()
 
-        Dim drawEffect1 As New DiscreteTransferEffect With {.RedTable = {0, 1, 1}, .GreenTable = {0, 0.8, 1}, .BlueTable = {0.1, 0.1, 1}}
-        Dim drawEffect2 As New DpiCompensationEffect With {.Source = drawEffect1, .SourceDpi = New Vector2(canvas1.Dpi)}
-        Dim drawEffect3 As New Transform2DEffect With {.Source = drawEffect2}
-        DrawEffect = New EffectWrapper(Of ICanvasImage)(drawEffect3,
-                                                          Sub(source)
-                                                              drawEffect1.Source = source
-                                                              Dim s = DisplayTransform.Scale
-                                                              Dim r = DisplayTransform.Rotation
-                                                              Dim o = DisplayTransform.Offset
-                                                              drawEffect3.TransformMatrix = New Matrix3x2(s * r.M11, s * r.M12, s * r.M21, s * r.M22, o.X + s * canvas1.ConvertPixelsToDips(CInt(r.M31)), o.Y + s * canvas1.ConvertPixelsToDips(CInt(r.M32)))
-                                                          End Sub)
+        Dim kernelAddFromUp(Phase._Last), kernelAddFromDiag(Phase._Last), kernelRemToDown(Phase._Last), kernelRemToDiag(Phase._Last) As KernelTracker
 
 
-        Dim ingressDL = KernelTracker.Generate({0, 0.5, 1},
-                                        {Kernel.Center, Kernel.Up, Kernel.UpRight, Kernel.Right},
+        kernelAddFromUp(Phase.DownThenLeft) = KernelTracker.Generate({0, 0.5, 1}, {Kernel.Center, Kernel.Up},
+                                            Function(k)
+                                                If k(Kernel.Center) = 0 AndAlso k(Kernel.Up) = 0.5 Then Return 0.5
+                                                Return 0
+                                            End Function)
+
+        kernelAddFromUp(Phase.DownThenRight) = kernelAddFromUp(Phase.DownThenLeft)
+
+        kernelAddFromUp(Phase.LeftThenDown) = KernelTracker.Generate({0, 0.5, 1}, {Kernel.Center, Kernel.Up, Kernel.UpRight},
+                                                Function(k)
+                                                    If k(Kernel.Center) = 0 AndAlso k(Kernel.UpRight) <> 0.5 AndAlso k(Kernel.Up) = 0.5 Then Return 0.5
+                                                    Return 0
+                                                End Function)
+
+        kernelAddFromUp(Phase.RightThenDown) = KernelTracker.Generate({0, 0.5, 1}, {Kernel.Center, Kernel.Up, Kernel.UpLeft},
+                                                    Function(k)
+                                                        If k(Kernel.Center) = 0 AndAlso k(Kernel.UpLeft) <> 0.5 AndAlso k(Kernel.Up) = 0.5 Then Return 0.5
+                                                        Return 0
+                                                    End Function)
+
+        kernelAddFromDiag(Phase.DownThenLeft) = KernelTracker.Generate({0, 0.5, 1}, {Kernel.Center, Kernel.UpRight, Kernel.Right},
+                                            Function(k)
+                                                If k(Kernel.Center) = 0 AndAlso k(Kernel.UpRight) = 0.5 AndAlso k(Kernel.Right) <> 0 Then Return 0.5
+                                                Return 0
+                                            End Function)
+
+        kernelAddFromDiag(Phase.DownThenRight) = KernelTracker.Generate({0, 0.5, 1}, {Kernel.Center, Kernel.UpLeft, Kernel.Left},
+                                            Function(k)
+                                                If k(Kernel.Center) = 0 AndAlso k(Kernel.UpLeft) = 0.5 AndAlso k(Kernel.Left) <> 0 Then Return 0.5
+                                                Return 0
+                                            End Function)
+
+        kernelAddFromDiag(Phase.LeftThenDown) = KernelTracker.Generate({0, 0.5, 1}, {Kernel.Center, Kernel.UpRight, Kernel.Right},
                                         Function(k)
-                                            If k(Kernel.Center) = 1 Then Return 0
-                                            If k(Kernel.Center) = 0.5 Then Return 0
-                                            If k(Kernel.Center) = 0 AndAlso k(Kernel.Up) = 0.5 Then Return 0.5
                                             If k(Kernel.Center) = 0 AndAlso k(Kernel.UpRight) = 0.5 AndAlso k(Kernel.Right) <> 0 Then Return 0.5
                                             Return 0
                                         End Function)
-        Dim egressDL = KernelTracker.Generate({0, 0.5, 1},
-                                        {Kernel.Center, Kernel.Down, Kernel.DownLeft, Kernel.Left},
-                                        Function(k)
-                                            If k(Kernel.Center) = 1 Then Return 1
-                                            If k(Kernel.Center) = 0 Then Return 0
-                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.Down) = 0 Then Return 0
-                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.DownLeft) = 0 AndAlso k(Kernel.Left) <> 0.5 Then Return 0
-                                            Return 0.5
-                                        End Function)
 
-
-        Dim ingressDR = KernelTracker.Generate({0, 0.5, 1},
-                                        {Kernel.Center, Kernel.Up, Kernel.UpLeft, Kernel.Left},
+        kernelAddFromDiag(Phase.RightThenDown) = KernelTracker.Generate({0, 0.5, 1}, {Kernel.Center, Kernel.UpLeft, Kernel.Left},
                                         Function(k)
-                                            If k(Kernel.Center) = 1 Then Return 0
-                                            If k(Kernel.Center) = 0.5 Then Return 0
-                                            If k(Kernel.Center) = 0 AndAlso k(Kernel.Up) = 0.5 Then Return 0.5
                                             If k(Kernel.Center) = 0 AndAlso k(Kernel.UpLeft) = 0.5 AndAlso k(Kernel.Left) <> 0 Then Return 0.5
                                             Return 0
                                         End Function)
-        Dim egressDR = KernelTracker.Generate({0, 0.5, 1},
-                                        {Kernel.Center, Kernel.Down, Kernel.DownRight, Kernel.Right},
-                                        Function(k)
-                                            If k(Kernel.Center) = 1 Then Return 1
-                                            If k(Kernel.Center) = 0 Then Return 0
-                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.Down) = 0 Then Return 0
-                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.DownRight) = 0 AndAlso k(Kernel.Right) <> 0.5 Then Return 0
-                                            Return 0.5
-                                        End Function)
 
 
-        Dim ingressLD = KernelTracker.Generate({0, 0.5, 1},
-                                        {Kernel.Center, Kernel.Up, Kernel.UpRight, Kernel.Right},
+        kernelRemToDown(Phase.DownThenLeft) = KernelTracker.Generate({0, 0.5, 1}, {Kernel.Center, Kernel.Down},
                                         Function(k)
-                                            If k(Kernel.Center) = 1 Then Return 0
-                                            If k(Kernel.Center) = 0.5 Then Return 0
-                                            If k(Kernel.Center) = 0 AndAlso k(Kernel.UpRight) <> 0.5 AndAlso k(Kernel.Up) = 0.5 Then Return 0.5
-                                            If k(Kernel.Center) = 0 AndAlso k(Kernel.UpRight) = 0.5 AndAlso k(Kernel.Right) <> 0 Then Return 0.5
+                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.Down) = 0 Then Return 0.5
                                             Return 0
                                         End Function)
-        Dim egressLD = KernelTracker.Generate({0, 0.5, 1},
-                                        {Kernel.Center, Kernel.Down, Kernel.DownLeft, Kernel.Right},
-                                        Function(k)
-                                            If k(Kernel.Center) = 1 Then Return 1
-                                            If k(Kernel.Center) = 0 Then Return 0
-                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.Down) = 0 AndAlso k(Kernel.Right) <> 0.5 Then Return 0
-                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.Down) <> 0 AndAlso k(Kernel.DownLeft) = 0 Then Return 0
-                                            Return 0.5
-                                        End Function)
 
+        kernelRemToDown(Phase.DownThenRight) = kernelRemToDown(Phase.DownThenLeft)
 
-        Dim ingressRD = KernelTracker.Generate({0, 0.5, 1},
-                                        {Kernel.Center, Kernel.Up, Kernel.UpLeft, Kernel.Left},
+        kernelRemToDown(Phase.LeftThenDown) = KernelTracker.Generate({0, 0.5, 1}, {Kernel.Center, Kernel.Down, Kernel.Right},
                                         Function(k)
-                                            If k(Kernel.Center) = 1 Then Return 0
-                                            If k(Kernel.Center) = 0.5 Then Return 0
-                                            If k(Kernel.Center) = 0 AndAlso k(Kernel.UpLeft) <> 0.5 AndAlso k(Kernel.Up) = 0.5 Then Return 0.5
-                                            If k(Kernel.Center) = 0 AndAlso k(Kernel.UpLeft) = 0.5 AndAlso k(Kernel.Left) <> 0 Then Return 0.5
+                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.Down) = 0 AndAlso k(Kernel.Right) <> 0.5 Then Return 0.5
                                             Return 0
                                         End Function)
-        Dim egressRD = KernelTracker.Generate({0, 0.5, 1},
-                                        {Kernel.Center, Kernel.Down, Kernel.DownRight, Kernel.Left},
+
+        kernelRemToDown(Phase.RightThenDown) = KernelTracker.Generate({0, 0.5, 1}, {Kernel.Center, Kernel.Down, Kernel.Left},
                                         Function(k)
-                                            If k(Kernel.Center) = 1 Then Return 1
-                                            If k(Kernel.Center) = 0 Then Return 0
-                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.Down) = 0 AndAlso k(Kernel.Left) <> 0.5 Then Return 0
-                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.Down) <> 0 AndAlso k(Kernel.DownRight) = 0 Then Return 0
-                                            Return 0.5
+                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.Down) = 0 AndAlso k(Kernel.Left) <> 0.5 Then Return 0.5
+                                            Return 0
                                         End Function)
 
-        For Each o In {Orientation.Landscape, Orientation.Portrait, Orientation.LandscapeFlipped, Orientation.PortraitFlipped}
-            StepEffect(o, Phase.DownThenLeft) = KernelTracker.MakeEffect(ingressDL, egressDL, o)
-            StepEffect(o, Phase.DownThenRight) = KernelTracker.MakeEffect(ingressDR, egressDR, o)
-            StepEffect(o, Phase.LeftThenDown) = KernelTracker.MakeEffect(ingressLD, egressLD, o)
-            StepEffect(o, Phase.RightThenDown) = KernelTracker.MakeEffect(ingressRD, egressRD, o)
+        kernelRemToDiag(Phase.DownThenLeft) = KernelTracker.Generate({0, 0.5, 1}, {Kernel.Center, Kernel.DownLeft, Kernel.Left},
+                                        Function(k)
+                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.DownLeft) = 0 AndAlso k(Kernel.Left) <> 0.5 Then Return 0.5
+                                            Return 0
+                                        End Function)
+
+        kernelRemToDiag(Phase.DownThenRight) = KernelTracker.Generate({0, 0.5, 1}, {Kernel.Center, Kernel.DownRight, Kernel.Right},
+                                        Function(k)
+                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.DownRight) = 0 AndAlso k(Kernel.Right) <> 0.5 Then Return 0.5
+                                            Return 0
+                                        End Function)
+
+        kernelRemToDiag(Phase.LeftThenDown) = KernelTracker.Generate({0, 0.5, 1}, {Kernel.Center, Kernel.Down, Kernel.DownLeft},
+                                        Function(k)
+                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.Down) <> 0 AndAlso k(Kernel.DownLeft) = 0 Then Return 0.5
+                                            Return 0
+                                        End Function)
+
+        kernelRemToDiag(Phase.RightThenDown) = KernelTracker.Generate({0, 0.5, 1}, {Kernel.Center, Kernel.Down, Kernel.DownRight},
+                                        Function(k)
+                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.Down) <> 0 AndAlso k(Kernel.DownRight) = 0 Then Return 0.5
+                                            Return 0
+                                        End Function)
+
+        For p = Phase._First To Phase._Last
+            For o = Orientation._First To Orientation._Last
+                Dim convolveAddFromUp_p As New ConvolveMatrixEffect With {.Source = Surface, .KernelMatrix = kernelAddFromUp(p).ConvolveMatrixRotated(o), .Divisor = kernelAddFromUp(p).ConvolveDivisor, .PreserveAlpha = True}
+                Dim convolveAddFromDiag_p As New ConvolveMatrixEffect With {.Source = Surface, .KernelMatrix = kernelAddFromDiag(p).ConvolveMatrixRotated(o), .Divisor = kernelAddFromDiag(p).ConvolveDivisor, .PreserveAlpha = True}
+                Dim convolveRemToDown_p As New ConvolveMatrixEffect With {.Source = Surface, .KernelMatrix = kernelRemToDown(p).ConvolveMatrixRotated(o), .Divisor = kernelRemToDown(p).ConvolveDivisor, .PreserveAlpha = True}
+                Dim convolveRemToDiag_p As New ConvolveMatrixEffect With {.Source = Surface, .KernelMatrix = kernelRemToDiag(p).ConvolveMatrixRotated(o), .Divisor = kernelRemToDiag(p).ConvolveDivisor, .PreserveAlpha = True}
+                StepAddFromUp(o, p) = New DiscreteTransferEffect With {.Source = convolveAddFromUp_p, .RedTable = kernelAddFromUp(p).TransferTable, .GreenTable = kernelAddFromUp(p).TransferTable, .BlueTable = kernelAddFromUp(p).TransferTable, .AlphaTable = {1}}
+                StepAddFromDiag(o, p) = New DiscreteTransferEffect With {.Source = convolveAddFromDiag_p, .RedTable = kernelAddFromDiag(p).TransferTable, .GreenTable = kernelAddFromDiag(p).TransferTable, .BlueTable = kernelAddFromDiag(p).TransferTable, .AlphaTable = {1}}
+                StepRemToDown(o, p) = New DiscreteTransferEffect With {.Source = convolveRemToDown_p, .RedTable = kernelRemToDown(p).TransferTable, .GreenTable = kernelRemToDown(p).TransferTable, .BlueTable = kernelRemToDown(p).TransferTable, .AlphaTable = {1}}
+                StepRemToDiag(o, p) = New DiscreteTransferEffect With {.Source = convolveRemToDiag_p, .RedTable = kernelRemToDiag(p).TransferTable, .GreenTable = kernelRemToDiag(p).TransferTable, .BlueTable = kernelRemToDiag(p).TransferTable, .AlphaTable = {1}}
+            Next
         Next
+
+
+        Dim stepAdd As New ArithmeticCompositeEffect With {.Source1 = SurfaceAddFromUp, .Source2 = SurfaceAddFromDiag, .Source1Amount = 2, .Source2Amount = 2, .MultiplyAmount = 0, .ClampOutput = True}
+        Dim stepRem As New ArithmeticCompositeEffect With {.Source1 = SurfaceRemToDown, .Source2 = SurfaceRemToDiag, .Source1Amount = 2, .Source2Amount = 2, .MultiplyAmount = 0, .ClampOutput = True}
+        Dim stepAcc1 As New ArithmeticCompositeEffect With {.Source1 = SurfaceId, .Source2 = stepRem, .Source1Amount = 1, .Source2Amount = -0.5, .MultiplyAmount = 0}
+        Dim stepAcc2 As New ArithmeticCompositeEffect With {.Source1 = stepAcc1, .Source2 = stepAdd, .Source1Amount = 1, .Source2Amount = 0.5, .MultiplyAmount = 0}
+        StepEffect = New DiscreteTransferEffect With {.Source = stepAcc2, .RedTable = {0, 0.5, 1}, .GreenTable = {0, 0.5, 1}, .BlueTable = {0, 0.5, 1}, .AlphaTable = {1}}
 
 
         ' This render effect looks at the pixels "left" and "up", and draws in sand if any of them have sand.
         ' This is because our sand algorithm tends to leave one-pixel gaps
-        Dim renderTable As Single() = {0, 0.5, 0, 0.5, 0.5, 0.5, 0, 0.5, 0,
+        Dim renderTable As Single() = {
+            0, 0.5, 0, 0.5, 0.5, 0.5, 0, 0.5, 0,
             0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
-        Dim renderEffect1 As New ConvolveMatrixEffect With {.Divisor = 13, .PreserveAlpha = True, .KernelMatrix = {0, 0, 0, 3, 9, 0, 0, 1, 0}}
-        Dim renderEffect2 As New DiscreteTransferEffect With {.Source = renderEffect1, .RedTable = renderTable, .GreenTable = renderTable, .BlueTable = renderTable}
-        RenderEffect = New EffectWrapper(Of ICanvasImage)(renderEffect2, Sub(src) renderEffect1.Source = src)
+        Dim renderEffect1 As New ConvolveMatrixEffect With {.Source = Surface, .Divisor = 13, .PreserveAlpha = True, .KernelMatrix = {0, 0, 0, 3, 9, 0, 0, 1, 0}}
+        RenderEffect = New DiscreteTransferEffect With {.Source = renderEffect1, .RedTable = renderTable, .GreenTable = renderTable, .BlueTable = renderTable}
+
+
+        Dim drawEffect1 As New DiscreteTransferEffect With {.Source = SurfaceR, .RedTable = {0, 1, 1}, .GreenTable = {0, 0.8, 1}, .BlueTable = {0.1, 0.1, 1}}
+        Dim drawEffect2 As New DpiCompensationEffect With {.Source = drawEffect1, .SourceDpi = New Vector2(canvas1.Dpi)}
+        DrawEffect = New Transform2DEffect With {.Source = drawEffect2}
     End Sub
 
+
+    Sub UpdateSimulation()
+        Static Dim rnd As New Random
+        Static Dim p As Phase
+        p = CType(rnd.Next() Mod (Phase._Last + 1), Phase)
+        Dim o = LogicalOrientation
+
+        Using dsId = SurfaceId.CreateDrawingSession,
+              dsAddFromUp = SurfaceAddFromUp.CreateDrawingSession(),
+              dsAddFromDiag = SurfaceAddFromDiag.CreateDrawingSession(),
+              dsRemToDown = SurfaceRemToDown.CreateDrawingSession(),
+              dsRemToDiag = SurfaceRemToDiag.CreateDrawingSession()
+
+            dsId.DrawImage(Surface)
+            dsAddFromUp.DrawImage(StepAddFromUp(o, p))
+            dsAddFromDiag.DrawImage(StepAddFromDiag(o, p))
+            dsRemToDown.DrawImage(StepRemToDown(o, p))
+            dsRemToDiag.DrawImage(StepRemToDiag(o, p))
+        End Using
+
+        Using ds = Surface.CreateDrawingSession()
+            ds.DrawImage(StepEffect)
+        End Using
+
+        Using dsR = SurfaceR.CreateDrawingSession()
+            dsR.DrawImage(RenderEffect)
+        End Using
+
+
+    End Sub
+
+
+    Sub Canvas1_Draw(sender As CanvasControl, args As CanvasDrawEventArgs) Handles canvas1.Draw
+        ' The Canvas.Draw will be fired once per screen refresh 60hz
+        ' I'd like ~200hz updates, so I'll update the simulation three times per frame
+        UpdateSimulation() : UpdateSimulation() : UpdateSimulation()
+
+        Dim s = DisplayTransform.Scale, r = DisplayTransform.Rotation, o = DisplayTransform.Offset
+        DrawEffect.TransformMatrix = New Matrix3x2(s * r.M11, s * r.M12, s * r.M21, s * r.M22, o.X + s * canvas1.ConvertPixelsToDips(CInt(r.M31)), o.Y + s * canvas1.ConvertPixelsToDips(CInt(r.M32)))
+        args.DrawingSession.DrawImage(DrawEffect)
+
+        sender.Invalidate()
+    End Sub
 
     Sub Page_SizeChanged(sender As Object, e As SizeChangedEventArgs) Handles Me.SizeChanged
         _displayTransform = Nothing
@@ -177,57 +233,32 @@ Public NotInheritable Class MainPageV3
         btnFullScreen.Visibility = (Not isTablet).AsVisibility
 
         If isTablet AndAlso isFullScreen Then ApplicationView.GetForCurrentView().ExitFullScreenMode()
-        canvas1.Invalidate()
-    End Sub
-
-
-    Sub Canvas1_Draw(sender As CanvasControl, args As CanvasDrawEventArgs) Handles canvas1.Draw
-        ' The Canvas.Draw will be fired once per screen refresh
-        ' (which is how frequently we want to update our simulation)
-        UpdateSimulation()
-
-        args.DrawingSession.DrawImage(DrawEffect.Update(surfaceR))
-        sender.Invalidate()
-    End Sub
-
-
-    Sub UpdateSimulation()
-        Static Dim i As Integer = Phase._First
-        Static Dim rnd As New System.Random
-        i = rnd.Next() Mod (Phase._Last + 1)
-        Using ds = surface2.CreateDrawingSession()
-            ds.DrawImage(StepEffect(LogicalOrientation, i).Update(surface1))
-            i = (i + 1) Mod (Phase._Last + 1)
-        End Using
-        Swap(surface1, surface2)
-        Using ds = surfaceR.CreateDrawingSession()
-            ds.DrawImage(RenderEffect.Update(surface1))
-        End Using
-
-        canvas1.Invalidate()
     End Sub
 
 
 
 
-    Property PenMode As Integer
+
+    Property Pen As Color
         Get
-            Return _penMode
+            Return _pen
         End Get
-        Set(value As Integer)
+        Set(value As Color)
             Static Dim penUnselectedBrush As Brush = CType(btnBrick.Content, Border).BorderBrush
             Static Dim penSelectedBrush As Brush = CType(btnSand.Content, Border).BorderBrush
 
-            _penMode = value
-            CType(btnNothing.Content, Border).BorderBrush = If(_penMode = 0, penSelectedBrush, penUnselectedBrush)
-            CType(btnBrick.Content, Border).BorderBrush = If(_penMode = 1, penSelectedBrush, penUnselectedBrush)
-            CType(btnSand.Content, Border).BorderBrush = If(_penMode = 2, penSelectedBrush, penUnselectedBrush)
+            _pen = value
+            CType(btnNothing.Content, Border).BorderBrush = If(_pen = Colors.Black, penSelectedBrush, penUnselectedBrush)
+            CType(btnBrick.Content, Border).BorderBrush = If(_pen = Colors.White, penSelectedBrush, penUnselectedBrush)
+            CType(btnSand.Content, Border).BorderBrush = If(_pen = Colors.Gray, penSelectedBrush, penUnselectedBrush)
         End Set
     End Property
 
 
     Sub Pen_Clicked(sender As Object, e As RoutedEventArgs) Handles btnBrick.Click, btnSand.Click, btnNothing.Click
-        PenMode = If(sender Is btnBrick, 1, If(sender Is btnSand, 2, 0))
+        If sender Is btnBrick Then Pen = Colors.White
+        If sender Is btnSand Then Pen = Colors.Gray
+        If sender Is btnNothing Then Pen = Colors.Black
     End Sub
 
 
@@ -235,7 +266,7 @@ Public NotInheritable Class MainPageV3
     ReadOnly Property LogicalOrientation As Orientation
         Get
             Dim isTablet = (UIViewSettings.GetForCurrentView().UserInteractionMode = UserInteractionMode.Touch)
-            If Not isTablet Then Return WindowedOrientation
+            If Not isTablet Then Return _WindowedOrientation
             Dim r = DisplayInformation.GetForCurrentView.CurrentOrientation
             If r = DisplayOrientations.Landscape Then Return Orientation.Landscape
             If r = DisplayOrientations.Portrait Then Return Orientation.Portrait
@@ -247,9 +278,9 @@ Public NotInheritable Class MainPageV3
 
 
     Sub Rotate_Clicked(sender As Object, e As RoutedEventArgs) Handles btnRotateLeft.Click, btnRotateRight.Click
-        Dim i As Integer = WindowedOrientation
+        Dim i As Integer = _WindowedOrientation
         i = (i + If(sender Is btnRotateLeft, -1, 1) + Orientation._Last + 1) Mod (Orientation._Last + 1)
-        WindowedOrientation = CType(i, Orientation)
+        _WindowedOrientation = CType(i, Orientation)
         _displayTransform = Nothing
         canvas1.Invalidate()
     End Sub
@@ -275,34 +306,20 @@ Public NotInheritable Class MainPageV3
         Dim cy = CInt(Math.Floor(sourcePointPixels.Y))
 
         Dim radius = CType(btnBrick.Content, Border).ActualWidth / 2 / DisplayTransform.Scale
-        Dim b = CInt(radius * 2)
-
-        ' We can't write pixels outside the bounds of the surface
-        Dim left = cx - b \ 2, right = left + b - 1, top = cy - b \ 2, bottom = top + b - 1
-        If left < 0 Then left = 0
-        If right >= App.CWIDTH Then right = App.CWIDTH - 1
-        If top < 0 Then top = 0
-        If bottom >= App.CHEIGHT Then bottom = App.CHEIGHT - 1
-        Dim width = right - left + 1, height = bottom - top + 1
-        If width <= 0 OrElse height <= 0 Then Return
-
-        ' Let's generate and cache a Color() array that's suitable for a singel call to surface1.SetPixelColors
-        ' (because if we did many of them, then the interop cost is too high)
-        Static Dim cols As New Dictionary(Of String, Color())
-        Dim key = $"{width},{height},{PenMode}"
-        If Not cols.ContainsKey(key) Then
-            Dim arr = New Color(width * height - 1) {}
-            For y = 0 To height - 1
-                Dim c = If(PenMode = 1, Colors.White, If(PenMode = 2 AndAlso (y + cy) Mod 2 = 0, Colors.Gray, Colors.Black))
-                For x = 0 To width - 1
-                    arr(y * width + x) = c
+        Dim size = Math.Max(1, CInt(radius * 2))
+        Dim left = cx - size \ 2, top = cy - size \ 2, width = size, height = size
+        Using ds = Surface.CreateDrawingSession
+            ds.Antialiasing = CanvasAntialiasing.Aliased
+            If Pen <> Colors.Gray Then
+                ds.FillRectangle(left, top, width, height, Pen)
+            Else
+                For y = top To top + height
+                    Dim c = If(y Mod 2 = 0, Pen, Colors.Black)
+                    ds.FillRectangle(left, y, width, 1, c)
                 Next
-            Next
-            cols(key) = arr
-        End If
-        surface1.SetPixelColors(cols(key), left, top, width, height)
+            End If
+        End Using
 
-        canvas1.Invalidate()
     End Sub
 
 

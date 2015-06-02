@@ -116,17 +116,18 @@ Public NotInheritable Class MainPageV2
               dsAddFromUp = SurfaceAddFromUp.CreateDrawingSession(),
               dsAddFromDiag = SurfaceAddFromDiag.CreateDrawingSession(),
               dsRemToDown = SurfaceRemToDown.CreateDrawingSession(),
-              dsRemToDiag = SurfaceRemToDiag.CreateDrawingSession(),
-              ds = Surface.CreateDrawingSession()
+              dsRemToDiag = SurfaceRemToDiag.CreateDrawingSession()
             dsId.DrawImage(Surface)
             dsAddFromUp.DrawImage(StepAddFromUp)
             dsAddFromDiag.DrawImage(stepAddFromDiag)
             dsRemToDown.DrawImage(StepRemToDown)
             dsRemToDiag.DrawImage(stepRemToDiag)
+        End Using
+
+        Using ds = Surface.CreateDrawingSession()
             ds.DrawImage(StepEffect)
         End Using
     End Sub
-
 
     Sub Canvas1_Draw(sender As CanvasControl, args As CanvasDrawEventArgs) Handles canvas1.Draw
         Static Dim nextTime As DateTime
@@ -169,8 +170,4 @@ Public NotInheritable Class MainPageV2
         canvas1.Invalidate()
     End Sub
 
-
-
 End Class
-
-

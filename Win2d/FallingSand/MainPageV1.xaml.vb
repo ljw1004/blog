@@ -29,35 +29,14 @@ Public NotInheritable Class MainPageV1
 
     Sub App_Loaded() Handles App.Loaded
         If Surface1 Is Nothing Then Return
-        Dim cols = App.Pixels.Select(Function(c) CType(Colors.Black, ColorF)).ToArray()
+        Dim cols = App.Pixels.Select(Function(c) CType(c, ColorF)).ToArray()
         Surface1.SetPixelColorFs(cols, 0, 0, App.CWIDTH, App.CHEIGHT)
-        'Dim buf = New Byte(App.Pixels.Length * 16 - 1) {}
-        'For i = 0 To App.Pixels.Length - 1
-        '    Array.Copy(BitConverter.GetBytes(App.Pixels(i).R / 255.0F), 0, buf, i * 16 + 0, 4)
-        '    Array.Copy(BitConverter.GetBytes(App.Pixels(i).G / 255.0F), 0, buf, i * 16 + 4, 4)
-        '    Array.Copy(BitConverter.GetBytes(App.Pixels(i).B / 255.0F), 0, buf, i * 16 + 8, 4)
-        '    Array.Copy(BitConverter.GetBytes(App.Pixels(i).A / 255.0F), 0, buf, i * 16 + 12, 4)
-        'Next
-        'Surface1.SetPixelBytes(buf)
     End Sub
 
     Sub App_Unloading() Handles App.Unloading
         If Surface1 Is Nothing Then Return
         Dim cols = Surface1.GetPixelColorFs(0, 0, App.CWIDTH, App.CHEIGHT)
         App.Pixels = cols.Select(Function(c) CType(c, Color)).ToArray()
-        'Dim bb = Function(s As Single)
-        '             s = Math.Max(0, Math.Min(1, s))
-        '             Return CByte(s * 255)
-        '         End Function
-
-        'Dim buf = Surface1.GetPixelBytes()
-        'For i = 0 To App.Pixels.Length - 1
-        '    Dim r = BitConverter.ToSingle(buf, i * 16 + 0)
-        '    Dim g = BitConverter.ToSingle(buf, i * 16 + 4)
-        '    Dim b = BitConverter.ToSingle(buf, i * 16 + 8)
-        '    Dim a = BitConverter.ToSingle(buf, i * 16 + 12)
-        '    App.Pixels(i) = Color.FromArgb(bb(a), bb(r), bb(g), bb(b))
-        'Next
     End Sub
 
 

@@ -37,7 +37,7 @@ Public Class Win2dSimulator : Implements IFormattable
             If Math.Abs(expected.cols(i).R - actual.cols(i).R) > epsilon Then hasErrors = True : Exit For
             If Math.Abs(expected.cols(i).G - actual.cols(i).G) > epsilon Then hasErrors = True : Exit For
             If Math.Abs(expected.cols(i).B - actual.cols(i).B) > epsilon Then hasErrors = True : Exit For
-            If Math.Abs(expected.cols(i).A - actual.cols(i).A) > epsilon Then hasErrors = True : Exit For
+            'If Math.Abs(expected.cols(i).A - actual.cols(i).A) > epsilon Then hasErrors = True : Exit For
         Next
         If Not hasErrors Then Return
         Debug.WriteLine($"Expected:{vbCrLf}{expected}")
