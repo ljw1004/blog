@@ -15,7 +15,7 @@ Public NotInheritable Class MainPageV2
     Dim StepEffect, StepAddFromUp, StepAddFromUpRight, StepAddFromUpLeft, StepRemToDown, StepRemToDownLeft, StepRemToDownRight As ICanvasImage
     Dim DrawEffect As Transform2DEffect
 
-    Dim Pen As Color
+    Dim Pen As Color = Colors.Gray
 
     Sub New()
         InitializeComponent()

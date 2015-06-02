@@ -7,8 +7,8 @@ Imports Windows.UI
 NotInheritable Class App
     Inherits Application
 
-    Public Const CHEIGHT = 240
     Public Const CWIDTH = 320
+    Public Const CHEIGHT = 240
     Public Property Pixels As Color()
 
     Public Event Loaded As Action
@@ -28,7 +28,7 @@ NotInheritable Class App
             Pixels = New Color(CHEIGHT * CWIDTH - 1) {}
             LoadAsync().FireAndForget()
         End If
-        If rootFrame.Content Is Nothing Then rootFrame.Navigate(GetType(MainPageV2), e.Arguments)
+        If rootFrame.Content Is Nothing Then rootFrame.Navigate(GetType(MainPageV1), e.Arguments)
         Window.Current.Activate()
     End Sub
 
