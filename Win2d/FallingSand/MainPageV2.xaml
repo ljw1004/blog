@@ -1,5 +1,5 @@
 ﻿<Page
-    x:Class="FallingSand.MainPageMinimal"
+    x:Class="FallingSand.MainPageV2"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:FallingSand"
@@ -12,7 +12,6 @@
             <Button x:Name="btnBrick" Content="brick" Margin="4"/>
             <Button x:Name="btnSand" Content="sand" Margin="4"/>
             <Button x:Name="btnNothing" Content="erase" Margin="4"/>
-            <Button x:Name="btnStep" Content="step" Margin="4"/>
         </StackPanel>
 
     </Grid>

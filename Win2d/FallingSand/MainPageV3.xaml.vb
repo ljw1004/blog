@@ -5,7 +5,7 @@ Imports Microsoft.Graphics.Canvas.UI.Xaml
 Imports Windows.UI
 
 
-Public NotInheritable Class MainPage
+Public NotInheritable Class MainPageV3
     Inherits Page
 
     WithEvents App As App = App.Current
@@ -29,11 +29,12 @@ Public NotInheritable Class MainPage
 
     Sub App_Loaded() Handles App.Loaded
         If surface1 Is Nothing Then Return
-        Dim c = New Color(App.Pixels.Length - 1) {}
-        For i = 0 To App.Pixels.Length - 1
-            c(i) = If(App.Pixels(i) = 1, Colors.White, If(App.Pixels(i) = 2, Colors.Gray, Colors.Black))
-        Next
-        surface1.SetPixelColors(c, 0, 0, App.CWIDTH, App.CHEIGHT)
+        ' TODO
+        'Dim c = New Color(App.Pixels.Length - 1) {}
+        'For i = 0 To App.Pixels.Length - 1
+        '    c(i) = If(App.Pixels(i) = 1, Colors.White, If(App.Pixels(i) = 2, Colors.Gray, Colors.Black))
+        'Next
+        'surface1.SetPixelColors(c, 0, 0, App.CWIDTH, App.CHEIGHT)
     End Sub
 
     Sub App_Unloading() Handles App.Unloading
@@ -41,7 +42,8 @@ Public NotInheritable Class MainPage
         Dim c = surface1.GetPixelColors()
         If c.Length <> App.Pixels.Length Then Stop
         For i = 0 To Math.Min(c.Length, App.Pixels.Length) - 1
-            App.Pixels(i) = If(c(i) = Colors.White, CByte(1), If(c(i) = Colors.Gray, CByte(2), CByte(0)))
+            ' TODO
+            'App.Pixels(i) = If(c(i) = Colors.White, CByte(1), If(c(i) = Colors.Gray, CByte(2), CByte(0)))
         Next
     End Sub
 

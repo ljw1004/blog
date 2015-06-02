@@ -1,5 +1,5 @@
 ﻿<Page
-    x:Class="FallingSand.MainPage"
+    x:Class="FallingSand.MainPageV3"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:FallingSand"
