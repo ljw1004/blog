@@ -9,6 +9,7 @@ Public NotInheritable Class MainPageV3
     Inherits Page
 
     WithEvents App As App = App.Current
+    WithEvents DisplayInformation As DisplayInformation = DisplayInformation.GetForCurrentView()
     WithEvents canvas1 As CanvasControl
 
     Dim SurfaceR, Surface, SurfaceId, SurfaceAddFromUp, SurfaceAddFromDiag, SurfaceRemToDown, SurfaceRemToDiag As CanvasRenderTarget
@@ -222,7 +223,7 @@ Public NotInheritable Class MainPageV3
         sender.Invalidate()
     End Sub
 
-    Sub Page_SizeChanged(sender As Object, e As SizeChangedEventArgs) Handles Me.SizeChanged
+    Sub Page_SizeChanged() Handles Me.SizeChanged, DisplayInformation.OrientationChanged
         _displayTransform = Nothing
 
         Dim isFullScreen = ApplicationView.GetForCurrentView.IsFullScreenMode
