@@ -8,6 +8,7 @@
             ' If e.PreviousExecutionState = ApplicationExecutionState.Terminated Then TODO: Load state from previously suspended application
             Window.Current.Content = rootFrame
         End If
+        'DisplayInformation.AutoRotationPreferences = DisplayOrientations.Portrait
         If rootFrame.Content Is Nothing Then rootFrame.Navigate(GetType(MainPage), e.Arguments)
         Window.Current.Activate()
     End Sub
