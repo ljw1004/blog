@@ -34,10 +34,22 @@ Public Class PlatformSpecificAnalyzerVB
     End Property
 
     Public Overrides Sub Initialize(context As AnalysisContext)
-        context.RegisterSyntaxNodeAction(AddressOf AnalyzeInvocation, SyntaxKind.InvocationExpression)
+
+        context.RegisterCodeBlockStartAction(Of SyntaxKind)(AddressOf AnalyzeCodeBlockStart)
     End Sub
 
-    Public Sub AnalyzeInvocation(context As SyntaxNodeAnalysisContext)
+    Public Sub AnalyzeCodeBlockStart(context As CodeBlockStartAnalysisContext(Of SyntaxKind))
+        Dim reports As New Dictionary(Of Integer, Location)
+        context.RegisterSyntaxNodeAction(Sub(c) AnalyzeInvocation(c, reports), SyntaxKind.InvocationExpression)
+        context.RegisterCodeBlockEndAction(
+            Sub(c)
+                For Each span In reports.Values
+                    c.ReportDiagnostic(Diagnostic.Create(Rule, span))
+                Next
+            End Sub)
+    End Sub
+
+    Public Sub AnalyzeInvocation(context As SyntaxNodeAnalysisContext, reports As Dictionary(Of Integer, Location))
         Dim invocationExpression = CType(context.Node, InvocationExpressionSyntax)
 
         ' Is this an invocation of a Windows.* method that's outside the UWP common platform?
@@ -58,7 +70,7 @@ Public Class PlatformSpecificAnalyzerVB
         ' Is this invocation outside a method?
         Dim containingMember = invocationExpression.FirstAncestorOrSelf(Of MethodBlockBaseSyntax)
         Dim containingMethod = TryCast(containingMember, MethodBlockSyntax)
-        If containingMethod Is Nothing Then context.ReportDiagnostic(Diagnostic.Create(Rule, context.Node.GetLocation)) : Return
+        If containingMethod Is Nothing Then Return ' to consider: should we report anything here?
 
         ' Does the containing method/type/assembly claim to be platform-specific?
         Dim containingMethodSymbol = context.SemanticModel.GetDeclaredSymbol(containingMethod)
@@ -77,7 +89,12 @@ Public Class PlatformSpecificAnalyzerVB
             If IsProperlyGuarded(ret, context.SemanticModel) Then Return
         Next
 
-        context.ReportDiagnostic(Diagnostic.Create(Rule, context.Node.GetLocation))
+        ' We'll report only a single diagnostic per line, the first.
+        Dim loc = context.Node.GetLocation
+        If Not loc.IsInSource Then Return
+        Dim line = loc.GetLineSpan().StartLinePosition.Line
+        If reports.ContainsKey(line) AndAlso reports(line).SourceSpan.Start <= loc.SourceSpan.Start Then Return
+        reports(line) = loc
     End Sub
 
     Shared Function HasPlatformSpecificAttribute(symbol As ISymbol) As Boolean

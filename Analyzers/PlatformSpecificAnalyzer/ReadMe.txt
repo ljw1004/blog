@@ -12,19 +12,17 @@ code on all different platforms to see if it crashes.
 
 This analyzer fixes that problem.
 
-If every your code calls into a platform-specific API, this analyzer ensures
-that you've done an adaptivity check around it. If you haven't then it emits
-a warning. It also provides a handy "quick-fix" to insert the correct check.
+If ever your code calls into a platform-specific API, this analyzer verifies
+that you've done an adaptivity check around it -- if you haven't then it reports
+a warning. It also provides a handy "quick-fix" to insert the correct check,
+by pressing Ctrl+Dot or clicking on the lightbulb.
 
 For advanced scenarios, this analyzer also supports "transitivity" -- you can declare
 that an entire method of yours is platform-specific, eliminating the need
 for any checks inside, but forcing you to check before invoking the method.
-The analyzer provides a handy "quick-fix" to mark a method as platform-specific.
-
-This analyzer also supports "feature flags" -- you can declare that a given field
-or property represents a guard, so that checking this field is as good as calling
-the more common ApiInformation.IsTypePresent method. And again the analyzer provides
-a handy "quick-fix" to mark a field as platform-specific.
+It also supports "feature flags" -- you can declare that a given field
+or property embodies the result of calling ApiInformation.IsTypePresent, so
+that checking this field is as good as calling it directly.
 
 The analyzer does have a few false positives, in cases where you've written your
 own idiosyncratic style of adaptive checks that are technically valid but aren't
@@ -100,24 +98,27 @@ the [PlatformSpecific] attribute on it.
 
 LIMITATIONS
 
-Limitation1: This analyzer only works with methods. It only examines user-written
+Backlog: This analyzer only works with methods. It only examines user-written
 methods for their contents, and it only looks for invocations of platform-specific
 methods. It should be able to look at all user-written code, and should look for
 all kinds of member access.
 
-Limitation2: This analyzer doesn't have knowledge of *which* platform is specific.
+Limitation: This analyzer doesn't have knowledge of *which* platform is specific.
 Its designed role is merely as a safeguard, to remind you that you should be guarding.
 It won't help in cases where you're already using some other specific guard but has
 platform-specific member accesses that aren't covered by that other specific guard.
 (In any case, users typically use their "sentinal canary" undocumented knowledge
 that if one type is present then a whole load of other types are also present).
 
-Limitation3: This analyzer doesn't deal with UWP "min-version". It should!
+Backlog: This analyzer doesn't deal with UWP "min-version". It should eventually,
+once a new version of UWP has been released.
 
-Limitation4: This analyzer doesn't and can't work through lambdas.
+Limitation: This analyzer doesn't and can't work through lambdas.
 In other words it can't track whether a delegate contains platform-specific member
 accesses. It can't because to do so you'd need a type system like
 List<Action[PlatformSpecific]>, and the CLR type system doesn't do that.
 
-Limitation5: This analyzer doesn't detect when you invoke a method inside
+Backlog: This analyzer doesn't detect when you invoke a method inside
 a class with [PlatformSpecific]. Nor an assembly.
+
+Backlog: It doesn't recognize [PlatformSpecific] on parameters.
