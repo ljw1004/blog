@@ -20,38 +20,6 @@ Imports Microsoft.CodeAnalysis.VisualBasic.Syntax
 
 
 
-' PlatformSpecific
-'
-' Some platform methods come from a specific UWP platform extension SDK.
-' And some methods might have the [PlatformSpecific] attribute on them.
-' And some fields/properties might have the [PlatformSpecific] attribute too.
-'
-' This analyzer checks that any method which invokes a method that's in
-' a specific UWP platform extension SDK, or invokes a method with [PlatformSpecific]
-' attribute on it, precedes that invocation with an "If" statement
-' that either calls into ApiInformation.IsTypePresent, or accesses a field
-' with [PlatformSpecific] attribute on it.
-
-' Limitation1: This analyzer only works with methods. It only examines user-written
-' methods for their contents, and it only looks for invocations of platform-specific
-' methods. It should be able to look at all user-written code, and should look for
-' all kinds of member access.
-'
-' Limitation2: This analyzer doesn't have knowledge of *which* platform is specific.
-' Its designed role is merely as a safeguard, to remind you that you should be guarding.
-' It won't help in cases where you're already using some other specific guard but has
-' platform-specific member accesses that aren't covered by that other specific guard.
-' (In any case, users typically use their "sentinal canary" undocumented knowledge
-' that if one type is present then a whole load of other types are also present).
-'
-' Limitation3: This analyzer doesn't deal with UWP "min-version". It should!
-'
-' Limitation4: This analyzer doesn't and can't work through lambdas.
-' In other words it can't track whether a delegate contains platform-specific member
-' accesses. It can't because to do so you'd need a type system like
-' List<Action[PlatformSpecific]>, and the CLR type system doesn't do that.
-
-
 
 <DiagnosticAnalyzer(LanguageNames.VisualBasic)>
 Public Class PlatformSpecificAnalyzerVB
@@ -103,42 +71,10 @@ Public Class PlatformSpecificAnalyzerVB
         End While
         If HasPlatformSpecificAttribute(containingMethodSymbol.ContainingAssembly) Then Return
 
-        ' Is this invocation properly guarded? Here are some proper guards...
-        ' Case 1: If ApiInformation.IsTypePresent("xyz") Then xyz.f()
-        ' Case 2: Dim b = ApiInformation.IsTypePresent(xyz)
-        '         If b Then xyz.f()
-        ' Case 3: If Not ApiInformation.IsTypePresent(xyz) Then Return
-        '         xyz.f()
-        ' Case 4: If Not ApiInformation.IsTypePresent(xyz) Then
-        '         Else
-        '            xyz.f()
-        '         End If
-        ' Case 5: If GlobalState.FeatureAllowed Then xyz.f()
-        '         where the FeatureAllowed field/property Is Like "b" above
-        ' Case 6: Select Case False
-        '            Case ApiInformation.IsTypePresent(xyz) :
-        '            Case Else : xyz.f()
-        '          End Select
-        ' Case 7: If(ApiInformation.IsTypePresent(xyz), xyz.f(), 0)
-        '
-        ' In an ideal world I'd like to have dataflow ability, and check whether the invocationExpression
-        ' is reachable via a path where none of the conditions along the way have data flowing into
-        ' then that might be influenced by ApiInformation.IsTypePresent or by a global field/property.
-        ' In the absence of dataflow, I'll fall back on a heuristic...
-        '
-        ' Rejected heuristic: walk backwards from the current InvocationExpression,
-        ' up through all syntacticaly preceding expressions, and see if any of them
-        ' mentioned ApiInformation.IsTypePresent or a global field/property. This
-        ' would have almost no false positives (except in case of GoTo and Do/Loop Until cases)
-        ' but I think has too many false negatives.
-        '
-        ' Adopted heuristic: enforce the coding style that you should keep things
-        ' simple. You must either have this call to xyz.f() or a Return statement inside the
-        ' positive branch of an appropriately-conditioned "If" block.
-
-        If IsWellGuarded(invocationExpression, context.SemanticModel) Then Return
+        ' Is this invocation properly guarded? See readme.txt for explanations.
+        If IsProperlyGuarded(invocationExpression, context.SemanticModel) Then Return
         For Each ret In containingMethod.DescendantNodes.OfType(Of ReturnStatementSyntax)
-            If IsWellGuarded(ret, context.SemanticModel) Then Return
+            If IsProperlyGuarded(ret, context.SemanticModel) Then Return
         Next
 
         context.ReportDiagnostic(Diagnostic.Create(Rule, context.Node.GetLocation))
@@ -151,7 +87,7 @@ Public Class PlatformSpecificAnalyzerVB
         Return False
     End Function
 
-    Function IsWellGuarded(node As SyntaxNode, semanticModel As SemanticModel) As Boolean
+    Function IsProperlyGuarded(node As SyntaxNode, semanticModel As SemanticModel) As Boolean
         For Each symbol In GetGuards(node, semanticModel)
             If symbol.ContainingType?.Name = "ApiInformation" Then Return True
             If HasPlatformSpecificAttribute(symbol) Then Return True
