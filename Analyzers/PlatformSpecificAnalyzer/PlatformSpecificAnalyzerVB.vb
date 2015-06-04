@@ -12,7 +12,7 @@ Imports Microsoft.CodeAnalysis.VisualBasic
 Imports Microsoft.CodeAnalysis.VisualBasic.Syntax
 
 ' FOR EASIER F5 DEBUGGING OF THIS ANALYZER:
-' Set "PlatformSpecificAnalyzer" as your startup project. Then under MyProject > Debug, det
+' Set "PlatformSpecificAnalyzer" as your startup project. Then under MyProject > Debug, set
 ' StartAction: external program
 '     C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\IDE\devenv.exe
 ' Command-line arguments: 
