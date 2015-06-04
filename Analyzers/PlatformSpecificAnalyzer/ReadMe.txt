@@ -1,8 +1,9 @@
 ﻿PlatformSpecific
 ==================
 
-VIDEO:
-https://github.com/ljw1004/blog/raw/master/Analyzers/PlatformSpecificAnalyzer/WatchMe.mp4
+VIDEO [3min]: https://github.com/ljw1004/blog/raw/master/Analyzers/PlatformSpecificAnalyzer/ReadMe.mp4
+SCREENSHOT:   https://github.com/ljw1004/blog/raw/master/Analyzers/PlatformSpecificAnalyzer/ReadMe.png
+ABSTRACT:     https://github.com/ljw1004/blog/raw/master/Analyzers/PlatformSpecificAnalyzer/ReadMe.txt
 
 When you're writing a UWP app, it's hard to know whether a given API is
 platform-specific (and hence needs an "adaptivity check") or if it's part
