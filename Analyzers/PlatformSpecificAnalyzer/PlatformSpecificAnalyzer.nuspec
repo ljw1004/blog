@@ -1,0 +1,25 @@
+﻿<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>PlatformSpecific.Analyzer</id>
+    <version>0.0.1-alpha</version>
+    <title>Platform Specific Analyzer</title>
+    <authors>Lucian Wischik</authors>
+    <owners>Lucian Wischik</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <licenseUrl>https://github.com/ljw1004/blog/blob/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/ljw1004/blog/blob/master/Analyzers/PlatformSpecificAnalyzer/ReadMe.md</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/ljw1004/blog/master/Analyzers/PlatformSpecificAnalyzer/PlatformSpecificAnalyzer.png</iconUrl>
+    <description>This analyzer detects where you're using platform-specific (non-universal) Windows 10 APIs, and helps you guard them correctly.</description>
+    <summary>Detects platform-specific (non-universal) Win10 code</summary>
+    <tags>UWP Win10 winrt analyzer</tags>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System" targetFramework="portable-win81+wpa81" />
+    </frameworkAssemblies>
+  </metadata>
+  <files>
+    <file src="PlatformSpecificAnalyzer.dll" target="tools\analyzers\" />
+    <file src="PlatformSpecific.dll" target="lib\"/>
+    <file src="tools\*.ps1" target="tools\" />
+  </files>
+</package>
