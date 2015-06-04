@@ -34,7 +34,11 @@ Public Class PlatformSpecificAnalyzerVB
     End Property
 
     Public Overrides Sub Initialize(context As AnalysisContext)
-
+        ' context.RegisterSyntaxNodeAction(AddressOf AnalyzeInvocation)
+        ' This would be simplest. It just generates multiple diagnostics per line
+        ' However, until bug https: //github.com/dotnet/roslyn/issues/3311 in Roslyn is fixed,
+        ' it also gives duplicate "Supress" codefixes.
+        ' So until then, we'll do work to generate only a single diagnostic per line:
         context.RegisterCodeBlockStartAction(Of SyntaxKind)(AddressOf AnalyzeCodeBlockStart)
     End Sub
 
@@ -65,6 +69,9 @@ Public Class PlatformSpecificAnalyzerVB
         If targetAssembly = "Windows.Foundation.FoundationContract" OrElse
                 targetAssembly = "Windows.Foundation.UniversalApiContract" OrElse
                 targetAssembly = "Windows.Networking.Connectivity.WwanContract" Then Return
+        ' HACK: I don't want to give warnings for 8.1 or PCL code. In those two targets, every Windows
+        ' type is found in Windows.winmd, so that's how we'll prevent it:
+        If targetAssembly = "Windows" Then Return
 
 
         ' Is this invocation outside a method?
@@ -175,11 +182,11 @@ Public Class PlatformSpecificFixerVB
         Dim containingMember = invocationExpression.FirstAncestorOrSelf(Of MethodBlockBaseSyntax)
         Dim containingMethod = TryCast(containingMember, MethodBlockSyntax)
         If containingMethod IsNot Nothing Then
-            Dim act1 = CodeAction.Create("Add 'If ApiInformation.IsTypePresent'", Function(c) IntroduceGuardAsync(context.Document, invocationExpression, c))
+            Dim act1 = CodeAction.Create("Add 'If ApiInformation.IsTypePresent'", Function(c) IntroduceGuardAsync(context.Document, invocationExpression, c), "PlatformSpecificGuard")
             context.RegisterCodeFix(act1, diagnostic)
             Dim methodName = If(containingMethod.Kind = SyntaxKind.SubBlock, "Sub", "Function")
             methodName &= " " & containingMethod.SubOrFunctionStatement.Identifier.Text
-            Dim act2 = CodeAction.Create($"Mark '{methodName}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(containingMethod.SubOrFunctionStatement, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c))
+            Dim act2 = CodeAction.Create($"Mark '{methodName}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(containingMethod.SubOrFunctionStatement, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c), "PlatformSpecificMethod")
             context.RegisterCodeFix(act2, diagnostic)
         End If
 
@@ -187,7 +194,7 @@ Public Class PlatformSpecificFixerVB
         Dim containingType = containingMember.FirstAncestorOrSelf(Of ClassBlockSyntax)
         If containingType IsNot Nothing Then
             Dim className = "Class " & containingType.ClassStatement.Identifier.Text
-            Dim act3 = CodeAction.Create($"Mark '{className}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(containingType.ClassStatement, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c))
+            Dim act3 = CodeAction.Create($"Mark '{className}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(containingType.ClassStatement, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c), "PlatformSpecificClass")
             context.RegisterCodeFix(act3, diagnostic)
         End If
 
@@ -201,9 +208,9 @@ Public Class PlatformSpecificFixerVB
             Dim fieldSyntax = TryCast(symbolSyntax.Parent.Parent, FieldDeclarationSyntax)
             Dim propSyntax = TryCast(symbolSyntax, PropertyStatementSyntax)
             If fieldSyntax IsNot Nothing Then
-                act4 = CodeAction.Create($"Mark field '{symbol.Name}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(fieldSyntax, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c))
+                act4 = CodeAction.Create($"Mark field '{symbol.Name}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(fieldSyntax, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c), "PlatformSpecificSymbol" & symbol.Name)
             ElseIf propSyntax IsNot Nothing Then
-                act4 = CodeAction.Create($"Mark property '{symbol.Name}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(propSyntax, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c))
+                act4 = CodeAction.Create($"Mark property '{symbol.Name}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(propSyntax, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c), "PlatformSpecificSymbol" & symbol.Name)
             End If
             If act4 IsNot Nothing Then context.RegisterCodeFix(act4, diagnostic)
         Next
