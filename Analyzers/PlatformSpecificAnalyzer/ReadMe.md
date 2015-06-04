@@ -93,6 +93,15 @@ as `[PlatformSpecific]`. Also inside an assembly marked that way. It should.
 * For VS2015 RTM, NuGet packages for UWP will work differently. (not yet known how). So at
 RTM we'll have to rewrite the .nuspec file.
 
+* Its handling of "else if" is a bit dodgy. In VB it only considers the first "If" condition
+out of a series of if/elseif/elseif/else. In C# it looks up all the conditions preceding
+the current block. I don't really know which is better. Should it account for "if not ApiPresent"?
+Or should it only accept platform-specific operations in a branch whose immediate guard
+was good? I don't have a good idea.
+
+* It should probably suggest to put `[PlatformSpecific]` on structs (VB & C#) and on
+modules (VB). At the moment it only works on classes.
+
 
 Feature backlog
 ------------------
@@ -195,6 +204,10 @@ End Select
 
 ```vb
 If(ApiInformation.IsTypePresent(xyz), xyz.f(), 0)
+```
+
+```vb
+If False Then xyz.f()
 ```
 
 To make an analyzer that can handle all these, it would need *dataflow ability*. It would

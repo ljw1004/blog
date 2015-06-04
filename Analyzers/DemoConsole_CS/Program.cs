@@ -11,11 +11,8 @@ class Program
 
     static void f()
     {
-        if (Windows.Foundation.Metadata.ApiInformation.IsTypePresent("a"))
-        {
-            Windows.Stuff.Dummy.dummy2();
-        }
-            
+        Windows.Stuff.Dummy.dummy2();
+
         if (b)
         {
             Windows.Stuff.Dummy.dummy2();

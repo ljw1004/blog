@@ -33,6 +33,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="PlatformSpecific">
+      <HintPath>..\PlatformSpecific\bin\Debug\PlatformSpecific.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -50,12 +53,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\PlatformSpecific\PlatformSpecific.vbproj">
-      <Project>{25ec45af-4df8-4c3b-b5e2-e3a23dbac14f}</Project>
-      <Name>PlatformSpecific</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Analyzer Include="..\PlatformSpecificAnalyzer\bin\Debug\PlatformSpecificAnalyzer.dll" />

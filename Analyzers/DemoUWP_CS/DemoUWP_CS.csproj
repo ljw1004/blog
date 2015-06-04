@@ -132,13 +132,12 @@
     </SDKReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PlatformSpecific\PlatformSpecific.vbproj">
-      <Project>{25ec45af-4df8-4c3b-b5e2-e3a23dbac14f}</Project>
-      <Name>PlatformSpecific</Name>
-    </ProjectReference>
+    <Analyzer Include="..\PlatformSpecificAnalyzer\bin\Debug\PlatformSpecificAnalyzer.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Analyzer Include="..\PlatformSpecificAnalyzer\bin\Debug\PlatformSpecificAnalyzer.dll" />
+    <Reference Include="PlatformSpecific">
+      <HintPath>..\PlatformSpecific\bin\Debug\PlatformSpecific.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>
