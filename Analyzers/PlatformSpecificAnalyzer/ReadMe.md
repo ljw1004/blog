@@ -1,10 +1,17 @@
 ﻿PlatformSpecific
 ==================
 
+This analyzer helps make sure that your Win10 apps are *universal* - will run on all Win10 devices.
+
+[Watch training video](https://github.com/ljw1004/blog/raw/master/Analyzers/PlatformSpecificAnalyzer/ReadMe.mp4) [3mins]
+
+Add NuGet reference: [PlatformSpecific.Analyzer](https://www.nuget.org/packages/PlatformSpecific.Analyzer)
+
+![screenshot](https://raw.githubusercontent.com/ljw1004/blog/master/Analyzers/PlatformSpecificAnalyzer/Screenshot.png)
 
 
-VIDEO [3min]: https://github.com/ljw1004/blog/raw/master/Analyzers/PlatformSpecificAnalyzer/ReadMe.mp4
-https://github.com/ljw1004/blog/raw/master/Analyzers/PlatformSpecificAnalyzer/Screenshot.png
+Explanation
+-------------
 
 When you're writing a UWP app, it's hard to know whether a given API is
 platform-specific (and hence needs an "adaptivity check") or if it's part
@@ -32,12 +39,16 @@ some the wrong adaptivity check. That's because there are too many reasonable wa
 to do adaptivity check and the analyzer can't possibly reason about them all, so it
 errs on the side of permissiveness.
 
-In all, the analyzer aims to be a helper so you don't simply forget your adaptivity checks.
-It doesn't aim to be a complete rigorous proof that your entire app is adaptivity-safe.
+In the end, the analyzer makes sure you're doing adaptivity in a good standard
+easy-to-read coding pattern. Its goal is to make sure you didn't flat-out forget
+to do the adaptivity checks you need. It doesn't try to check that you've done the
+exact right check, and it doesn't aim to be a complete rigorous proof that your
+entire app is adaptivity-safe.
 
 
 
-TECHNICAL SPECIFICATION
+Technical specification
+-------------------------
 
 Some platform methods come from a specific UWP platform extension SDK.
 And some methods might have the [PlatformSpecific] attribute on them.
@@ -48,78 +59,160 @@ but outside the common UWP platform, and any invocation of a method with the
 [PlatformSpecific] attribute on it, either (1) is in a method/class/assembly
 marked as [PlatformSpecific], or (2) is "properly guarded" as defined below.
 
-
-PROPERLY GUARDED
-
-Here are some examples of code that, technically speaking, won't throw exceptions
-at runtime due to lack of adaptivity checks:
-
-Case 1: If ApiInformation.IsTypePresent("xyz") Then xyz.f()
-
-Case 2: Dim b = ApiInformation.IsTypePresent(xyz)
-        If b Then xyz.f()
-
-Case 3: If Not ApiInformation.IsTypePresent(xyz) Then Return
-        xyz.f()
-
-Case 4: If Not ApiInformation.IsTypePresent(xyz) Then
-        Else
-           xyz.f()
-        End If
-
-Case 5: If GlobalState.FeatureAllowed Then xyz.f()
-        where the FeatureAllowed field/property Is Like "b" above
-
-Case 6: Select Case False
-           Case ApiInformation.IsTypePresent(xyz) :
-           Case Else : xyz.f()
-         End Select
-
-Case 7: If(ApiInformation.IsTypePresent(xyz), xyz.f(), 0)
-
-In an ideal world I'd like to have dataflow ability, and check whether the invocationExpression
-is reachable via a path where none of the conditions along the way have data flowing into
-then that might be influenced by ApiInformation.IsTypePresent or by a global field/property
-with [PlatformSpecific] attribute on it. In the absence of dataflow, I'll fall back on a heuristic...
-        
-Rejected heuristic: walk backwards from the current InvocationExpression,
-up through all syntacticaly preceding expressions, and see if any of them
-mentioned ApiInformation.IsTypePresent or a global field/property. This
-would have almost no false positives (except in case of GoTo and Do/Loop Until cases)
-but I think has too many false negatives.
-        
-Chosen heuristic: enforce the coding style that you should keep things
-simple. You must either have this call to xyz.f() or a Return statement inside the
-positive branch of an "If" block with a proper guard in its conditional. (Not even an
-"Else If" block). A proper guard is either an invocation of any method inside
+*Properly Guarded*. You must either have the invocation or a Return statement
+inside the positive branch of an `If` block whose conditional includes a "proper guard".
+A proper guard is either an invocation of any method inside
 a type called ApiInformation, or an access of a field/property that has
-the [PlatformSpecific] attribute on it.
+the `[PlatformSpecific]` attribute on it.
 
 
+Bugs
+------
 
-LIMITATIONS
+* This analyzer currently only examines platform invocations to check whether they're
+platform-specific. WinRT only has a limited number of operations, and I believe the
+other operations to check are just *constructions* and *property-access*. (I believe
+it's not necessary to check for when you access fields of structs, nor enum values.
+I also believe it's not necessary to check when you merely have a value of platform-specific
+type, nor when you assign null to it.)
 
-Backlog: This analyzer only works with methods. It only examines user-written
-methods for their contents, and it only looks for invocations of platform-specific
-methods. It should be able to look at all user-written code, and should look for
-all kinds of member access.
+* This analyzer currently only examines operations within methods to see whether they're
+platform-specific. It should also check operations within property accessors, and within
+constructors, and inside field/autoprop initializers. (Note that the quick-fix actions
+available to each will be different.)
 
-Limitation: This analyzer doesn't have knowledge of *which* platform is specific.
-Its designed role is merely as a safeguard, to remind you that you should be guarding.
-It won't help in cases where you're already using some other specific guard but has
-platform-specific member accesses that aren't covered by that other specific guard.
-(In any case, users typically use their "sentinal canary" undocumented knowledge
-that if one type is present then a whole load of other types are also present).
+* By transitivity, if operations are allowed within any of those things due to a class-level
+or assembly-level `[PlatformSpecific]` attribute, then the analyzer would have to check
+accesses to those things. I'm inclined not to bother, and to simply disallow use of
+ungaurded platform-specific operations inside bodies that are hard to check. For instance:
+would it check user-defined conversions??
 
-Backlog: This analyzer doesn't deal with UWP "min-version". It should eventually,
-once a new version of UWP has been released.
+* This analyzer fails to fire when you invoke a method that's defined inside a class marked
+as `[PlatformSpecific]`. Also inside an assembly marked that way. It should.
 
-Limitation: This analyzer doesn't and can't work through lambdas.
-In other words it can't track whether a delegate contains platform-specific member
-accesses. It can't because to do so you'd need a type system like
-List<Action[PlatformSpecific]>, and the CLR type system doesn't do that.
+* For VS2015 RTM, NuGet packages for UWP will work differently. (not yet known how). So at
+RTM we'll have to rewrite the .nuspec file.
 
-Backlog: This analyzer doesn't detect when you invoke a method inside
-a class with [PlatformSpecific]. Nor an assembly.
 
-Backlog: It doesn't recognize [PlatformSpecific] on parameters.
+Feature backlog
+------------------
+
+* The analyzer should also deal with "UWP min-version". Let's hold off on that until Microsoft
+actually releases a new version of UWP with new contracts. It will require the analyzer
+to read from the .vbproj/.csproj to discover `TargetPlatformMinVersion`, and then read through
+`Windows Kits\10\Platforms.xml` to discover versions of which contracts is in TargetPlatformMinVersion,
+and then read through metadata definition of WinRT types to discover whether an API is in
+the appropriate version of the contract or not.
+
+* It might be nice to be more specific about *which* platform. Maybe create a few more attributes
+`[MobileSpecific]`, `[DesktopSpecific]`, `[XboxSpecific]` and so on, all descending from the
+common base class. The analyzer would need hard-coded knowledge of which attributes apply
+to which Platform Extension SDK. It would need a way to compute which contract a given WinRT
+invocation comes from. Then it would need to read `Windows Kits\10\ExtensionSDKs` to find which
+of the ExtensionSDKs include that contract. (There might be several). I don't yet know how
+versions will work. Will users also need to have a `TargetExtensionSDKMinVersion`? Or will
+that be inferred from the main UWP TargetPlatformMinVersion? Let's wait and see.
+
+* It might be nice to recognize `[PlatformSpecific]` on parameters. But maybe that's just
+getting altogether too fussy. We can't track it on locals, so tracking it on parameters
+might feel odd.
+
+* Currently you can have a `[PlatformSpecific]` method which handles, say, a button click.
+It will crash if you click the button on the wrong platform. We might wish to say that
+`[PlatformSpecific]` simply isn't allowed on *any* method which looks like a WinRT event
+handler. I don't know what the best solution is here. Maybe it's fine to do nothing.
+After all, the user has explicitly written `[PlatformSpecific]` in their code, and it's
+now their responsibility.
+
+
+Design decisions
+------------------
+
+It's impossible for an analyzer to know whether adaptivity checks are the right thing.
+Example1: I see lots of folks checking for whether the `HardwareButtons` type is present, and if
+so inferring that the device is a phone, and therefore changing their UI to be
+phone specific. That's wrong (e.g. what happens if a tablet comes out with hardware
+buttons?) It's better to change UI based on screen size. Example2: I see lots of folks
+hooking up to `HardwareButtons.BackPressed` event. That's wrong: they should hook up
+to the universal `SystemNavigationManager.Backpressed` event instead.
+
+It's impossible for an analyzer to know whether you're using the *right* adaptivity
+checks. At the most fundamental level, folks will reasonably use "canaries" -- i.e.
+tests of whether one type is present, and they infer that a whole other family of
+types is present.
+
+That means it's impossible for an analyzer to detect cases where you've written
+a guard, but it turns out to have been the wrong one for the API you're using.
+All the analyzer can aim to do is remind you that you should be guarding
+in cases where you've forgotten completely. (However, at least the idea of `MobileSpecific` /
+`DesktopSpecific` / `XboxSpecific` would mitigate this somewhat.)
+
+It's impossible for an analyzer to work through lambdas. For instance, it can't
+track whether an `Action` delegate contains platform-specific operations. It can't
+do this because you'd need an "effect-based type system" like
+`List<Action[PlatformSpecific]>`, and the CLR type system doesn't do that.
+
+Ultimately, the job of compile-time analysis is to ensure that certain
+classes of runtime failures won't happen, that class being exceptions at
+runtime due to missing adaptivity checks. In cases where this problem is too
+hard in general, the compile-time analyzer will constrain the problem,
+requiring the user to write code in a pattern that's more amenable to
+good analysis. Here are some examples of code that, technically speaking,
+won't throw exceptions at runtime due to lack of adaptivity checks:
+
+```vb
+If ApiInformation.IsTypePresent("xyz") Then xyz.f()
+```
+
+```vb
+Dim b = ApiInformation.IsTypePresent(xyz) ' local variable
+If b Then xyz.f()
+```
+
+```vb
+If Not ApiInformation.IsTypePresent(xyz) Then Return
+xyz.f()
+```
+
+```vb
+If Not ApiInformation.IsTypePresent(xyz) Then
+   ...
+Else
+   xyz.f()
+End If
+```
+
+```vb
+If GlobalState.FeatureAllowed Then xyz.f()
+```
+
+```vb
+Select Case False
+   Case ApiInformation.IsTypePresent(xyz) :
+   Case Else : xyz.f()
+End Select
+```
+
+```vb
+If(ApiInformation.IsTypePresent(xyz), xyz.f(), 0)
+```
+
+To make an analyzer that can handle all these, it would need *dataflow ability*. It would
+need the ability to check whether a given operation is reachable via a path where
+*none* of the conditions along the way have data flowing into them that might be
+influenced by `ApiInformation.IsTypePresent` or by a global field/property with
+`[PlatformSpecific]` attribute on it.
+
+*However, even within that ideal world, it's still impossible to know whether the "influence"
+was correct or not!* For instance, if the result of `ApiInformation.IsTypePresent` gets fed
+into an integer which then has arithmetic done on it, or fed into a boolean expression,
+or used to control the visibility of a button. Because of this, I think that it's just
+not worth going to the effort of dataflow analysis. We have to fall back to heuristics.
+
+One possible heuristic is to walk backwards from the current operation, up through all
+lexically preceding expressions, and see if any of them mentioned `ApiInformation.IsTypePresent`
+or an appropriately-annotated field/property. This would have almost no false positives
+(except in the case of GoTo). But I think it would have too many false negatives.
+That's why I instead picked the heuristic explained above in the "Technical specification"
+section.
+
