@@ -26,17 +26,17 @@ by pressing Ctrl+Dot or clicking on the lightbulb.
 
 For advanced scenarios, this analyzer also supports "transitivity" -- you can declare
 that an entire method of yours is platform-specific, eliminating the need
-for any checks inside, but forcing you to check before invoking the method.
+for any checks inside, but forcing you to check before invoking your method.
 It also supports "feature flags" -- you can declare that a given field
 or property embodies the result of calling ApiInformation.IsTypePresent, so
-that checking this field is as good as calling it directly.
+that checking this field is as good as calling IsTypePresent directly.
 
 The analyzer does have a few false positives, in cases where you've written your
 own idiosyncratic style of adaptive checks that are technically valid but aren't
 conventional. And it has quite a few false negatives, where your method does
-some the wrong adaptivity check. That's because there are too many reasonable ways
-to do adaptivity check and the analyzer can't possibly reason about them all, so it
-errs on the side of permissiveness.
+an adaptivity check but checks for the wrong thing. That's because there are too many
+reasonable ways to do adaptivity check and the analyzer can't possibly reason about
+them all, so it errs on the side of permissiveness.
 
 In the end, the analyzer makes sure you're doing adaptivity in a good standard
 easy-to-read coding pattern. Its goal is to make sure you didn't flat-out forget
@@ -58,7 +58,7 @@ but outside the common UWP platform, and any invocation of a method with a
 [*Specific] attribute on it, either (1) is in a method/class/assembly
 marked as [*Specific], or (2) is "properly guarded" as defined below.
 
-*Properly Guarded*. You must either have the invocation or a Return statement
+*Properly Guarded*. You must either have the invocation itself or a Return statement
 inside the positive branch of an `If` block whose conditional includes a "proper guard".
 A proper guard is either an invocation of any method inside
 a type called ApiInformation, or an access of a field/property that has
