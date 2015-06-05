@@ -106,7 +106,7 @@ Public Class PlatformSpecificAnalyzerCS
 
     Shared Function HasPlatformSpecificAttribute(symbol As ISymbol) As Boolean
         For Each attr In symbol.GetAttributes
-            If attr.AttributeClass.ToDisplayString() = GetType(PlatformSpecificAttribute).FullName Then Return True
+            If attr.AttributeClass.Name.EndsWith("SpecificAttribute") Then Return True
         Next
         Return False
     End Function

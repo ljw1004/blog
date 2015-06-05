@@ -55,15 +55,20 @@ And some methods might have the [PlatformSpecific] attribute on them.
 And some fields/properties might have the [PlatformSpecific] attribute too.
 
 This analyzer checks that any invocation of a method that's in Windows.* namespace
-but outside the common UWP platform, and any invocation of a method with the
-[PlatformSpecific] attribute on it, either (1) is in a method/class/assembly
-marked as [PlatformSpecific], or (2) is "properly guarded" as defined below.
+but outside the common UWP platform, and any invocation of a method with a
+[*Specific] attribute on it, either (1) is in a method/class/assembly
+marked as [*Specific], or (2) is "properly guarded" as defined below.
 
 *Properly Guarded*. You must either have the invocation or a Return statement
 inside the positive branch of an `If` block whose conditional includes a "proper guard".
 A proper guard is either an invocation of any method inside
 a type called ApiInformation, or an access of a field/property that has
-the `[PlatformSpecific]` attribute on it.
+a `[*Specific]` attribute on it.
+
+The package provides one attribute `[System.Runtime.CompilerServices.PlatformSpecific]`,
+and this is the one that the code-fixes suggest to insert. But you can chose to define
+your own more descriptive attributes, e.g. `[MyNamespace.XboxSpecific]`, and all
+attributes that end in `Specific` are treated as identical by this analyzer.
 
 
 Bugs

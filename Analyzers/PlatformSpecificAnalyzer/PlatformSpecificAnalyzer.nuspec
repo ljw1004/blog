@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>PlatformSpecific.Analyzer</id>
-    <version>0.0.1-alpha</version>
+    <version>0.0.2-alpha</version>
     <title>Platform Specific Analyzer</title>
     <authors>Lucian Wischik</authors>
     <owners>Lucian Wischik</owners>

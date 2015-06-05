@@ -163,12 +163,6 @@
     <Folder Include="My Project\" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PlatformSpecific\PlatformSpecific.vbproj">
-      <Project>{25ec45af-4df8-4c3b-b5e2-e3a23dbac14f}</Project>
-      <Name>PlatformSpecific</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="PlatformSpecificAnalyzer.nuspec">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -180,6 +174,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="PlatformSpecificAnalyzer.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PlatformSpecific\PlatformSpecific.vbproj">
+      <Project>{25ec45af-4df8-4c3b-b5e2-e3a23dbac14f}</Project>
+      <Name>PlatformSpecific</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
   <PropertyGroup>
