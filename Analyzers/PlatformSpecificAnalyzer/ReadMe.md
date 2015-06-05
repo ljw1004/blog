@@ -75,10 +75,10 @@ Bugs
 
 * This analyzer currently only examines platform invocations to check whether they're
 platform-specific. WinRT only has a limited number of operations, and I believe the
-other operations to check are just *constructions* and *property-access*. (I believe
-it's not necessary to check for when you access fields of structs, nor enum values.
-I also believe it's not necessary to check when you merely have a value of platform-specific
-type, nor when you assign null to it.)
+other operations to check are just *constructions* and *property-access* and
+*AddHandler*. (I believe it's not necessary to check for when you access fields of
+structs, nor enum values. I also believe it's not necessary to check when you merely
+have a value of platform-specific type, nor when you assign null to it.)
 
 * This analyzer currently only examines operations within methods to see whether they're
 platform-specific. It should also check operations within property accessors, and within
