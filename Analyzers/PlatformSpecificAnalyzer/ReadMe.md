@@ -113,18 +113,29 @@ Feature backlog
 * The analyzer should also deal with "UWP min-version". Let's hold off on that until Microsoft
 actually releases a new version of UWP with new contracts. It will require the analyzer
 to read from the .vbproj/.csproj to discover `TargetPlatformMinVersion`, and then read through
-`Windows Kits\10\Platforms.xml` to discover versions of which contracts is in TargetPlatformMinVersion,
-and then read through metadata definition of WinRT types to discover whether an API is in
-the appropriate version of the contract or not.
+`Windows Kits\10\Platforms.xml` to discover versions of which contracts is in TargetPlatformMinVersion.
+This will yield a list of contract names (which are the same as assembly names) and versions.
+Then it can use Roslyn to look through the metadata that your app references, figure out
+which assembly it came from, and figure out whether it's in the MinVersion. I'm not sure how
+to deal with type-forwarders. I wonder if the attribute should say `[PlatformSpecific(version)]`?
+Or should it just use the plain flat `[PlatformSpecific]` attribute for everything outside
+the MinVersion? This latter choice is simpler. If you lower your min, then you'd have to put the
+attribute in more places. If you increase the min, the analyzer could detect cases where an
+existing attribute is no longer needed.
 
 * It might be nice to be more specific about *which* platform. Maybe create a few more attributes
 `[MobileSpecific]`, `[DesktopSpecific]`, `[XboxSpecific]` and so on, all descending from the
 common base class. The analyzer would need hard-coded knowledge of which attributes apply
-to which Platform Extension SDK. It would need a way to compute which contract a given WinRT
-invocation comes from. Then it would need to read `Windows Kits\10\ExtensionSDKs` to find which
-of the ExtensionSDKs include that contract. (There might be several). I don't yet know how
+to which Platform Extension SDK. It would need to read .vbproj/.csproj to find all `<SDKReference>`
+directives, and then read from `Windows Kits\10\ExtensionSDKs\sdk\version\SDKManifest.xml` to
+find the list of contract names (assembly names) and versions associated with that platform.
+Then for any API access it would have to figure out which of the PlatformSDKs contain that API.
+(There might be several.) I also don't yet know how
 versions will work. Will users also need to have a `TargetExtensionSDKMinVersion`? Or will
-that be inferred from the main UWP TargetPlatformMinVersion? Let's wait and see.
+that be inferred from the main UWP TargetPlatformMinVersion? Let's wait and see. Actually,
+upon further reflection, I think this whole feature request might be wrong approach. The whole point of correct
+adaptivity is that you don't just say `if (xbox)`. Instead you do an API-by-API check of whether
+a given API is present.
 
 * It might be nice to recognize `[PlatformSpecific]` on parameters. But maybe that's just
 getting altogether too fussy. We can't track it on locals, so tracking it on parameters
@@ -140,6 +151,13 @@ now their responsibility.
 
 Design decisions
 ------------------
+
+It's conceptually meaningless to have this kind of analyzer for .NET code. That's because
+in UWP apps, all .NET code is bundled along with your app (including the .NET framework itself).
+Therefore every .NET API that you reference is by definition present. Now it might have been
+helpful to have adaptivity checks for desktop apps, so you can write a single binary that runs
+on desktop .NET framework v4.0 but can also call into v4.6 APIs if they're on the machine.
+But the only version of the .NET runtime that supports adaptivity is the one used in UWP apps.
 
 It's impossible for an analyzer to know whether adaptivity checks are the right thing.
 Example1: I see lots of folks checking for whether the `HardwareButtons` type is present, and if
