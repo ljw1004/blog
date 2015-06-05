@@ -113,7 +113,8 @@ Feature backlog
 * The analyzer should also deal with "UWP min-version". Let's hold off on that until Microsoft
 actually releases a new version of UWP with new contracts. It will require the analyzer
 to read from the .vbproj/.csproj to discover `TargetPlatformMinVersion`, and then read through
-`Windows Kits\10\Platforms.xml` to discover versions of which contracts is in TargetPlatformMinVersion.
+`Windows Kits\10\Platforms\UAP\version\platform.xml` to discover versions of which contracts
+is in TargetPlatformMinVersion.
 This will yield a list of contract names (which are the same as assembly names) and versions.
 Then it can use Roslyn to look through the metadata that your app references, figure out
 which assembly it came from, and figure out whether it's in the MinVersion. I'm not sure how
