@@ -1,0 +1,214 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#define APSTUDIO_HIDDEN_SYMBOLS
+#include "windows.h"
+#include "../body.h"
+#undef APSTUDIO_HIDDEN_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.K.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENG)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_UK
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+1                       ICON                    "app.ico"
+2                       ICON                    "doc.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Data
+//
+
+1001                    Rcdata                  "..\\sticks\\purestick_lobster.stk"
+1002                    Rcdata                  "..\\sticks\\purestick_justin.stk"
+1003                    Rcdata                  "..\\sticks\\purestick_spider.stk"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+1 VERSIONINFO
+ FILEVERSION STK_VERSION
+ PRODUCTVERSION STK_VERSION
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x2L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "Lucian Wischik"
+            VALUE "FileDescription", "Dancing Stick Figures"
+            VALUE "FileVersion", STK_VERSION_S
+            VALUE "InternalName", "Sticky-wmp"
+            VALUE "LegalCopyright", "Copyright 2000-2002"
+            VALUE "OriginalFilename", "sticky.dll"
+            VALUE "ProductName", "Dancing Stick Figure Plugin"
+            VALUE "ProductVersion", STK_VERSION_S
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+PROPDLG DIALOGEX 0, 0, 204, 225
+STYLE DS_SETFONT | WS_CHILD | WS_DISABLED | WS_CAPTION
+CAPTION "Sticky"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
+BEGIN
+    LTEXT           "Each stick figure is stored as a 'stick' file in a special folder. You can modify them, create new ones, or download extra stick figures from the internet:",
+                    IDC_STATIC,7,14,190,28
+    LTEXT           "http://www.wischik.com/lu/senses/sticky/extrasticks.html",
+                    104,7,40,190,8
+    CONTROL         "",103,"Static",SS_BLACKRECT,7,52,190,69
+    PUSHBUTTON      "&Open folder of stick figures...",102,45,127,109,14
+    LTEXT           "ALERT. Stick figure not found. Please reinstall the plugin.",
+                    101,7,147,190,12
+    GROUPBOX        "&Right-click menu within the player",IDC_STATIC,6,161,
+                    190,60
+    CONTROL         "Right-click brings up the &Sticky menu",105,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP,11,173,171,10
+    CONTROL         "Right-click brings up the &normal visualization menu",
+                    106,"Button",BS_AUTORADIOBUTTON,11,197,178,10
+    LTEXT           "(hold down SHIFT for the normal menu instead)",
+                    IDC_STATIC,23,182,162,8
+    LTEXT           "(hold down SHIFT for the Sticky menu instead)",
+                    IDC_STATIC,23,207,159,8
+END
+
+VIZDLG DIALOGEX 0, 0, 207, 170
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Other Visualizations"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,94,149,47,14
+    GROUPBOX        "&Right-click menu within the player",IDC_STATIC,7,38,
+                    193,60
+    CONTROL         "Right-click brings up the &Sticky menu",105,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP,13,51,177,10
+    CONTROL         "Right-click brings up the &normal visualization menu",
+                    106,"Button",BS_AUTORADIOBUTTON,13,75,184,10
+    LTEXT           "(hold down SHIFT for the normal menu instead)",
+                    IDC_STATIC,26,60,166,8
+    LTEXT           "(hold down SHIFT for the Sticky menu instead)",
+                    IDC_STATIC,26,85,168,8
+    LTEXT           "If you want the other right-click visualization menu, just hold down the SHIFT key while right-clicking.",
+                    IDC_STATIC,7,7,193,17
+    PUSHBUTTON      "Cancel",IDCANCEL,153,149,47,14
+    LTEXT           "Note: the current selection from the Sticky menu will not be remembered next time you start Windows Media Player. It only remembers its own menu and left/right viz buttons.",
+                    IDC_STATIC,7,114,193,34
+END
+
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#define APSTUDIO_HIDDEN_SYMBOLS\r\n"
+    "#include ""windows.h""\r\n"
+    "#include ""../body.h""\r\n"
+    "#undef APSTUDIO_HIDDEN_SYMBOLS\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    "VIZDLG", DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 200
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 163
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE 
+BEGIN
+    1001                    "Breakdancing Lobster"
+    1002                    "Dancing Stick Guy (Justin)"
+    1003                    "Spider (Vale)"
+END
+
+#endif    // English (U.K.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

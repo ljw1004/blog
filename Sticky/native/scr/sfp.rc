@@ -1,0 +1,140 @@
+#include <windows.h>
+#include "../body.h"
+
+1                       ICON                    "sfp.ico"
+1                       RT_MANIFEST             "manifest.txt"
+
+STRINGTABLE 
+BEGIN
+    1                       "Stick Figure Procession"
+    2                       "http://www.wischik.com/lu/senses/sticky"
+END
+
+STRINGTABLE 
+BEGIN
+    1001                    "Dancing Stick Guy (Justin)"
+    1002                    "Breakdancing Lobster (Lucian)"
+    1003                    "Spider (Vale)"
+END
+
+1001 RCDATA "..\sticks\purestick_justin.stk"
+1002 RCDATA "..\sticks\purestick_lobster.stk"
+1003 RCDATA "..\sticks\purestick_spider.stk"
+
+
+DLG_GENERAL DIALOG  0, 0, 237, 220
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "General"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "You can display the screen saver immediately, or prevent it from\nappearing at all, by moving the mouse pointer to a corner on \nthe screen.  Click the corners you want to use.",
+                    101,13,8,282,43
+    LTEXT           "The system agent must be active in order for you to display \nthe screen saver immediately by moving the mouse \npointer to a corner on the screen.",
+                    102,13,8,282,43
+    GROUPBOX        "Options for dismissing the screen saver",103,7,154,223,
+                    47
+    LTEXT           "&Mouse sensitivity",104,13,169,58,12
+    COMBOBOX        105,74,167,148,72,CBS_DROPDOWNLIST | WS_VSCROLL | 
+                    WS_TABSTOP
+    RTEXT           "&Wait",106,13,186,16,12
+    EDITTEXT        107,35,184,30,12
+    CONTROL         "Generic1",108,"msctls_updown32",UDS_SETBUDDYINT | 
+                    UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,57,184,11,
+                    36
+    COMBOBOX        109,74,184,50,36,CBS_DROPDOWNLIST | WS_VSCROLL | 
+                    WS_TABSTOP
+    LTEXT           "before requiring a password",110,130,186,95,11
+    CONTROL         "-YN-",112,"ScrMonitor",0x0,52,35,123,105
+END
+
+DLG_OPTIONS DIALOG  0, 0, 237, 220
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Options"
+FONT 8, "MS Sans Serif"
+BEGIN
+    CONTROL         "(waveform)",101,"Waveform",0x0,11,10,214,62
+    CTEXT           "The saver will dance to the music, if it can hear any playing.\r\nCheck above that a signal is present.",
+                    -1,11,74,214,20
+    LTEXT           "Audio troubleshooting:",-1,11,100,106,11
+    LTEXT           "1.",-1,11,113,8,9
+    LTEXT           "Right-click on the volume control on the taskar, Open Volume Control > Options > Properties > Recording, OK. Then select whichever sound source you want to use. ""Mixer"" is a good bet.",
+                    -1,19,113,206,26
+    LTEXT           "2.",-1,11,141,8,9
+    LTEXT           "Some older soud cards don't support listening at the same time as playing ('full duplex'). In this case, audio will only work from microphone or CD, not from MP3s.",
+                    -1,19,141,206,26
+    LTEXT           "3.",-1,11,168,8,9
+    LTEXT           "Only one program at a time is allow to listen to music; this might stop the saver from listening as well. Winamp with a CD usually counts as 'listening'. Windows Media Player with MP3s does not.",
+                    -1,19,168,206,25
+    CONTROL         "Try to listen to the music",102,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,11,198,105,15
+END
+
+DLG_STICKS DIALOG 0, 0, 237, 220
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Stick Figures"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "These stick figures will perform:",-1,6,12,225,8
+    LISTBOX         101,6,24,225,82,LBS_SORT | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Hundreds of stick figures are available for download:", -1,6,118,225,8
+    LTEXT           "http://www.wischik.com/lu/senses/sticky/",103,20,128,211,8
+    LTEXT           "Dancing Stick Figures is also available as a visualization plugin for Windows Media Player and for Winamp. It also includes an editor to let you design your own figures!", -1,6,164,225,28
+    LTEXT           "http://www.wischik.com/lu/senses/sticky/",102,20,190,211,8
+END
+
+DLG_ABOUT DIALOG  53, 20, 163, 81
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CONTEXTHELP | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "About"
+FONT 8, "MS Sans Serif"
+BEGIN
+    ICON            1,-1,7,5,21,20
+    DEFPUSHBUTTON   "OK",IDOK,115,61,40,14
+    CONTROL         "<title>",101,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,35,
+                    10,115,8
+    LTEXT           "by Lucian Wischik,",-1,35,34,120,8
+    LTEXT           "www.wischik.com/lu",102,35,44,120,8
+END
+
+
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION STK_VERSION
+ PRODUCTVERSION STK_VERSION
+ FILEFLAGSMASK 0x17L
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080904b0"
+        BEGIN
+            VALUE "FileDescription", "Stick Figure Procession Screen Saver"
+            VALUE "FileVersion", STK_VERSION_S
+            VALUE "InternalName", "sfp"
+            VALUE "LegalCopyright", "Copyright (C) 1999-2003 Lucian Wischik"
+            VALUE "OriginalFilename", "sfp.exe"
+            VALUE "ProductName", "Dancing Stick Figures"
+            VALUE "ProductVersion", STK_VERSION_S
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x809, 1200
+    END
+END
+
+
+MONITOR                 BITMAP                  "monitor.bmp"
+
+
+

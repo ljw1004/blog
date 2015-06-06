@@ -1,0 +1,154 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectName>cross</ProjectName>
+    <ProjectGuid>{F633E861-DFFA-4A65-BC42-F7DE0DF2AD09}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <SccProjectName>SAK</SccProjectName>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccProvider>SAK</SccProvider>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>12.0.30121.0</_ProjectFileVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>Debug\</OutDir>
+    <IntDir>Debug\</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>Release\</OutDir>
+    <IntDir>Release\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>gdwin32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;ZIP_STD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeader />
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <OutputFile>$(OutDir)cross.exe</OutputFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)cross.pdb</ProgramDatabaseFile>
+      <SubSystem>Console</SubSystem>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>gdwin32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;ZIP_STD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <PrecompiledHeader />
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <OutputFile>$(OutDir)cross.exe</OutputFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <Library Include="gdwin32\bgdBCB.lib" />
+    <Library Include="gdwin32\bgdVS.lib" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\body.cpp" />
+    <ClCompile Include="..\unzip.cpp" />
+    <ClCompile Include="cross.cpp" />
+    <ClCompile Include="gdbsd\gd.c" />
+    <ClCompile Include="gdbsd\gdhelpers.c" />
+    <ClCompile Include="gdbsd\gdtables.c" />
+    <ClCompile Include="gdbsd\gd_gif_out.c" />
+    <ClCompile Include="gdbsd\gd_io.c" />
+    <ClCompile Include="gdbsd\gd_io_dp.c" />
+    <ClCompile Include="gdbsd\gd_io_file.c" />
+    <ClCompile Include="gdbsd\gd_jpeg.c" />
+    <ClCompile Include="gdbsd\gd_security.c" />
+    <ClCompile Include="gdbsd\gd_topal.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\body.h" />
+    <ClInclude Include="..\unzip.h" />
+    <ClInclude Include="gdbsd\gd.h" />
+    <ClInclude Include="gdbsd\gdconfig.h" />
+    <ClInclude Include="gdbsd\gdfx.h" />
+    <ClInclude Include="gdbsd\gdhelpers.h" />
+    <ClInclude Include="gdbsd\gd_io.h" />
+    <ClInclude Include="gdlinux\gd.h" />
+    <ClInclude Include="gdlinux\gdcache.h" />
+    <ClInclude Include="gdlinux\gdfontg.h" />
+    <ClInclude Include="gdlinux\gdfontl.h" />
+    <ClInclude Include="gdlinux\gdfontmb.h" />
+    <ClInclude Include="gdlinux\gdfonts.h" />
+    <ClInclude Include="gdlinux\gdfontt.h" />
+    <ClInclude Include="gdlinux\gdfx.h" />
+    <ClInclude Include="gdlinux\gdhelpers.h" />
+    <ClInclude Include="gdlinux\gd_io.h" />
+    <ClInclude Include="gdwin32\gd.h" />
+    <ClInclude Include="gdwin32\gdcache.h" />
+    <ClInclude Include="gdwin32\gdfontg.h" />
+    <ClInclude Include="gdwin32\gdfontl.h" />
+    <ClInclude Include="gdwin32\gdfontmb.h" />
+    <ClInclude Include="gdwin32\gdfonts.h" />
+    <ClInclude Include="gdwin32\gdfontt.h" />
+    <ClInclude Include="gdwin32\gdfx.h" />
+    <ClInclude Include="gdwin32\gdhelpers.h" />
+    <ClInclude Include="gdwin32\gd_io.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bgd.dll" />
+    <None Include="crossBCB.bpf" />
+    <None Include="crossBCB.bpr" />
+    <None Include="crossBSD.bat" />
+    <None Include="crossLINUX.bat" />
+    <None Include="gdlinux\libgd.so" />
+    <None Include="gdwin32\gd-manual.html" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

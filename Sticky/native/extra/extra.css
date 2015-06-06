@@ -1,0 +1,62 @@
+body {background-color: black; color: white;}
+.cursel {background-color: rgb(50,50,50); font-weight: bold;}
+img {border: solid thin gray;}
+td {margin-top: 0; text-align: center;}
+a {color: rgb(100,140,255);}
+a:visited {color: rgb(200,160,160);}
+a:hover {background-color: rgb(40,40,40);}
+a.subtle {color: rgb(230,240,255); text-decoration: none;}
+a:visited.subtle {color: rgb(255,235,235); text-decoration: none;}
+a:hover.subtle {text-decoration: underline;}
+td.banner {text-align: left; background-color: rgb(40,40,40); padding: 2ex;}
+td.download {text-align: left; background-color: rgb(40,40,40); padding-left: 2ex; padding-right: 2ex;}
+td.thumb {width: 130px; vertical-align: top; padding: 10px;}
+.banner h2 {margin-top: 0; margin-bottom: 0;}
+
+img.grey {background-color: rgb(150,150,150);}
+a:hover .grey {background-color: rgb(190,190,190);}
+
+img.dkgrey {background-color: rgb(70,70,70);}
+a:hover .dkgrey {background-color: rgb(120,120,120);}
+
+img.red {background-color: rgb(200,40,20);}
+a:hover .red {background-color: rgb(255,65,55);}
+
+img.ltred {background-color: rgb(220,0,0);}
+a:hover .ltred {background-color: rgb(255,65,55);}
+
+img.ltblue {background-color: rgb(100,110,130);}
+a:hover .ltblue {background-color: rgb(110,120,140);}
+
+img.cyan {background-color: rgb(86,177,246);}
+a:hover .cyan {background-color: rgb(116,207,255);}
+
+img.green {background-color: rgb(20,167,10);}
+a:hover .green {background-color: rgb(50,207,20);}
+
+img.blue {background-color: rgb(40,30,180);}
+a:hover .blue {background-color: rgb(60,50,255);}
+
+img.pink {background-color: rgb(220,30,200);}
+a:hover .pink {background-color: rgb(255,50,255);}
+
+img.white {background-color: rgb(200,200,200);}
+a:hover .white {background-color: rgb(255,255,255);}
+
+img.dkgreen {background-color: rgb(30,60,10);}
+a:hover .dkgreen {background-color: rgb(50,90,25);}
+
+img.sand {background-color: rgb(135,115,70);}
+a:hover .sand {background-color: rgb(150,133,86);}
+
+img.brown {background-color: rgb(120,75,10);}
+a:hover .brown {background-color: rgb(143,95,25);}
+
+img.dirtygreen {background-color: rgb(120,130,90);}
+a:hover .dirtygreen {background-color: rgb(140,150,115);}
+
+img.orange {background-color: rgb(240,110,0);}
+a:hover .orange {background-color: rgb(255,135,10);}
+
+img.dkpurple {background-color: rgb(40,30,40);}
+a:hover .dkpurple {background-color: rgb(50,40,50);}

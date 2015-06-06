@@ -1,0 +1,13 @@
+Dancing Stick Figures - for Winamp and Windows Media Player
+---------------------------------------------------------------
+by Lucian Wischik, based on an original by Justin Frenkel.
+http://www.wischik.com/lu/senses/sticky/
+
+
+This plugin displays a dancing stick figure, dancing in time
+to the music. Several stick figures are available. It's
+easy to draw your own stick figures as well. Visit
+the sticky web site (above) for more information on creating
+stick figures, and to download extra ones contributed by
+other users.
+

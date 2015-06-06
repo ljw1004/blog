@@ -1,0 +1,10 @@
+Sticky Copyright
+------------------
+(c) 1999-2002 Lucian Wischik
+
+Lucian Wischik hereby asserts his rights as author of "Sticky"
+and all of its source code and related files (apart from
+regex, unzip and zip which were written by other people)
+Some of the files in the "stick" directory belong to Lucian;
+others belong to other contributors.
+

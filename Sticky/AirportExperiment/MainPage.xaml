@@ -1,0 +1,19 @@
+﻿<Page
+    x:Class="AirportExperiment.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AirportExperiment"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid Background="{StaticResource ApplicationPageBackgroundThemeBrush}">
+        <Button x:Name="BtnConvert" Content="Convert" HorizontalAlignment="Left" Margin="50,50,0,0" VerticalAlignment="Top" Width="90"/>
+        <Button x:Name="BtnPlay" Content="Play" HorizontalAlignment="Left" Margin="150,50,0,0" VerticalAlignment="Top" Width="90"/>
+        <Button x:Name="BtnDetect" Content="Detect" HorizontalAlignment="Left" Margin="250,50,0,0" VerticalAlignment="Top" Width="90"/>
+        <Button x:Name="BtnStream" Content="Stream" HorizontalAlignment="Left" Margin="350,50,0,0" VerticalAlignment="Top" Width="90"/>
+        <Button x:Name="BtnExit" Content="Exit" HorizontalAlignment="Right" Margin="0,50,50,0" VerticalAlignment="Top" Width="90"/>
+        <TextBox x:Name="TextBox1" HorizontalAlignment="Left" Margin="50,100,0,0" VerticalAlignment="Top" Height="480" Width="480" TextWrapping="Wrap"/>
+        <Canvas x:Name="Canvas1" HorizontalAlignment="Left" Height="480" Margin="550,100,0,0" VerticalAlignment="Top" Width="480" Background="DarkBlue"/>
+    </Grid>
+</Page>

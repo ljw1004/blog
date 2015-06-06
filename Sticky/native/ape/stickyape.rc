@@ -1,0 +1,60 @@
+#include <windows.h>
+#include "../body.h"
+
+DLG_CONFIG DIALOG 0, 0, 231, 216
+STYLE DS_SETFONT | WS_CHILD
+FONT 8, "MS Sans Serif"
+BEGIN
+    CONTROL         "Enable",101,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,4,4,
+                    38,10
+    CONTROL         "Diagnostics",107,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+                    172,4,53,10
+    GROUPBOX        "Stick Figure",-1,5,23,220,30
+    COMBOBOX        102,10,34,176,90,CBS_DROPDOWNLIST | WS_VSCROLL | 
+                    WS_TABSTOP
+    PUSHBUTTON      "Edit...",106,190,32,30,14
+    CONTROL         "Replace",103,"Button",BS_AUTORADIOBUTTON,6,59,48,10
+    CONTROL         "Additive",104,"Button",BS_AUTORADIOBUTTON,54,59,47,10
+    CONTROL         "Blend 50/50",105,"Button",BS_AUTORADIOBUTTON,102,58,57,
+                    10
+    CONTROL         "OnTop",110,"Button",BS_AUTORADIOBUTTON,160,59,50,10
+    LTEXT           "Home page (to download the editor, and read instructions on its use):",
+                    -1,0,84,231,9
+    LTEXT           "www.wischik.com/lu/senses/sticky/",108,0,94,220,8
+    LTEXT           "Download extra stick figures:",-1,0,113,103,9
+    LTEXT           "www.wischik.com/lu/senses/sticky/extrasticks.html",109,
+                    0,123,220,8
+    LTEXT           "In the drop-down list are all the figures in winamp2\\plugins\\avs (or winamp3\\wacs\\data\\avs), including subdirectories. To edit, you must have installed Dancing Stick Figures. But just for viewing them with this APE, installation isn't needed.",
+                    -1,0,140,225,35
+END
+
+
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION STK_VERSION
+ PRODUCTVERSION STK_VERSION
+ FILEFLAGSMASK 0x17L
+ FILEFLAGS 0x0L
+ FILEOS 0x4L
+ FILETYPE 0x2L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080904b0"
+        BEGIN
+            VALUE "CompanyName", "Lu"
+            VALUE "FileDescription", "Sticky APE"
+            VALUE "FileVersion", STK_VERSION_S
+            VALUE "InternalName", "stickyape"
+            VALUE "LegalCopyright", "Copyright (C) 2003"
+            VALUE "OriginalFilename", "stickyape.dll"
+            VALUE "ProductName", "Dancing Stick Figures"
+            VALUE "ProductVersion", STK_VERSION_S
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x809, 1200
+    END
+END

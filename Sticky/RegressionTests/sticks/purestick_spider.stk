@@ -1,0 +1,21 @@
+nlimbs=15
+nshapes=1
+root=0
+category=Animals
+limb(0)= line invisible root(0) angabs(0,3.14159275) lmin(4.46604529) length(4.96227254) freq(4,0) frac(4.67005334) col(-1,-1,-1) thickness(1) 
+limb(1)= spring root(14) ang(0,-0.523598792) lmin(3.02654919) length(6.14636297) freq(0,0) frac(0.333204786) col(-1,-1,-1) thickness(1) 
+limb(2)= line root(1) angabs(-0.837981225,0.523598792) lmin(2.17846276) length(2.42051418) freq(1,2) frac(0.4288) col(-1,-1,-1) thickness(1) 
+limb(3)= line root(2) ang(1.09793293,0.869373094) lmin(2.08710326) length(2.31900362) freq(0,4) frac(0.5546) col(-1,-1,-1) thickness(1) 
+limb(4)= line root(1) angabs(0.223476601,0.523598792) lmin(1.54870914) length(1.72078793) freq(0,3) frac(0.5942) col(-1,-1,-1) thickness(1) 
+limb(5)= line root(4) ang(0,2.09439517) lmin(1.92093728) length(2.13437475) freq(0,5) frac(0.4134) col(-1,-1,-1) thickness(1) 
+limb(6)= line root(1) angabs(2.56728782,-0.523598792) lmin(0.871194949) length(0.967994388) freq(0,4) frac(0.5546) col(-1,-1,-1) thickness(1) 
+limb(7)= line root(6) ang(0,-1.78581419) lmin(1.88394351) length(2.09327057) freq(1,4) frac(0.5248) col(-1,-1,-1) thickness(1) 
+limb(8)= line root(1) angabs(3.14159275,-0.523598792) lmin(1.78547487) length(1.98386097) freq(0,4) frac(0.5546) col(-1,-1,-1) thickness(1) 
+limb(9)= line root(8) ang(-0.523598792,-1.57079638) lmin(2.23314178) length(2.48126864) freq(0,4) frac(0.5546) col(-1,-1,-1) thickness(1) 
+limb(10)= line root(1) angabs(-2.42584906,-0.523598792) lmin(1.69201064) length(1.88001182) freq(0,5) frac(0.4134) col(-1,-1,-1) thickness(1) 
+limb(11)= line root(10) ang(-0.94671978,-1.57079638) lmin(2.65201868) length(2.94668742) freq(1,4) frac(0.5248) col(-1,-1,-1) thickness(1) 
+limb(12)= line root(1) ang(-1.57079638,1.34097454) lmin(1.84578829) length(2.05087588) freq(1,0) frac(0.0679269853) col(-1,-1,-1) thickness(1) 
+limb(13)= line root(12) ang(0.802281637,1.57079638) lmin(1.69257659) length(1.88064066) freq(1,4) frac(0.5248) col(-1,-1,-1) thickness(1) 
+limb(14)= line root(0) angabs(1.81577499,-0.523598792) lmin(0.22316648) length(0.557916201) freq(2,0) frac(0.502171047) col(-1,-1,-1) thickness(1) 
+shape(0)= limbs
+ 

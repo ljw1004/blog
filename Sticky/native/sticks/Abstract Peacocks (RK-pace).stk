@@ -1,0 +1,17 @@
+nlimbs=8
+nshapes=3
+root=0
+version=3.44
+category=Abstract
+limb(0)= line invisible root(0) angabs(0,3.14159275) lmin(0) length(0) freq(4,0) frac(0) col(200,200,200) thickness(0) 
+limb(1)= arc invisible root(0) angabs(-1.57079638,6.2681491) lmin(1.57879319) length(3.94698299) freq(0,1) frac(0.62745098) col(-1,-1,-1) thickness(1) 
+limb(2)= arc invisible root(0) angabs(-1.57079638,-6.26633312) lmin(1.04670323) length(2.61675808) freq(0,2) frac(0.533333333) col(-1,-1,-1) thickness(1) 
+limb(3)= arc invisible root(0) angabs(-1.57079638,-6.23004405) lmin(2.10006641) length(5.25016603) freq(0,0) frac(0.619607843) col(-1,-1,-1) thickness(1) 
+limb(4)= line invisible root(0) angabs(-1.57079638,3.13174249) lmin(1.5202339) length(3.80058475) freq(4,0) frac(0.661043169) col(-1,-1,-1) thickness(1) 
+limb(5)= arc invisible root(4) angabs(-1.57079638,-6.26633312) lmin(0.577422198) length(1.4435555) freq(0,5) frac(0.635294118) col(-1,-1,-1) thickness(1) 
+limb(6)= arc invisible root(4) angabs(-1.57079638,6.2681491) lmin(0.8511502) length(2.1278755) freq(0,4) frac(0.466666667) col(-1,-1,-1) thickness(1) 
+limb(7)= arc invisible root(4) angabs(-1.57079638,-6.23004405) lmin(1.1151361) length(2.78784024) freq(0,3) frac(0.450980392) col(-1,-1,-1) thickness(1) 
+shape(0)= limbs
+shape(1)= brush(150,150,150) points(3,3,0,2,2,0,3,0,1,1) arcroots(0,3,6,9) 
+shape(2)= brush(100,100,100) points(4,6,4,7,7,4,6,6,4,5,5) arcroots(3,7,10) 
+ 

@@ -1,0 +1,10 @@
+USEUNIT("sfp.cpp");
+USERC("sfp.rc");
+USEUNIT("..\body.cpp");
+USEUNIT("..\regex.cpp");
+USEUNIT("..\unzip.cpp");
+USEUNIT("..\utils.cpp");
+//---------------------------------------------------------------------------
+This file is used by the project manager only and should be treated like the project file
+
+WinMain

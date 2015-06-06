@@ -1,0 +1,112 @@
+HOW TO ASSOCIATE STICKS WITH MUSIC
+------------------------------------
+
+When the Sticky plugin is set to Randomize, you can
+control which sticks get "randomly" shown depending
+on which music is playing, according to a set of rules.
+
+The rules act on the music's Title, Artist and Filename.
+Title and Artist are taken from mp3 or wma headers.
+So, sometimes they may be missing. I therefore tend
+to base my rules just on filename. However, filenames
+(i.e. urls) are less useful when the music is being
+streamed over the internet, since the url could be anything.
+
+--------------
+
+When title is:    *
+and artist is:    *
+and filename's:   *\Beatles\*
+then use stick:   Animals\*
+
+will match:       c:\my music\Beatles\White Album\Crazy.mp3
+will also match:  c:\my music\Covers\Beatles\About You.wma
+
+will not match:   c:\my music\Beatles Music\Yellow Sub.mp3
+   (why won't it match? because we were looking for a folder
+    with just the name Beatles on its own, so "Beatles Music"
+    doesn't count. We could have used *\*Beatles*\* instead.
+
+---------------
+
+
+SAME STICK FOR MANY PIECES OF MUSIC
+Say you want the stick figures Animals\* to be shown for
+Beatles music, and also for all Monkeys music. Then just
+create two separate rules for them: *\Beatles\* for the
+first, and *\Monkeys\* for the second.
+
+
+DIFFERENT STICKS FOR SAME MUSIC
+Say you want all Bach music to have either "Abstract\*"
+or "Things\*" stick figures. The easy way to do this is
+to create a new stick figure directory, called (say)
+"For Bach", and copy all the stick figures into it.
+Then make a rule that chooses "For Bach\*" sticks.
+.
+Alternatively, you can use the advanced "regular expression"
+box at the bottom of the dialog. The regular expression
+(Abstract\\.*)|(Things\\.*) will match sticks in both
+folders. There is a brief tutorial on regular expressions
+at the bottom of this document.
+
+
+SOME OF MY MUSIC HAS NO TITLE OR ARTIST SHOWN.
+The Stick Figure plugin relies on MP3 and WMA header
+tags, and they are not always present. Either add
+the tags with some external utility, or make a rule
+based on filename.
+
+
+FILENAME DIFFERENCES.
+Winamp2, Winamp3 and Windows Media Player all store their
+filenames in different formats: either "file:C:\Music\.."
+or "C:\Music\.." or whatever. If you use both Winamp and
+Windows Media Player, and and you want to make a general
+rule for both, then just use *\Music to match both.
+
+
+MAKING RULES FOR FILES ON CD.
+The Filenames for CD audio tracks aren't useful. Instead,
+you'll have to have connected to the Internet, downloaded
+the track listing into your media player, and make a rule
+based on Title or Artist.
+
+
+RULES AND THEIR PRECEDENCE.
+Rules are obeyed in order of precedence. If the first
+rule says which stick figure to use for a piece of music,
+it is used. If not, the second rule is examined. Then
+the third. And so on. If the plugin gets to the end of
+the list without any rules matching, then it picks a
+random stick figure from the entire selection.
+
+
+REGULAR EXPRESSIONS.
+The rule-matching is done internally with regular expressions.
+These are more powerful than the * wildcards you've been
+using before, and a lot more complicated. The advice here
+will get you started, but if you want to use them you should
+find some online tutorial or a computer-science textbook.
+Each piece of music is stored as a string,
+  ARTIST=Beatles___TITLE=Eleanor Rigby___FILENAME=c:\music\el.mp3___
+Each rule is a regular-expression that matches this string. For
+instance,
+  ARTIST=.*Beatles.*___TITLE=.*___FILENAME=.*___
+Regular expressions use several special characters:
+  .     matches any single character
+  *     matches the previous expression 0 or more times
+  .*    matches any single character 0 or more times
+  (ab)* matches an empty string, or "ab", or "abab", or ...
+  x|y   matches either x or y
+  (mp3)|(wma)  matches "mp3" and "wma"
+  [abc] matches either a or b or c
+  mp[34]   matches "mp3" and "mp4"
+  \.    matches a full stop
+  \(    matches an open bracket
+  \)    matches a close bracket
+
+  (Animals\*)|(Things\*)   matches stick figures in either folder.
+
+
+

@@ -1,0 +1,686 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include <windows.h>
+#include "../body.h"
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.K.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENG)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_UK
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include <windows.h>\r\n"
+    "#include ""../body.h""\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Cursor
+//
+
+IDC_ZOOM                CURSOR                  "zoom.cur"
+IDC_POINTER             CURSOR                  "arrow.cur"
+IDC_SMALLCREATE         CURSOR                  "arrowcop.cur"
+IDC_ABSREL              CURSOR                  "cur00001.cur"
+IDC_BIGCREATE           CURSOR                  "cur00002.cur"
+IDC_ANGLE               CURSOR                  "handle.cur"
+IDC_MOVE                CURSOR                  "pointer_.cur"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_MENU MENU 
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&New",                        ID_FILE_NEW
+        MENUITEM "&Open...",                    ID_FILE_OPEN
+        MENUITEM "&Save",                       ID_FILE_SAVE
+        MENUITEM "Save &As...",                 ID_FILE_SAVEAS
+        MENUITEM SEPARATOR
+        MENUITEM "&Export AVI...",              ID_FILE_EXPORTAVI
+        MENUITEM SEPARATOR
+        MENUITEM "E&xit",                       ID_FILE_EXIT
+    END
+    POPUP "&Edit"
+    BEGIN
+        MENUITEM "&Undo\tCtrl+Z",               57643
+        MENUITEM "&Redo\tCtrl+Y",               57644
+        MENUITEM SEPARATOR
+        MENUITEM "Cu&t\tCtrl+X",                ID_EDIT_CUT
+        MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
+        MENUITEM "&Paste\tCtrl+V",              ID_EDIT_PASTE
+        MENUITEM SEPARATOR
+        MENUITEM "&Insert Line\tIns",           ID_EDIT_INSERT
+        MENUITEM "&Delete Line\tDel",           ID_EDIT_DELETE
+        MENUITEM SEPARATOR
+        MENUITEM "&Enlarge\tPageUp",            ID_EDIT_ENLARGE
+        MENUITEM "&Shrink\tPageDown",           ID_EDIT_SHRINK
+        MENUITEM "&Flip\tCtrl+F",               ID_EDIT_FLIP
+    END
+    POPUP "&Tools"
+    BEGIN
+        MENUITEM "&Jump!\tJ",                   ID_TOOLS_TEST
+        MENUITEM SEPARATOR
+        MENUITEM "&Show joints\tS",             ID_TOOLS_SHOWJOINTS
+        MENUITEM "Show &angles\tS",             ID_TOOLS_SHOWANGLES
+        MENUITEM "Show in&visibles\tS",         ID_TOOLS_SHOWINVISIBLES
+        MENUITEM "Wh&iteprint\tI",              ID_INVERT
+        MENUITEM "Snap a&ngles\tShift",         ID_TOOLS_SNAP
+        MENUITEM "Snap &grid",                  ID_TOOLS_GRID
+        MENUITEM "&Template...",                ID_TOOLS_BACKDROP
+        MENUITEM SEPARATOR
+        MENUITEM "&Edit Mode\tE",               ID_TOOLS_EDITMODE
+        MENUITEM "&Create Mode\tC",             ID_TOOLS_CREATEMODE
+        MENUITEM "&Zoom Mode\tZ",               ID_TOOLS_ZOOMMODE
+        POPUP "Zoo&m"
+        BEGIN
+            MENUITEM "Zoom &in\tCtrl,+",            40076
+            MENUITEM "Zoom &out\tCtrl,-",           40077
+            MENUITEM "Zoom f&ull\t=",               40078
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "&User colours...",            ID_TOOLS_USERCOLOURS
+        MENUITEM "Use&r cumulatives...",        ID_TOOLS_USERCUMULATIVES
+        MENUITEM "E&ffects...",                 ID_TOOLS_EFFECTS
+        MENUITEM "&Bitmaps...",                 ID_TOOLS_BITMAPS
+        MENUITEM "Chec&k bitmaps...",           ID_TOOLS_CHECKUPRIGHT
+        MENUITEM "St&yles...",                  ID_TOOLS_STYLES
+        MENUITEM SEPARATOR
+        MENUITEM "Target Framerate...",         ID_TOOLS_TARGETFRAMERATE
+        MENUITEM "Categ&ory...",                ID_TOOLS_CATEGORY
+    END
+    POPUP "&Help"
+    BEGIN
+        MENUITEM "&Help Topics\tF1",            ID_HELP_HELP
+        MENUITEM SEPARATOR
+        MENUITEM "&About Sticky...",            ID_HELP_ABOUT
+    END
+END
+
+IDR_MENU1 MENU 
+BEGIN
+    MENUITEM "Fixed",                       ID_FIXED
+    MENUITEM "Left",                        ID_LEFT
+    MENUITEM "Right",                       ID_RIGHT
+    MENUITEM "Difference",                  ID_DIFFERENCE
+    MENUITEM "1",                           ID_1
+    MENUITEM "2",                           ID_2
+    MENUITEM "3",                           ID_3
+    MENUITEM "4",                           ID_4
+    MENUITEM "5",                           ID_5
+    MENUITEM "6",                           ID_6
+    MENUITEM "Visibility",                  ID_VISIBILITY
+    MENUITEM "Linetype",                    ID_LINETYPE
+    MENUITEM "Red",                         ID_RED
+    MENUITEM "Green",                       ID_GREEN
+    MENUITEM "Blue",                        ID_BLUE
+    MENUITEM "Yellow",                      ID_YELLOW
+    MENUITEM "Black",                       ID_BLACK
+    MENUITEM "Purple",                      ID_PURPLE
+    MENUITEM "White",                       ID_WHITE
+    MENUITEM "Heavy",                       ID_HEAVY
+    MENUITEM "Medium",                      ID_MEDIUM
+    MENUITEM "Thin",                        ID_THIN
+    MENUITEM "Invert",                      ID_INVERT
+    MENUITEM "Zero",                        ID_0
+    MENUITEM "ToFront",                     40054
+    MENUITEM "ToBack",                      40055
+    MENUITEM "Negative",                    ID_NEGATIVE
+    MENUITEM "Up",                          ID_CUP
+    MENUITEM "Down",                        ID_CDOWN
+    MENUITEM "Left",                        ID_CLEFT
+    MENUITEM "Right",                       ID_CRIGHT
+    POPUP "Stuff"
+    BEGIN
+        MENUITEM "Show",                        ID_TOOLS_SHOW
+        MENUITEM "ExportCancel",                ID_EXPORTCANCEL
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Accelerator
+//
+
+IDR_ACCELERATORS ACCELERATORS 
+BEGIN
+    "0",            ID_0,                   VIRTKEY, NOINVERT
+    "1",            ID_1,                   VIRTKEY, NOINVERT
+    "2",            ID_2,                   VIRTKEY, NOINVERT
+    "3",            ID_3,                   VIRTKEY, NOINVERT
+    "4",            ID_4,                   VIRTKEY, NOINVERT
+    "5",            ID_5,                   VIRTKEY, NOINVERT
+    "6",            ID_6,                   VIRTKEY, NOINVERT
+    "K",            ID_BLACK,               VIRTKEY, NOINVERT
+    "B",            ID_BLUE,                VIRTKEY, NOINVERT
+    VK_DOWN,        ID_CDOWN,               VIRTKEY, NOINVERT
+    VK_DOWN,        ID_CDOWN,               VIRTKEY, SHIFT, NOINVERT
+    VK_LEFT,        ID_CLEFT,               VIRTKEY, NOINVERT
+    VK_LEFT,        ID_CLEFT,               VIRTKEY, SHIFT, NOINVERT
+    VK_RIGHT,       ID_CRIGHT,              VIRTKEY, NOINVERT
+    VK_RIGHT,       ID_CRIGHT,              VIRTKEY, SHIFT, NOINVERT
+    VK_UP,          ID_CUP,                 VIRTKEY, NOINVERT
+    VK_UP,          ID_CUP,                 VIRTKEY, SHIFT, NOINVERT
+    "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL, NOINVERT
+    VK_BACK,        ID_EDIT_DELETE,         VIRTKEY, NOINVERT
+    VK_DELETE,      ID_EDIT_DELETE,         VIRTKEY, NOINVERT
+    VK_PRIOR,       ID_EDIT_ENLARGE,        VIRTKEY, NOINVERT
+    VK_PRIOR,       ID_EDIT_ENLARGE,        VIRTKEY, SHIFT, NOINVERT
+    "F",            ID_EDIT_FLIP,           VIRTKEY, CONTROL, NOINVERT
+    VK_INSERT,      ID_EDIT_INSERT,         VIRTKEY, NOINVERT
+    "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
+    "Y",            ID_EDIT_REDO,           VIRTKEY, CONTROL, NOINVERT
+    VK_NEXT,        ID_EDIT_SHRINK,         VIRTKEY, NOINVERT
+    VK_NEXT,        ID_EDIT_SHRINK,         VIRTKEY, SHIFT, NOINVERT
+    "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL, NOINVERT
+    "F",            ID_FIXED,               VIRTKEY, NOINVERT
+    "G",            ID_GREEN,               VIRTKEY, NOINVERT
+    "H",            ID_HEAVY,               VIRTKEY, NOINVERT
+    VK_F1,          ID_HELP_HELP,           VIRTKEY, NOINVERT
+    "I",            ID_INVERT,              VIRTKEY, NOINVERT
+    "L",            ID_LEFT,                VIRTKEY, NOINVERT
+    "A",            ID_LINETYPE,            VIRTKEY, NOINVERT
+    "M",            ID_MEDIUM,              VIRTKEY, NOINVERT
+    "N",            ID_NEGATIVE,            VIRTKEY, NOINVERT
+    "P",            ID_PURPLE,              VIRTKEY, NOINVERT
+    "D",            ID_RED,                 VIRTKEY, NOINVERT
+    "R",            ID_RIGHT,               VIRTKEY, NOINVERT
+    "A",            ID_STYLEA,              VIRTKEY, CONTROL, NOINVERT
+    "B",            ID_STYLEB,              VIRTKEY, CONTROL, NOINVERT
+    "D",            ID_STYLED,              VIRTKEY, CONTROL, NOINVERT
+    "E",            ID_STYLEE,              VIRTKEY, CONTROL, NOINVERT
+    "F",            ID_STYLEF,              VIRTKEY, CONTROL, NOINVERT
+    "G",            ID_STYLEG,              VIRTKEY, CONTROL, NOINVERT
+    "H",            ID_STYLEH,              VIRTKEY, CONTROL, NOINVERT
+    "I",            ID_STYLEI,              VIRTKEY, CONTROL, NOINVERT
+    "J",            ID_STYLEJ,              VIRTKEY, CONTROL, NOINVERT
+    "K",            ID_STYLEK,              VIRTKEY, CONTROL, NOINVERT
+    "L",            ID_STYLEL,              VIRTKEY, CONTROL, NOINVERT
+    "M",            ID_STYLEM,              VIRTKEY, CONTROL, NOINVERT
+    "N",            ID_STYLEN,              VIRTKEY, CONTROL, NOINVERT
+    "O",            ID_STYLEO,              VIRTKEY, CONTROL, NOINVERT
+    "P",            ID_STYLEP,              VIRTKEY, CONTROL, NOINVERT
+    "Q",            ID_STYLEQ,              VIRTKEY, CONTROL, NOINVERT
+    "R",            ID_STYLER,              VIRTKEY, CONTROL, NOINVERT
+    "S",            ID_STYLES,              VIRTKEY, CONTROL, NOINVERT
+    "T",            ID_STYLET,              VIRTKEY, CONTROL, NOINVERT
+    "T",            ID_THIN,                VIRTKEY, NOINVERT
+    VK_END,         ID_TOBACK,              VIRTKEY, NOINVERT
+    VK_HOME,        ID_TOFRONT,             VIRTKEY, NOINVERT
+    "C",            ID_TOOLS_CREATEMODE,    VIRTKEY, NOINVERT
+    "E",            ID_TOOLS_EDITMODE,      VIRTKEY, NOINVERT
+    "S",            ID_TOOLS_SHOW,          VIRTKEY, NOINVERT
+    "J",            ID_TOOLS_TEST,          VIRTKEY, NOINVERT
+    "Z",            ID_TOOLS_ZOOMMODE,      VIRTKEY, NOINVERT
+    "V",            ID_VISIBILITY,          VIRTKEY, NOINVERT
+    "W",            ID_WHITE,               VIRTKEY, NOINVERT
+    "Y",            ID_YELLOW,              VIRTKEY, NOINVERT
+    "=",            ID_ZOOMFULL,            ASCII,  NOINVERT
+    VK_OEM_PLUS,    ID_ZOOMFULL,            VIRTKEY, NOINVERT
+    "+",            ID_ZOOMIN,              ASCII,  NOINVERT
+    VK_ADD,         ID_ZOOMIN,              VIRTKEY, NOINVERT
+    VK_OEM_PLUS,    ID_ZOOMIN,              VIRTKEY, CONTROL, NOINVERT
+    VK_OEM_PLUS,    ID_ZOOMIN,              VIRTKEY, SHIFT, NOINVERT
+    VK_OEM_MINUS,   ID_ZOOMOUT,             VIRTKEY, NOINVERT
+    VK_OEM_MINUS,   ID_ZOOMOUT,             VIRTKEY, CONTROL, NOINVERT
+    VK_OEM_MINUS,   ID_ZOOMOUT,             VIRTKEY, SHIFT, NOINVERT
+    VK_SUBTRACT,    ID_ZOOMOUT,             VIRTKEY, NOINVERT
+    VK_SUBTRACT,    ID_ZOOMOUT,             VIRTKEY, SHIFT, NOINVERT
+    VK_ESCAPE,      ID_EXPORTCANCEL,        VIRTKEY, NOINVERT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+1                       ICON                    "app.ico"
+2                       ICON                    "doc.ico"
+3                       ICON                    "docs.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUT DIALOG  20, 20, 159, 99
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About Stick Figures"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,102,78,50,14
+    LTEXT           "by Lucian Wischik, based on an original\r\nby Justin Frenkel",
+                    -1,7,53,145,21
+    LTEXT           "http://www.wischik.com/lu/senses/sticky/",ID_HREF,7,36,
+                    145,8
+    LTEXT           "Dancing Stick Figures visualization\r\nfor Windows Media Player and Winamp",
+                    -1,7,7,145,19
+    LTEXT           "version v (core v manifest v)",ID_VERSION,7,23,145,8
+END
+
+IDD_USER DIALOG  0, 0, 235, 100
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "User"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,178,29,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,178,47,50,14
+    LTEXT           "User configuration:",IDC_TITLE,7,7,221,20
+    EDITTEXT        IDC_EDIT,7,29,162,64,ES_MULTILINE | ES_AUTOVSCROLL | 
+                    ES_WANTRETURN | WS_VSCROLL
+END
+
+IDD_INSTALL DIALOG  0, 0, 185, 254
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Install Stick Figures"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    CONTROL         "",IDC_PREVIEW,"Static",SS_BLACKFRAME | NOT WS_VISIBLE,7,
+                    7,171,150
+    CTEXT           "Do you wish to install this stick figure?\r\n* will overwrite existing copy.",
+                    IDC_INSTALLPROMPT,7,166,171,16
+    LISTBOX         IDC_LIST,7,185,171,44,WS_VSCROLL | WS_TABSTOP
+    DEFPUSHBUTTON   "&Yes",IDYES,43,234,30,14
+    PUSHBUTTON      "&No",IDNO,79,234,30,14
+    PUSHBUTTON      "Cancel",IDCANCEL,115,234,30,14
+END
+
+IDD_EXPORT DIALOG  0, 0, 288, 290
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Export to AVI"
+FONT 8, "MS Sans Serif"
+BEGIN
+    GROUPBOX        "Audio",IDC_STATIC,7,7,226,76
+    CONTROL         "&Silent dancing",IDC_SILENTDANCING,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP,12,17,157,10
+    CONTROL         "Silent &thrashing about",IDC_SILENTTHRASHING,"Button",
+                    BS_AUTORADIOBUTTON,12,27,157,10
+    CONTROL         "Dance to a .&WAV file:",IDC_DANCETOWAV,"Button",
+                    BS_AUTORADIOBUTTON,12,37,157,10
+    EDITTEXT        IDC_WAVNAME,24,47,154,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "&Browse...",IDC_WAVBROWSE,183,47,44,14
+    LTEXT           "Note: this audio will be uncompressed in the AVI file. To compress it, use some third-party utility such as Movie Maker.",
+                    IDC_STATIC,24,62,202,18
+    GROUPBOX        "Video",IDC_STATIC,7,93,225,81
+    RTEXT           "&Dimensions:",IDC_STATIC,14,105,38,8
+    EDITTEXT        IDC_WIDTH,54,102,40,14,ES_AUTOHSCROLL | WS_GROUP
+    LTEXT           "b&y",IDC_STATIC,97,105,9,8
+    EDITTEXT        IDC_HEIGHT,109,102,40,14,ES_AUTOHSCROLL
+    LTEXT           "pixels",IDC_STATIC,152,104,23,8
+    RTEXT           "&Frequency:",IDC_STATIC,15,120,37,8
+    EDITTEXT        IDC_FPS,54,118,40,14,ES_AUTOHSCROLL
+    LTEXT           "frames per second",IDC_STATIC,98,120,67,8
+    RTEXT           "Duration:",IDC_STATIC,15,135,37,8
+    CONTROL         "&As long as the WAV file",IDC_TIMEWAV,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP,54,135,126,10
+    CONTROL         "Ti&me",IDC_TIMEFIXED,"Button",BS_AUTORADIOBUTTON,54,146,
+                    29,10
+    EDITTEXT        IDC_TIME,87,145,40,14,ES_AUTOHSCROLL | WS_GROUP
+    LTEXT           "seconds total",IDC_STATIC,130,147,50,8
+    CONTROL         "Show &video-compression dialog",IDC_SHOWCOMPRESSION,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,161,115,10
+    GROUPBOX        "Content",IDC_STATIC,7,186,224,96
+    CONTROL         "&Current stick figure",IDC_STICK_CURRENT,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP,14,196,94,10
+    CONTROL         "A &procession of stick figures:",IDC_STICK_PROCESSION,
+                    "Button",BS_AUTORADIOBUTTON,14,206,106,10
+    EDITTEXT        IDC_PROCTIME,124,201,40,14,ES_AUTOHSCROLL
+    LTEXT           "secs per figure",IDC_STATIC,169,207,48,8
+    EDITTEXT        IDC_PROCESSIONLIST,25,216,197,43,ES_MULTILINE | 
+                    ES_AUTOHSCROLL | ES_WANTRETURN | WS_VSCROLL | WS_HSCROLL
+    LTEXT           "Right-click to add a figure to the list. One figure per line. The list will be repeated until the music stops.",
+                    IDC_STATIC,25,259,188,18
+    DEFPUSHBUTTON   "&OK",IDOK,239,11,44,14
+    PUSHBUTTON      "Cancel",IDCANCEL,239,29,44,14
+END
+
+IDD_BITMAPS DIALOG  0, 0, 287, 204
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Bitmaps"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "&Close",IDOK,230,183,50,14
+    LISTBOX         IDC_LIST,7,7,120,106,LBS_SORT | LBS_NOINTEGRALHEIGHT | 
+                    LBS_DISABLENOSCROLL | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "",IDC_PICTURE,"Static",SS_BLACKFRAME | NOT WS_VISIBLE,
+                    134,7,146,106
+    LTEXT           "RIGHT-CLICK to ADD a bitmap to this list. Then, create a CIRCLE in the editor (in the editor, press A to cycle through line-types). Then right-click on the circle and do Fill > bmpname.",
+                    IDC_STATIC,7,119,124,44
+    LTEXT           "The top-left pixel is taken as the transparency. If you don't want transparency, right-click and RENAME the to ""bmpname-NT"".",
+                    IDC_STATIC,7,163,106,34
+    LTEXT           "FOR SPEED:\r\n(1) make bmps 8bpp\r\n(2) keep them exactly upright - use Tools>CheckBitmaps\r\n(3) disable their transparency\r\n(4) for large backgrounds use big jpegs, for all else use small images.",
+                    IDC_STATIC,141,118,139,59
+    PUSHBUTTON      "&Add",IDC_ADD,140,183,30,14
+END
+
+IDD_RENAME DIALOG  0, 0, 200, 30
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Rename"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,158,7,35,14
+    EDITTEXT        IDC_RENAME,7,7,141,14,ES_AUTOHSCROLL
+END
+
+IDD_UPRIGHT DIALOG  0, 0, 279, 124
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Upright Bitmaps"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,222,7,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,222,24,50,14
+    LTEXT           "Rotated bitmaps are only available in WinNT/ 2000/ XP.\r\nIn earlier versions of Windows, all bitmaps will appear upright.",
+                    -1,7,7,212,17
+    LTEXT           "The stick figure currently contains 23 non-upright bitmaps.",
+                    IDC_UPRIGHTREPORT,7,31,212,11
+    LTEXT           "You might wish to force all bitmaps in your stick figure to be upright. This at least will guarantee that all users of your stick figure can enjoy the same experience.",
+                    -1,7,47,212,26
+    PUSHBUTTON      "Fix all bitmaps in the upright position",IDC_FIX,38,80,
+                    142,14
+    CONTROL         "Perform this check every time the stick figure is saved",
+                    IDC_ALWAYSCHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,
+                    103,194,10
+END
+
+IDD_STYLES DIALOG  0, 0, 205, 119
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Styles"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "&Close",IDOK,148,98,50,14
+    LISTBOX         IDC_LIST,7,19,191,73,LBS_SORT | LBS_NOINTEGRALHEIGHT | 
+                    LBS_DISABLENOSCROLL | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Right-click to add/edit/delete styles.",IDC_STATIC,7,7,
+                    191,8
+END
+
+IDD_EFFECTS DIALOG  0, 0, 295, 159
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Effects"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "&Close",IDOK,240,140,50,14
+    LISTBOX         IDC_LIST,5,5,132,73,LBS_SORT | LBS_NOINTEGRALHEIGHT | 
+                    LBS_DISABLENOSCROLL | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Static",IDC_EFFECT,144,5,138,71,NOT WS_VISIBLE | 
+                    WS_BORDER
+    LTEXT           "An ""EFFECT"" is a colour/bitmap that changes in response to the music. It can be used as a line-colour or a fill.\r\n\r\nRight-click to add/edit/delete an effect.",
+                    IDC_LIST1,6,81,130,46
+    LTEXT           "This is a preview of the effect.",IDC_STATIC,145,82,140,
+                    14
+    LTEXT           "An ""EFFECT"" is a colour/bitmap that changes in response to the music. It can be used as a line-colour or as a fill.",
+                    IDC_EDIT1,6,81,130,28
+    LTEXT           "The effect is controlled by an imaginary spring which moves with the music. Depending on which segment it points to, that segment's colour is used.\r\n\r\nRight-click the segment or line to alter properties. Left-drag to resize.",
+                    IDC_EDIT2,145,82,144,58
+END
+
+IDD_ASSOCIATE DIALOG  0, 0, 332, 217
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Associate sticks with music"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    LTEXT           "&When the 'Randomize' option is chosen, Sticky will choose a stick figure according to these rules, in order:",
+                    IDC_STATIC,7,7,258,18
+    LISTBOX         IDC_RULES,7,29,259,72,LBS_NOINTEGRALHEIGHT | 
+                    LBS_DISABLENOSCROLL | WS_VSCROLL | WS_HSCROLL | 
+                    WS_TABSTOP
+    LTEXT           "Recent music &not matched by any of the rules: double-click to add a rule.",
+                    IDC_STATIC,7,121,239,11
+    LISTBOX         IDC_RECENTS,7,132,257,78,LBS_NOINTEGRALHEIGHT | 
+                    LBS_DISABLENOSCROLL | WS_VSCROLL | WS_HSCROLL | 
+                    WS_TABSTOP
+    DEFPUSHBUTTON   "OK",IDOK,275,7,50,14
+    PUSHBUTTON      "&Cancel",IDCANCEL,275,24,50,14
+    PUSHBUTTON      "&Up",IDC_UP,275,55,50,14
+    PUSHBUTTON      "&Down",IDC_DOWN,275,74,50,14
+    PUSHBUTTON      "&Add rule...",IDC_ADD,275,108,50,14
+    PUSHBUTTON      "&Modify rule...",IDC_MODIFY,275,129,50,14
+    PUSHBUTTON      "&Remove rule",IDC_REMOVE,275,148,50,14
+    PUSHBUTTON      "&Help",IDC_HELPBTN,275,196,50,14
+END
+
+IDD_RULE DIALOG  0, 0, 307, 201
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Rule"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    GROUPBOX        "Simple rule",IDC_STATIC,7,7,227,115
+    LTEXT           "when &Title is:",IDC_STATIC,14,19,131,8
+    EDITTEXT        IDC_TITLE,14,28,211,14,ES_AUTOHSCROLL
+    LTEXT           "and &Artist is:",IDC_STATIC,14,44,131,8
+    EDITTEXT        IDC_ARTIST,14,53,211,14,ES_AUTOHSCROLL
+    LTEXT           "and &Filename is:",IDC_STATIC,14,69,131,8
+    EDITTEXT        IDC_FILENAME,14,78,211,14,ES_AUTOHSCROLL
+    LTEXT           "then use this &Stick: (right-click to choose)",
+                    IDC_STATIC,14,94,190,8
+    EDITTEXT        IDC_STICK,14,103,211,14,ES_AUTOHSCROLL
+    GROUPBOX        "&Advanced rule (regexps for music and stick)",
+                    IDC_STATIC,7,144,228,50
+    EDITTEXT        IDC_REGEXP,15,156,211,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_STICKRE,15,173,211,14,ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "OK",IDOK,250,7,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,250,24,50,14
+    LTEXT           "Hint: use wild cards for more general rules.\r\n\r\neg. filename *\\Blues\\* will match all music in your Blues directory.",
+                    IDC_STATIC,249,46,51,80
+    PUSHBUTTON      "&Help",IDC_HELPBTN,250,180,50,14
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_ABOUT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 152
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 92
+    END
+
+    IDD_USER, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 228
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 93
+    END
+
+    IDD_INSTALL, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 178
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 248
+    END
+
+    IDD_EXPORT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 283
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 282
+    END
+
+    IDD_BITMAPS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 280
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 197
+    END
+
+    IDD_RENAME, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 193
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 23
+    END
+
+    IDD_UPRIGHT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 272
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 117
+    END
+
+    IDD_STYLES, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 198
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 112
+    END
+
+    IDD_EFFECTS, DIALOG
+    BEGIN
+        RIGHTMARGIN, 290
+        BOTTOMMARGIN, 154
+    END
+
+    IDD_ASSOCIATE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 325
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 210
+    END
+
+    IDD_RULE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 300
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 194
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// RT_MANIFEST
+//
+
+1                       RT_MANIFEST             "StickEd.exe.manifest"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION STK_VERSION
+ PRODUCTVERSION STK_VERSION
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080904b0"
+        BEGIN
+            VALUE "CompanyName", "Lucian Wischik"
+            VALUE "FileDescription", "Stick Figure Editor"
+            VALUE "FileVersion", STK_VERSION_S
+            VALUE "InternalName", "StickEd"
+            VALUE "LegalCopyright", "Copyright © 2001"
+            VALUE "OriginalFilename", "StickEd.exe"
+            VALUE "ProductName", "Stick Figures"
+            VALUE "ProductVersion", STK_VERSION_S
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x809, 1200
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Data
+//
+
+1                       Rcdata                  "starwars.dat"
+2                       Rcdata                  "kylie.dat"
+3                       Rcdata                  "moby.dat"
+#endif    // English (U.K.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
