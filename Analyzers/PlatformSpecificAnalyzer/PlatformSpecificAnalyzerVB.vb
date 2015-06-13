@@ -69,6 +69,8 @@ Public Class PlatformSpecificAnalyzerVB
         If targetAssembly = "Windows.Foundation.FoundationContract" OrElse
                 targetAssembly = "Windows.Foundation.UniversalApiContract" OrElse
                 targetAssembly = "Windows.Networking.Connectivity.WwanContract" Then Return
+        ' Some WinRT types like Windows.UI.Color get projected to come from this assembly:
+        If targetAssembly = "System.Runtime.WindowsRuntime" Then Return
         ' HACK: I don't want to give warnings for 8.1 or PCL code. In those two targets, every Windows
         ' type is found in Windows.winmd, so that's how we'll prevent it:
         If targetAssembly = "Windows" Then Return

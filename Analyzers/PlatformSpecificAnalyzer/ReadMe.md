@@ -80,6 +80,11 @@ other operations to check are just *constructions* and *property-access* and
 structs, nor enum values. I also believe it's not necessary to check when you merely
 have a value of platform-specific type, nor when you assign null to it.)
 
+* In VB it wasn't picking up `X.Y` as an invocation `X.Y()`. It should, but this becomes
+moot once the previous bug is fixed.
+
+* It doesn't seem to recognize `PlatformSpecific` attribute on methods, for transitivity.
+
 * This analyzer currently only examines operations within methods to see whether they're
 platform-specific. It should also check operations within property accessors, and within
 constructors, and inside field/autoprop initializers. (Note that the quick-fix actions
