@@ -1,0 +1,136 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>bc4aacf6-1c8e-4cf0-8ec4-c84c8d60a7c5</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>MyPicturesBreakout</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)App.xaml.vb">
+      <DependentUpon>App.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)GameLogic.vb" />
+    <Compile Include="$(MSBuildThisFileDirectory)MainPage.xaml.vb">
+      <DependentUpon>MainPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)WavePlayer.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="$(MSBuildThisFileDirectory)MainPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="$(MSBuildThisFileDirectory)App.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </ApplicationDefinition>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)Assets\beep-brick.wav" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\beep-guided.wav" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\beep-paddle.wav" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\horsehead_nebula.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\lose.wav" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\abstract.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\blue-crystal.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\blue-tiedie.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\blue.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\clouds.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\fractal--070209-41c.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\fractal-070122-10.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\glassworks.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\gold-glitters.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\green-hike.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\green-leaves.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\green-monster.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\green-swirls.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\green.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\hoh-hike.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\india-street.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\italy-meadow.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\italy-orchard.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\italy-valley.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\mondrian.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\orange-mountains.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\orange-peel.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\orange.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\pantheon.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\purple-glitter.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\rainier-sunset.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\rainier.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\red-hearts.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\seattle-soundworks.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\seattle-sunset.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\space-needle.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\tree-bark.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\undersea-blue.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\undersea-coral.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\undersea-diver.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\undersea-fishes.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\undersea-ripples.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\underwater-wide.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockBackgrounds\water_ripples.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\apples.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\blobs.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\boiled-sweets.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\brick-wall.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\earth.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\easter-eggs.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\flames.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\fruits.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\heart-candy.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\india-market.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\india-pomegranates.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\italy-coffee.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\lettuces.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\marzipan.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\newyork-kiss.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\orange-tree.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\paint-powder.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\paint-powder2.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\purple-stars.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\rainbow-circle.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\rainbow-colors.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\rainbow-diagonals.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\rainbow-dust.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\rainbow-lines.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\rainbow.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\red-stained-glass.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\roses-red.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\roses.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\rug1_medium2.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\sandals.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\Seattle-Rain.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\seattle-skyline-hotel.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\skittles.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\smarties.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\stained-glass.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\stainedglass-mondrian.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\stainedglass-shield.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\stainedglass.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\sun.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\sunset-colors.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\surfing.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\teddy-bear.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\tie-dye.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StockForegrounds\tulips.jpg" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\win.wav" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)StoreSubmission\GuidanceSystem.png" />
+    <None Include="$(MSBuildThisFileDirectory)StoreSubmission\StoreLogo_300x300.png" />
+    <None Include="$(MSBuildThisFileDirectory)StoreSubmission\wp_ss_20140601_0001.png" />
+    <None Include="$(MSBuildThisFileDirectory)StoreSubmission\wp_ss_20140601_0003.png" />
+    <None Include="$(MSBuildThisFileDirectory)StoreSubmission\wp_ss_20140601_0004.png" />
+    <None Include="$(MSBuildThisFileDirectory)StoreSubmission\wp_ss_20140601_0005.png" />
+    <None Include="$(MSBuildThisFileDirectory)StoreSubmission\wp_ss_20140601_0006.png" />
+    <None Include="$(MSBuildThisFileDirectory)StoreSubmission\wp_ss_20140601_0007.png" />
+    <None Include="$(MSBuildThisFileDirectory)StoreSubmission\wp_ss_20140601_0008.png" />
+    <None Include="$(MSBuildThisFileDirectory)StoreSubmission\wp_ss_20140618_0002.png" />
+  </ItemGroup>
+</Project>

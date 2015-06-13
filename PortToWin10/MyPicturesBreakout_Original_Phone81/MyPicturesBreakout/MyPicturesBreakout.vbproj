@@ -1,0 +1,315 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{02EE6CC8-AF7D-4314-BA48-787F4DBC52B0}</ProjectGuid>
+    <OutputType>AppContainerExe</OutputType>
+    <RootNamespace>MyPicturesBreakout</RootNamespace>
+    <AssemblyName>MyPicturesBreakout</AssemblyName>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <TargetPlatformVersion>8.1</TargetPlatformVersion>
+    <MinimumVisualStudioVersion>12</MinimumVisualStudioVersion>
+    <FileAlignment>512</FileAlignment>
+    <ProjectTypeGuids>{76F1466A-8B6D-4E39-A767-685A06062A39};{F184B08F-C81C-45F6-A57F-5ABD9991F28F}</ProjectTypeGuids>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
+    <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
+    <AppxBundlePlatforms>neutral</AppxBundlePlatforms>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>NETFX_CORE</DefineConstants>
+    <DocumentationFile>MyPicturesBreakout.xml</DocumentationFile>
+    <NoWarn>42314</NoWarn>
+    <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <DefineDebug>false</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>NETFX_CORE</DefineConstants>
+    <DocumentationFile>MyPicturesBreakout.xml</DocumentationFile>
+    <NoWarn>42314</NoWarn>
+    <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|ARM'">
+    <DebugSymbols>true</DebugSymbols>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <OutputPath>bin\ARM\Debug\</OutputPath>
+    <DefineConstants>NETFX_CORE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>ARM</PlatformTarget>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+    <Prefer32Bit>true</Prefer32Bit>
+    <DocumentationFile>MyPicturesBreakout.xml</DocumentationFile>
+    <NoWarn>42314</NoWarn>
+    <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|ARM'">
+    <DefineTrace>true</DefineTrace>
+    <OutputPath>bin\ARM\Release\</OutputPath>
+    <DefineConstants>NETFX_CORE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>ARM</PlatformTarget>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+    <Prefer32Bit>true</Prefer32Bit>
+    <DocumentationFile>MyPicturesBreakout.xml</DocumentationFile>
+    <NoWarn>42314</NoWarn>
+    <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <DebugSymbols>true</DebugSymbols>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <OutputPath>bin\x86\Debug\</OutputPath>
+    <DefineConstants>NETFX_CORE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+    <Prefer32Bit>true</Prefer32Bit>
+    <DocumentationFile>MyPicturesBreakout.xml</DocumentationFile>
+    <NoWarn>42314</NoWarn>
+    <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <DefineTrace>true</DefineTrace>
+    <OutputPath>bin\x86\Release\</OutputPath>
+    <DefineConstants>NETFX_CORE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+    <Prefer32Bit>true</Prefer32Bit>
+    <DocumentationFile>MyPicturesBreakout.xml</DocumentationFile>
+    <NoWarn>42314</NoWarn>
+    <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="App.xaml.vb">
+      <DependentUpon>App.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="GameLogic.vb" />
+    <Compile Include="MainPage.xaml.vb">
+      <DependentUpon>MainPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="My Project\AssemblyInfo.vb" />
+    <Compile Include="WavePlayer.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <AppxManifest Include="Package.appxmanifest">
+      <SubType>Designer</SubType>
+    </AppxManifest>
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+  </ItemGroup>
+  <ItemGroup>
+    <Import Include="Microsoft.VisualBasic" />
+    <Import Include="System" />
+    <Import Include="System.Collections" />
+    <Import Include="System.Collections.Generic" />
+    <Import Include="System.Collections.ObjectModel" />
+    <Import Include="System.ComponentModel" />
+    <Import Include="System.Diagnostics" />
+    <Import Include="System.IO" />
+    <Import Include="System.Linq" />
+    <Import Include="System.Runtime.CompilerServices" />
+    <Import Include="System.Threading.Tasks" />
+    <Import Include="System.Windows.Input" />
+    <Import Include="System.Xml.Linq" />
+    <Import Include="Windows.ApplicationModel" />
+    <Import Include="Windows.ApplicationModel.Activation" />
+    <Import Include="Windows.Foundation" />
+    <Import Include="Windows.Foundation.Collections" />
+    <Import Include="Windows.Graphics.Display" />
+    <Import Include="Windows.UI.ViewManagement" />
+    <Import Include="Windows.UI.Xaml" />
+    <Import Include="Windows.UI.Xaml.Controls" />
+    <Import Include="Windows.UI.Xaml.Controls.Primitives" />
+    <Import Include="Windows.UI.Xaml.Data" />
+    <Import Include="Windows.UI.Xaml.Input" />
+    <Import Include="Windows.UI.Xaml.Media" />
+    <Import Include="Windows.UI.Xaml.Media.Animation" />
+    <Import Include="Windows.UI.Xaml.Media.Imaging" />
+    <Import Include="System.Runtime.InteropServices.WindowsRuntime" />
+    <Import Include="Windows.Phone.UI.Input" />
+    <Import Include="Windows.UI.Xaml.Navigation" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Assets\beep-brick.wav" />
+    <Content Include="Assets\beep-guided.wav" />
+    <Content Include="Assets\beep-paddle.wav" />
+    <Content Include="Assets\Logo.scale-240.png" />
+    <Content Include="Assets\lose.wav" />
+    <Content Include="Assets\SmallLogo.scale-240.png" />
+    <Content Include="Assets\SplashScreen.scale-240.png" />
+    <Content Include="Assets\Square71x71Logo.scale-240.png" />
+    <Content Include="Assets\StockBackgrounds\abstract.jpg" />
+    <Content Include="Assets\StockBackgrounds\blue-crystal.jpg" />
+    <Content Include="Assets\StockBackgrounds\blue-tiedie.jpg" />
+    <Content Include="Assets\StockBackgrounds\blue.jpg" />
+    <Content Include="Assets\StockBackgrounds\clouds.jpg" />
+    <Content Include="Assets\StockBackgrounds\fractal--070209-41c.jpg" />
+    <Content Include="Assets\StockBackgrounds\fractal-070122-10.jpg" />
+    <Content Include="Assets\StockBackgrounds\glassworks.jpg" />
+    <Content Include="Assets\StockBackgrounds\gold-glitters.jpg" />
+    <Content Include="Assets\StockBackgrounds\green-hike.jpg" />
+    <Content Include="Assets\StockBackgrounds\green-leaves.jpg" />
+    <Content Include="Assets\StockBackgrounds\green-monster.jpg" />
+    <Content Include="Assets\StockBackgrounds\green-swirls.jpg" />
+    <Content Include="Assets\StockBackgrounds\green.jpg" />
+    <Content Include="Assets\StockBackgrounds\hoh-hike.jpg" />
+    <Content Include="Assets\StockBackgrounds\india-street.jpg" />
+    <Content Include="Assets\StockBackgrounds\italy-meadow.jpg" />
+    <Content Include="Assets\StockBackgrounds\italy-orchard.jpg" />
+    <Content Include="Assets\StockBackgrounds\italy-valley.jpg" />
+    <Content Include="Assets\StockBackgrounds\mondrian.jpg" />
+    <Content Include="Assets\StockBackgrounds\orange-mountains.jpg" />
+    <Content Include="Assets\StockBackgrounds\orange-peel.jpg" />
+    <Content Include="Assets\StockBackgrounds\orange.jpg" />
+    <Content Include="Assets\StockBackgrounds\pantheon.jpg" />
+    <Content Include="Assets\StockBackgrounds\purple-glitter.jpg" />
+    <Content Include="Assets\StockBackgrounds\rainier-sunset.jpg" />
+    <Content Include="Assets\StockBackgrounds\rainier.jpg" />
+    <Content Include="Assets\StockBackgrounds\red-hearts.jpg" />
+    <Content Include="Assets\StockBackgrounds\seattle-soundworks.jpg" />
+    <Content Include="Assets\StockBackgrounds\seattle-sunset.jpg" />
+    <Content Include="Assets\StockBackgrounds\space-needle.jpg" />
+    <Content Include="Assets\StockBackgrounds\tree-bark.jpg" />
+    <Content Include="Assets\StockBackgrounds\undersea-blue.jpg" />
+    <Content Include="Assets\StockBackgrounds\undersea-coral.jpg" />
+    <Content Include="Assets\StockBackgrounds\undersea-diver.jpg" />
+    <Content Include="Assets\StockBackgrounds\undersea-fishes.jpg" />
+    <Content Include="Assets\StockBackgrounds\undersea-ripples.jpg" />
+    <Content Include="Assets\StockBackgrounds\underwater-wide.jpg" />
+    <Content Include="Assets\StockBackgrounds\water_ripples.jpg" />
+    <Content Include="Assets\StockForegrounds\apples.jpg" />
+    <Content Include="Assets\StockForegrounds\blobs.jpg" />
+    <Content Include="Assets\StockForegrounds\boiled-sweets.jpg" />
+    <Content Include="Assets\StockForegrounds\brick-wall.jpg" />
+    <Content Include="Assets\StockForegrounds\earth.png" />
+    <Content Include="Assets\StockForegrounds\easter-eggs.jpg" />
+    <Content Include="Assets\StockForegrounds\flames.jpg" />
+    <Content Include="Assets\StockForegrounds\fruits.jpg" />
+    <Content Include="Assets\StockForegrounds\heart-candy.jpg" />
+    <Content Include="Assets\StockForegrounds\india-market.jpg" />
+    <Content Include="Assets\StockForegrounds\india-pomegranates.jpg" />
+    <Content Include="Assets\StockForegrounds\italy-coffee.jpg" />
+    <Content Include="Assets\StockForegrounds\lettuces.jpg" />
+    <Content Include="Assets\StockForegrounds\marzipan.jpg" />
+    <Content Include="Assets\StockForegrounds\newyork-kiss.jpg" />
+    <Content Include="Assets\StockForegrounds\orange-tree.jpg" />
+    <Content Include="Assets\StockForegrounds\paint-powder.jpg" />
+    <Content Include="Assets\StockForegrounds\paint-powder2.jpg" />
+    <Content Include="Assets\StockForegrounds\purple-stars.jpg" />
+    <Content Include="Assets\StockForegrounds\rainbow-circle.png" />
+    <Content Include="Assets\StockForegrounds\rainbow-colors.jpg" />
+    <Content Include="Assets\StockForegrounds\rainbow-diagonals.jpg" />
+    <Content Include="Assets\StockForegrounds\rainbow-dust.jpg" />
+    <Content Include="Assets\StockForegrounds\rainbow-lines.jpg" />
+    <Content Include="Assets\StockForegrounds\rainbow.png" />
+    <Content Include="Assets\StockForegrounds\red-stained-glass.jpg" />
+    <Content Include="Assets\StockForegrounds\roses-red.jpg" />
+    <Content Include="Assets\StockForegrounds\roses.jpg" />
+    <Content Include="Assets\StockForegrounds\rug1_medium2.jpg" />
+    <Content Include="Assets\StockForegrounds\sandals.jpg" />
+    <Content Include="Assets\StockForegrounds\Seattle-Rain.jpg" />
+    <Content Include="Assets\StockForegrounds\seattle-skyline-hotel.jpg" />
+    <Content Include="Assets\StockForegrounds\skittles.jpg" />
+    <Content Include="Assets\StockForegrounds\smarties.jpg" />
+    <Content Include="Assets\StockForegrounds\stained-glass.jpg" />
+    <Content Include="Assets\StockForegrounds\stainedglass-mondrian.jpg" />
+    <Content Include="Assets\StockForegrounds\stainedglass-shield.jpg" />
+    <Content Include="Assets\StockForegrounds\stainedglass.jpg" />
+    <Content Include="Assets\StockForegrounds\sun.png" />
+    <Content Include="Assets\StockForegrounds\sunset-colors.jpg" />
+    <Content Include="Assets\StockForegrounds\surfing.jpg" />
+    <Content Include="Assets\StockForegrounds\teddy-bear.png" />
+    <Content Include="Assets\StockForegrounds\tie-dye.jpg" />
+    <Content Include="Assets\StockForegrounds\tulips.jpg" />
+    <Content Include="Assets\StoreLogo.scale-240.png" />
+    <Content Include="Assets\StoreLogo_300x300.png" />
+    <Content Include="Assets\WideLogo.scale-240.png" />
+    <Content Include="Assets\win.wav" />
+    <None Include="packages.config" />
+    <None Include="StoreSubmission\GuidanceSystem.png" />
+    <None Include="StoreSubmission\StoreLogo_300x300.png" />
+    <None Include="StoreSubmission\wp_ss_20140601_0001.png" />
+    <None Include="StoreSubmission\wp_ss_20140601_0003.png" />
+    <None Include="StoreSubmission\wp_ss_20140601_0004.png" />
+    <None Include="StoreSubmission\wp_ss_20140601_0005.png" />
+    <None Include="StoreSubmission\wp_ss_20140601_0006.png" />
+    <None Include="StoreSubmission\wp_ss_20140601_0007.png" />
+    <None Include="StoreSubmission\wp_ss_20140601_0008.png" />
+    <None Include="StoreSubmission\wp_ss_20140618_0002.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="MainPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="AsyncStackTraceEx, Version=1.0.0.2, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\AsyncStackTraceEx.1.0.0.2\lib\portable-netcore451+wpa81\AsyncStackTraceEx.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="AsyncStackTraceExWinRT, Version=1.0.0.2, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\AsyncStackTraceEx.1.0.0.2\lib\portable-netcore451+wpa81\AsyncStackTraceExWinRT.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.6.0.8\lib\portable-net40+sl5+wp80+win8+wpa81\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="SharpDX, Version=3.0.0.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
+      <HintPath>..\packages\SharpDX.3.0.0-alpha01\lib\portable-net45+netcore45+wpa81+MonoAndroid1+MonoTouch1\SharpDX.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="SharpDX.XAudio2, Version=3.0.0.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
+      <HintPath>..\packages\SharpDX.XAudio2.3.0.0-alpha01\lib\portable-net45+netcore45+wpa81+MonoAndroid1+MonoTouch1\SharpDX.XAudio2.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+  <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '12.0' ">
+    <VisualStudioVersion>12.0</VisualStudioVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(TargetPlatformIdentifier)' == '' ">
+    <TargetPlatformIdentifier>WindowsPhoneApp</TargetPlatformIdentifier>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionExplicit>On</OptionExplicit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionCompare>Binary</OptionCompare>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionStrict>On</OptionStrict>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionInfer>On</OptionInfer>
+  </PropertyGroup>
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\WindowsXaml\v$(VisualStudioVersion)\Microsoft.Windows.UI.Xaml.VisualBasic.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

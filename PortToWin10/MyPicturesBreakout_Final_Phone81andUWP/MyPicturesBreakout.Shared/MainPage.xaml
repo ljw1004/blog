@@ -1,0 +1,40 @@
+﻿<Page
+    x:Class="MyPicturesBreakout.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:MyPicturesBreakout"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="Black">
+
+    <Grid x:Name="page1">
+        <Image x:Name="image1" Source="Assets/horsehead_nebula.jpg" Stretch="UniformToFill"/>
+        <Grid x:Name="grid1">
+            <ContentControl x:Name="playArea1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+            <Border x:Name="paused1" BorderBrush="Gray" BorderThickness="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Rectangle Grid.RowSpan="5" Fill="Black" Opacity="0.2"/>
+                    <ProgressBar x:Name="loading1" IsIndeterminate="True" Grid.Row="0"/>
+                    <Button x:Name="buyApp" Grid.Row="1" HorizontalAlignment="Center" Content="(trial version)"/>
+                    <TextBlock Grid.Row="2" HorizontalAlignment="Center" Text="PAUSED" FontSize="54" Margin="30,0,40,0"/>
+                    <TextBlock Grid.Row="3" HorizontalAlignment="Center" Text="press &amp; hold to play" FontSize="20"/>
+                    <Button x:Name="buyGuidanceSystem" Grid.Row="4" HorizontalAlignment="Center" Content="buy guidance system"/>
+                </Grid>
+            </Border>
+            <Grid x:Name="paused2" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+                <Rectangle Grid.RowSpan="1" Fill="Black" Opacity="0.2"/>
+                <TextBlock x:Name="scoreBricks" HorizontalAlignment="Left" Text="13 279 bricks" FontSize="20"/>
+                <TextBlock x:Name="scoreGames" HorizontalAlignment="Center" Text="100 games" FontSize="20"/>
+                <TextBlock x:Name="scoreTime" HorizontalAlignment="Right" Text="13h28m played" FontSize="20"/>
+            </Grid>
+        </Grid>
+    </Grid>
+</Page>
