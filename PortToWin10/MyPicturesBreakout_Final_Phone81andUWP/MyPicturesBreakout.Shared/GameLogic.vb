@@ -120,9 +120,7 @@ End Class
 Public Class BrickInfo
     Public IX As Integer
     Public IY As Integer
-    Public R As Byte
-    Public G As Byte
-    Public B As Byte
+    Public C As Color
 End Class
 
 
@@ -177,7 +175,7 @@ Public Module GameLogic
                     If a = 0 Then
                         dat.Bricks(ix, iy) = Nothing
                     Else
-                        dat.Bricks(ix, iy) = New BrickInfo With {.IX = ix, .IY = iy, .R = newc.R, .G = newc.G, .B = newc.B}
+                        dat.Bricks(ix, iy) = New BrickInfo With {.IX = ix, .IY = iy, .C = newc}
                         dat.BrickCount += 1
                     End If
                     If a = 0 Then
@@ -471,8 +469,8 @@ Public Module GameLogic
                 bi.ndx = ndx : bi.ndy = ndy
                 bi.nx = dat.NBRICKAREA.Left + ri.IX * dat.NBRICKWIDTH + dat.NBRICKWIDTH / 2 - dat.NBALLSIZE / 2
                 bi.ny = dat.NBRICKAREA.Top + ri.IY * dat.NBRICKHEIGHT + dat.NBRICKHEIGHT / 2 - dat.NBRICKHEIGHT / 2
-                bi.R = ri.R : bi.G = ri.G : bi.B = ri.B
-                bi.objEllipse.Fill = New SolidColorBrush(Color.FromArgb(255, ri.R, ri.G, ri.B))
+                bi.R = ri.C.R : bi.G = ri.C.G : bi.B = ri.C.B
+                bi.objEllipse.Fill = New SolidColorBrush(ri.C)
                 bi.objEllipse.Visibility = Visibility.Visible
                 bi.objLine.Visibility = Visibility.Visible
                 ResizeBall(bi, dat)
