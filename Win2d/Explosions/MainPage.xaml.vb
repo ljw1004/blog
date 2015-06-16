@@ -76,6 +76,7 @@ Public NotInheritable Class MainPage
                             Matrix3x2.CreateTranslation(particle.Position - bitmapCenter)
             e.DrawingSession.DrawImage(bitmap, 0, 0, bitmap.Bounds, alpha, CanvasImageInterpolation.Linear, New Matrix4x4(Transform))
         Next
+        ' This drawing takes about 10ms on my budget Lumia635 phone.
 
         canvas1.Invalidate() ' causes a new Draw to be executed next screen refresh
     End Sub

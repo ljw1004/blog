@@ -68,6 +68,7 @@ Public NotInheritable Class MainPage
         Loop
 
         DrawMyCircles(e.DrawingSession, hue, saturation, True, angle, cx, cy, radius)
+        ' Takes 20-40ms on my Lumia635 budget phone, depending on the size of the circles
 
         canvas1.Invalidate()
     End Sub
