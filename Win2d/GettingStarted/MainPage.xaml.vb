@@ -56,7 +56,6 @@ Public NotInheritable Class MainPage
             e.DrawingSession.DrawImage(bmp(i), 0, 0, bmp(i).Bounds, 1, CanvasImageInterpolation.Linear, New Matrix4x4(xform))
         Next
 
-
         canvas1.Invalidate()
     End Sub
 

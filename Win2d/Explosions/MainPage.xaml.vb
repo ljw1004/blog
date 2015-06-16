@@ -61,8 +61,9 @@ Public NotInheritable Class MainPage
     Sub Draw(sender As CanvasControl, e As CanvasDrawEventArgs) Handles canvas1.Draw
         UpdateParticles()
 
-        Static Dim nextExplosion As DateTime = DateTime.Now
-        If DateTime.Now >= nextExplosion Then CreateNewParticles() : nextExplosion += TimeSpan.FromSeconds(0.3)
+        Static Dim count As Integer = 0
+        count += 1
+        If count Mod 20 = 0 Then CreateNewParticles() : count = 0
 
         e.DrawingSession.Blend = CanvasBlend.Add
         For Each particle In particles
