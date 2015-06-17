@@ -1,5 +1,5 @@
 ﻿<Page
-    x:Class="GameOfLifeVB.MainPage"
+    x:Class="GameOfLifeVB.MainPageCPU"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:GameOfLifeVB"
@@ -8,10 +8,9 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid x:Name="grid1" Background="Transparent">
-        <TextBlock x:Name="label1" Text="fps" Foreground="Red" FontSize="20" FontWeight="ExtraBold"/>
-        <Button x:Name="button1" VerticalAlignment="Top" Content="GPU" Margin="0,40,0,0"/>
+    <Grid Background="#FFE6FAE6">
+        <canvas:CanvasControl x:Name="canvas1"/>
+        <Button x:Name="button1" Content="Switch to GPU" VerticalAlignment="Top" Background="#FFE6E6FA"/>
     </Grid>
-
 
 </Page>
