@@ -10,7 +10,7 @@
 
     <Grid Background="#FFE6E6FA">
         <canvas:CanvasControl x:Name="canvas1"/>
-        <Button x:Name="button1" Content="Switch to CPU" VerticalAlignment="Top" Background="#FFE6FAE6"/>
+        <Button x:Name="button1" Content="Switch to CPU" VerticalAlignment="Bottom" Background="#FFE6FAE6"/>
     </Grid>
 
 </Page>

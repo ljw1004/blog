@@ -1,7 +1,17 @@
-﻿NotInheritable Class App
+﻿Imports Windows.UI
+
+NotInheritable Class App
     Inherits Application
 
-    Protected Overrides Sub OnLaunched(e As Windows.ApplicationModel.Activation.LaunchActivatedEventArgs)
+    Protected Overrides Sub OnLaunched(e As LaunchActivatedEventArgs)
+        ApplicationView.GetForCurrentView().SetPreferredMinSize(New Size(100, 100))
+        ApplicationView.GetForCurrentView.SetDesiredBoundsMode(ApplicationViewBoundsMode.UseCoreWindow)
+        If Metadata.ApiInformation.IsTypePresent("Windows.UI.ViewManagement.StatusBar") Then
+            StatusBar.GetForCurrentView().ForegroundColor = Colors.Red
+        End If
+
+
+
         Dim rootFrame As Frame = TryCast(Window.Current.Content, Frame)
         If rootFrame Is Nothing Then
             rootFrame = New Frame()
