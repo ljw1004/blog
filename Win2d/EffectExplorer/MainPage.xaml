@@ -12,7 +12,7 @@
             <RowDefinition Height="1*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="125"/>
+            <ColumnDefinition Width="130"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
         <ScrollViewer Grid.Row="0" Grid.Column="0" Background="Black" 
@@ -105,10 +105,8 @@
                 <TextBlock x:Name="status1" FontSize="12" Foreground="Red"/>
                 <StackPanel Background="LightGray" Orientation="Vertical">
                     <TextBlock FontSize="15" FontWeight="Bold" Text="Presets"/>
-                    <Button x:Name="pre_ingressDL3" Content="ingressDL3" Margin="4,4,4,4"/>
-                    <Button x:Name="pre_ingressDL4" Content="ingressDL4" Margin="4,4,4,4"/>
-                    <Button x:Name="pre_egressDL3" Content="eressDL3" Margin="4,4,4,4"/>
-                    <Button x:Name="pre_egressDL4" Content="gressDL4" Margin="4,4,4,4"/>
+                    <Button x:Name="pre_gameoflife" Content="GameOfLife" Margin="4,4,4,4"/>
+                    <Button x:Name="pre_blur" Content="Blur" Margin="4,4,4,4"/>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

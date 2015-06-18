@@ -82,23 +82,23 @@ Public NotInheritable Class MainPage
         dtb.Text = String.Join(" ", App.model.DiscreteTransferTableBlue.Select(Function(s) s.ToString()))
     End Sub
 
-    Sub Preset_Click(sender As Object, e As RoutedEventArgs) Handles pre_ingressDL3.Click, pre_ingressDL4.Click
-        If sender Is pre_ingressDL3 Then
+    Sub Preset_Click(sender As Object, e As RoutedEventArgs) Handles pre_gameoflife.Click, pre_blur.Click
+        If sender Is pre_gameoflife Then
             App.model.ConvolveMatrixEnabled = True
-            App.model.ConvolveMatrixKernel = {0, 0, 0, 1, 27, 0, 3, 9, 0}
-            App.model.ConvolveMatrixDivisor = 40
+            App.model.ConvolveMatrixKernel = {2, 2, 2, 2, 1, 2, 2, 2, 2}
+            App.model.ConvolveMatrixDivisor = 17
             App.model.DiscreteTransferEnabled = True
-            Dim table As Single() = {0, 0, 0, 0, 0.5, 0.5, 0, 0, 0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+            Dim table As Single() = {0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
             App.model.DiscreteTransferTableRed = table
             App.model.DiscreteTransferTableGreen = table
             App.model.DiscreteTransferTableBlue = table
             WriteModelToUI()
-        ElseIf sender Is pre_ingressDL4 Then
+        ElseIf sender Is pre_blur Then
             App.model.ConvolveMatrixEnabled = True
-            App.model.ConvolveMatrixKernel = {0, 0, 0, 1, 64, 0, 4, 16, 0}
-            App.model.ConvolveMatrixDivisor = 85
-            App.model.DiscreteTransferEnabled = True
-            Dim table As Single() = {0, 0, 0, 0, 0, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+            App.model.ConvolveMatrixKernel = {1, 2, 1, 2, 4, 2, 1, 2, 1}
+            App.model.ConvolveMatrixDivisor = 16
+            App.model.DiscreteTransferEnabled = False
+            Dim table As Single() = {0, 1}
             App.model.DiscreteTransferTableRed = table
             App.model.DiscreteTransferTableGreen = table
             App.model.DiscreteTransferTableBlue = table
