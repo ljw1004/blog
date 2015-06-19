@@ -14,6 +14,8 @@ Public NotInheritable Class MainPageGPU
     Inherits Page
 
     Const SIMULATION_SIZE = 480
+    ' On my SurfacePro1, it can update about 8000x8000 pixels in 4ms (can't create a surface that big though...)
+
 
     ' The cellular-automaton calculations are done by a pair of Win2d effects
     ' We use double-buffering, drawing onto Surface1 on one frame, then Surface2 the next, and so on
@@ -104,7 +106,7 @@ Public NotInheritable Class MainPageGPU
 
     Sub Canvas_Draw(sender As CanvasControl, args As CanvasDrawEventArgs) Handles canvas1.Draw
         Static Dim count As Integer = 0
-        count += 1 : If count > 5 Then Update() : count = 5 ' update once every 5 refreshes, at 12Hz
+        count += 1 : If count > 5 Then Update() : count = 0 ' update once every 5 refreshes, at 12Hz
 
         Dim scale = canvas1.Width / canvas1.ConvertPixelsToDips(SIMULATION_SIZE)
         DisplayEffect2.TransformMatrix = Matrix3x2.CreateScale(CSng(scale))

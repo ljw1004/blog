@@ -11,6 +11,7 @@ Public NotInheritable Class MainPageCPU
     Inherits Page
 
     Const SIMULATION_SIZE = 16
+    ' On my SurfacePro1, it can update about 100x100 pixels in 4ms
 
     ' We use double-buffering, drawing onto Buffer1 on one frame, then Buffer2 the next, and so on.
     ' For rendering, we copy the pixels onto a Win2d surface that can be scaled and drawn onscreen.
