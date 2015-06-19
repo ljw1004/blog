@@ -3,11 +3,12 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:EffectExplorer"
+    xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid Background="White">
+    <Grid Background="Lavender">
         <Grid.RowDefinitions>
             <RowDefinition Height="1*"/>
         </Grid.RowDefinitions>
@@ -15,7 +16,7 @@
             <ColumnDefinition Width="130"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        <ScrollViewer Grid.Row="0" Grid.Column="0" Background="Black" 
+        <ScrollViewer Grid.Row="0" Grid.Column="0" Background="Lavender" 
                       HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto"
                       VerticalScrollMode="Enabled">
             <StackPanel x:Name="effects1"  >
@@ -93,6 +94,7 @@
                         <RowDefinition Height="1*"/>
                         <RowDefinition Height="1*"/>
                         <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1*"/>
@@ -101,18 +103,21 @@
                     <TextBox x:Name="ptr1" Grid.Row="1" Grid.Column="0" />
                     <TextBox x:Name="ptr2" Grid.Row="2" Grid.Column="0" />
                     <TextBox x:Name="ptr3" Grid.Row="3" Grid.Column="0" />
+                    <TextBox x:Name="ptr4" Grid.Row="4" Grid.Column="0" />
                 </Grid>
                 <TextBlock x:Name="status1" FontSize="12" Foreground="Red"/>
                 <StackPanel Background="LightGray" Orientation="Vertical">
                     <TextBlock FontSize="15" FontWeight="Bold" Text="Presets"/>
-                    <Button x:Name="pre_gameoflife" Content="GameOfLife" Margin="4,4,4,4"/>
                     <Button x:Name="pre_blur" Content="Blur" Margin="4,4,4,4"/>
+                    <Button x:Name="pre_gameoflife" Content="GameOfLife" Margin="4,4,4,4"/>
+                    <Button x:Name="pre_fallingsand" Content="FallingSand" Margin="4,4,4,4"/>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
-        <Border x:Name="content1" Grid.Row="0" Grid.Column="1" Width="200" Height="425" BorderBrush="Blue" BorderThickness="1" VerticalAlignment="Top" Margin="0,10,0,0">
-            <TextBlock Text="before and after"/>
-        </Border>
+        <StackPanel Grid.Row="0" Grid.Column="1" >
+            <canvas:CanvasControl x:Name="canvas1" ClearColor="Lavender" Width="200" Height="425" VerticalAlignment="Top"/>
+            <Button x:Name="Iterate" Content="Iterate" Margin="4,14,4,4"/>
+        </StackPanel>
 
     </Grid>
 

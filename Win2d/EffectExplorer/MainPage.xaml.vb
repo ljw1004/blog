@@ -2,27 +2,25 @@
 Imports Microsoft.Graphics.Canvas
 Imports Microsoft.Graphics.Canvas.Effects
 Imports Microsoft.Graphics.Canvas.UI.Xaml
+Imports Windows.Graphics.DirectX
 Imports Windows.UI
 
 Public NotInheritable Class MainPage
     Inherits Page
 
-    WithEvents canvas1 As CanvasControl
     Dim surface1, surface2 As CanvasRenderTarget
-    Dim pointerColorLeft As Color = Colors.White
-    Dim pointerColorRight As Color = Colors.Black
+    Dim pointerColorLeft As ColorF = ColorF.White
+    Dim pointerColorRight As ColorF = ColorF.Black
+    Dim updateInProgress As Boolean = False
+    WithEvents App As App = App.Current
 
     Sub New()
         InitializeComponent()
-        canvas1 = New CanvasControl
-        content1.Child = canvas1
-        WriteModelToUI()
 
-        Dim prevtb As TextBox = Nothing
         For Each tb In effects1.GetDescendentsOfType(Of TextBox)
-            AddHandler tb.TextChanged, Sub() ReadModelFromUI()
+            If tb Is ptr1 OrElse tb Is ptr2 OrElse tb Is ptr3 OrElse tb Is ptr4 Then Continue For
+            AddHandler tb.TextChanged, Sub() RespondToUIChange()
             AddHandler tb.GotFocus, Sub() tb.SelectAll()
-            prevtb = tb
         Next
         Dim lambda = Sub(e As KeyRoutedEventArgs, c As TextBox)
                          If e.Key < Windows.System.VirtualKey.Number0 Then Return
@@ -39,12 +37,18 @@ Public NotInheritable Class MainPage
         AddHandler cmk6.KeyUp, Sub(s, e) lambda(e, cmk7)
         AddHandler cmk7.KeyUp, Sub(s, e) lambda(e, cmk8)
         For Each cb In effects1.GetDescendentsOfType(Of CheckBox)
-            AddHandler cb.Checked, Sub() ReadModelFromUI()
-            AddHandler cb.Unchecked, Sub() ReadModelFromUI()
+            AddHandler cb.Checked, Sub() RespondToUIChange()
+            AddHandler cb.Unchecked, Sub() RespondToUIChange()
         Next
     End Sub
 
-    Sub ReadModelFromUI()
+    Sub App_Loaded() Handles App.Loaded
+        If surface1 IsNot Nothing Then surface1.SetPixelColorFs(App.pixels)
+        WriteModelToUI()
+    End Sub
+
+    Sub RespondToUIChange()
+        If updateInProgress Then Return
         App.model.ConvolveMatrixEnabled = cmx.IsChecked.GetValueOrDefault
         App.model.ConvolveMatrixKernel = {cmk8.Sng, cmk7.Sng, cmk6.Sng, cmk5.Sng, cmk4.Sng, cmk3.Sng, cmk2.Sng, cmk1.Sng, cmk0.Sng}
         App.model.ConvolveMatrixDivisor = cmd.Int
@@ -65,6 +69,7 @@ Public NotInheritable Class MainPage
     End Sub
 
     Sub WriteModelToUI()
+        updateInProgress = True
         cmx.IsChecked = App.model.ConvolveMatrixEnabled
         cmk0.Text = App.model.ConvolveMatrixKernel(8).ToString()
         cmk1.Text = App.model.ConvolveMatrixKernel(7).ToString()
@@ -80,10 +85,20 @@ Public NotInheritable Class MainPage
         dtr.Text = String.Join(" ", App.model.DiscreteTransferTableRed.Select(Function(s) s.ToString()))
         dtg.Text = String.Join(" ", App.model.DiscreteTransferTableGreen.Select(Function(s) s.ToString()))
         dtb.Text = String.Join(" ", App.model.DiscreteTransferTableBlue.Select(Function(s) s.ToString()))
+        updateInProgress = False
+        canvas1.Invalidate()
     End Sub
 
-    Sub Preset_Click(sender As Object, e As RoutedEventArgs) Handles pre_gameoflife.Click, pre_blur.Click
+    Sub Preset_Click(sender As Object, e As RoutedEventArgs) Handles pre_gameoflife.Click, pre_blur.Click, pre_fallingsand.Click
         If sender Is pre_gameoflife Then
+            For i = 0 To App.pixels.Length - 1 : App.pixels(i) = ColorF.Black : Next
+            App.pixels(1 * App.SIMULATION_SIZE + 2) = ColorF.White
+            App.pixels(2 * App.SIMULATION_SIZE + 3) = ColorF.White
+            App.pixels(3 * App.SIMULATION_SIZE + 1) = ColorF.White
+            App.pixels(3 * App.SIMULATION_SIZE + 2) = ColorF.White
+            App.pixels(3 * App.SIMULATION_SIZE + 3) = ColorF.White
+            surface1.SetPixelColorFs(App.pixels)
+            '
             App.model.ConvolveMatrixEnabled = True
             App.model.ConvolveMatrixKernel = {2, 2, 2, 2, 1, 2, 2, 2, 2}
             App.model.ConvolveMatrixDivisor = 17
@@ -93,7 +108,15 @@ Public NotInheritable Class MainPage
             App.model.DiscreteTransferTableGreen = table
             App.model.DiscreteTransferTableBlue = table
             WriteModelToUI()
+
         ElseIf sender Is pre_blur Then
+            For i = 0 To App.pixels.Length - 1 : App.pixels(i) = ColorF.Black : Next
+            App.pixels(2 * App.SIMULATION_SIZE + 3) = ColorF.White
+            App.pixels(2 * App.SIMULATION_SIZE + 4) = ColorF.White
+            App.pixels(3 * App.SIMULATION_SIZE + 3) = ColorF.Red
+            App.pixels(3 * App.SIMULATION_SIZE + 4) = ColorF.White
+            surface1.SetPixelColorFs(App.pixels)
+            '
             App.model.ConvolveMatrixEnabled = True
             App.model.ConvolveMatrixKernel = {1, 2, 1, 2, 4, 2, 1, 2, 1}
             App.model.ConvolveMatrixDivisor = 16
@@ -103,18 +126,66 @@ Public NotInheritable Class MainPage
             App.model.DiscreteTransferTableGreen = table
             App.model.DiscreteTransferTableBlue = table
             WriteModelToUI()
+
+        ElseIf sender Is pre_fallingsand Then
+            Dim kt = KernelTracker.Generate({0, 0.5, 1},
+                                        {Kernel.Center, Kernel.Up, Kernel.UpRight, Kernel.Right, Kernel.Down, Kernel.DownLeft},
+                                        Function(k)
+                                            ' Brick:
+                                            If k(Kernel.Center) = 1 Then Return 1
+                                            ' Blank space that might get filled with sand:
+                                            If k(Kernel.Center) = 0 AndAlso k(Kernel.Up) = 0.5 Then Return 0.5
+                                            If k(Kernel.Center) = 0 AndAlso k(Kernel.UpRight) = 0.5 AndAlso k(Kernel.Right) <> 0 Then Return 0.5
+                                            If k(Kernel.Center) = 0 Then Return 0
+                                            ' Sand that might empty out below:
+                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.Down) = 0 Then Return 0
+                                            If k(Kernel.Center) = 0.5 AndAlso k(Kernel.DownLeft) = 0 Then Return 0
+                                            If k(Kernel.Center) = 0.5 Then Return 0.5
+                                            Throw New Exception("unreachable code")
+                                        End Function)
+            '
+            For i = 0 To App.pixels.Length - 1 : App.pixels(i) = ColorF.Black : Next
+            App.pixels(0 * App.SIMULATION_SIZE + 4) = ColorF.Gray
+            App.pixels(2 * App.SIMULATION_SIZE + 4) = ColorF.White
+            App.pixels(2 * App.SIMULATION_SIZE + 5) = ColorF.White
+            App.pixels(4 * App.SIMULATION_SIZE + 3) = ColorF.White
+            App.pixels(4 * App.SIMULATION_SIZE + 4) = ColorF.White
+            surface1.SetPixelColorFs(App.pixels)
+            '
+            App.model.ConvolveMatrixEnabled = True
+            App.model.ConvolveMatrixKernel = kt.ConvolveMatrix
+            App.model.ConvolveMatrixDivisor = kt.ConvolveDivisor
+            App.model.DiscreteTransferEnabled = True
+            App.model.DiscreteTransferTableRed = kt.TransferTable
+            App.model.DiscreteTransferTableGreen = kt.TransferTable
+            App.model.DiscreteTransferTableBlue = kt.TransferTable
+            WriteModelToUI()
         End If
+    End Sub
+
+    Private Sub Iterate_Click(sender As Object, e As RoutedEventArgs) Handles Iterate.Click
+        App.pixels = surface2.GetPixelColorFs()
+        For i = 0 To App.pixels.Length - 1
+            App.pixels(i).A = 1
+        Next
+        surface1.SetPixelColorFs(App.pixels)
+        canvas1.Invalidate()
     End Sub
 
     Sub Canvas_CreateResources(sender As CanvasControl, args As Object) Handles canvas1.CreateResources
         Const defaultDpi = 96.0F
-        surface1 = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)
-        surface2 = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi)
-        surface1.SetPixelColors(App.pixels, 0, 0, App.CWIDTH, App.CHEIGHT)
+        Try
+            surface1 = New CanvasRenderTarget(canvas1, App.SIMULATION_SIZE, App.SIMULATION_SIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+            surface2 = New CanvasRenderTarget(canvas1, App.SIMULATION_SIZE, App.SIMULATION_SIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        Catch ex As Exception
+            surface1 = New CanvasRenderTarget(canvas1, App.SIMULATION_SIZE, App.SIMULATION_SIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
+            surface2 = New CanvasRenderTarget(canvas1, App.SIMULATION_SIZE, App.SIMULATION_SIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
+        End Try
+        surface1.SetPixelColorFs(App.pixels)
     End Sub
 
     Sub Canvas1_Draw(sender As CanvasControl, args As CanvasDrawEventArgs) Handles canvas1.Draw
-        Dim convolveEffect As New ConvolveMatrixEffect With {.KernelMatrix = App.model.ConvolveMatrixKernel, .Divisor = App.model.ConvolveMatrixDivisor, .BorderMode = EffectBorderMode.Hard, .PreserveAlpha = True}
+        Dim convolveEffect As New ConvolveMatrixEffect With {.KernelMatrix = App.model.ConvolveMatrixKernel, .Divisor = App.model.ConvolveMatrixDivisor, .BorderMode = EffectBorderMode.Soft, .PreserveAlpha = True}
         Dim transferEffect As New DiscreteTransferEffect With {.RedTable = App.model.DiscreteTransferTableRed, .GreenTable = App.model.DiscreteTransferTableGreen, .BlueTable = App.model.DiscreteTransferTableBlue}
         '
         Dim updateEffect As ICanvasImage = Nothing
@@ -139,7 +210,7 @@ Public NotInheritable Class MainPage
 
 
 
-        Dim sourceSizeDips As New Vector2(canvas1.ConvertPixelsToDips(App.CWIDTH), canvas1.ConvertPixelsToDips(App.CHEIGHT))
+        Dim sourceSizeDips As New Vector2(canvas1.ConvertPixelsToDips(App.SIMULATION_SIZE), canvas1.ConvertPixelsToDips(App.SIMULATION_SIZE))
         Dim canvasSizeDips As New Vector2(CSng(canvas1.ActualWidth), CSng(canvas1.ActualHeight))
         Dim scale = canvasSizeDips.X / sourceSizeDips.X
 
@@ -148,47 +219,67 @@ Public NotInheritable Class MainPage
         Dim xformEffect1 As New Transform2DEffect With {.Source = dpi1, .TransformMatrix = xform1, .InterpolationMode = CanvasImageInterpolation.NearestNeighbor}
         args.DrawingSession.DrawImage(xformEffect1)
 
-        Dim xform2 As New Matrix3x2(scale, 0, 0, scale, 0, (sourceSizeDips.Y + 1) * scale)
+        Dim xform2 As New Matrix3x2(scale, 0, 0, scale, 0, canvas1.ConvertPixelsToDips(App.SIMULATION_SIZE + 1) * scale)
         Dim dpi2 As New DpiCompensationEffect With {.Source = surface2, .SourceDpi = New Vector2(canvas1.Dpi)}
         Dim xformEffect2 As New Transform2DEffect With {.Source = dpi2, .TransformMatrix = xform2, .InterpolationMode = CanvasImageInterpolation.NearestNeighbor}
         args.DrawingSession.DrawImage(xformEffect2)
+
+        ' Draw gridlines
+        Dim rule = Color.FromArgb(80, 128, 128, 128)
+        Dim lowerY = canvasSizeDips.X * CSng(1 + 1 / App.SIMULATION_SIZE)
+        For i = 0 To App.SIMULATION_SIZE
+            Dim f = CSng(i / App.SIMULATION_SIZE * canvasSizeDips.X)
+            args.DrawingSession.DrawLine(0, f, canvasSizeDips.X, f, rule)
+            args.DrawingSession.DrawLine(f, 0, f, canvasSizeDips.X, rule)
+            args.DrawingSession.DrawLine(0, f + lowerY, canvasSizeDips.X, f + lowerY, rule)
+            args.DrawingSession.DrawLine(f, lowerY, f, lowerY + canvasSizeDips.X, rule)
+        Next
     End Sub
 
 
     Sub Canvas_Pointer(sender As Object, e As PointerRoutedEventArgs) Handles canvas1.PointerPressed, canvas1.PointerMoved
-        Dim sourceSizeDips As New Vector2(canvas1.ConvertPixelsToDips(App.CWIDTH), canvas1.ConvertPixelsToDips(App.CHEIGHT))
+        Dim sourceSizeDips As New Vector2(canvas1.ConvertPixelsToDips(App.SIMULATION_SIZE), canvas1.ConvertPixelsToDips(App.SIMULATION_SIZE))
         Dim canvasSizeDips As New Vector2(CSng(canvas1.ActualWidth), CSng(canvas1.ActualHeight))
         Dim scale = canvasSizeDips.X / sourceSizeDips.X
         Dim canvasPointDips = e.GetCurrentPoint(canvas1).Position.ToVector2() / canvas1.ConvertPixelsToDips(1)
         Dim sourcePointDips = canvasPointDips / scale
         Dim x = CInt(Math.Floor(sourcePointDips.X))
         Dim y = CInt(Math.Floor(sourcePointDips.Y))
-        If e.Pointer.IsInContact AndAlso x >= 0 AndAlso y >= 0 AndAlso x < App.CWIDTH AndAlso y < App.CHEIGHT Then
+        If e.Pointer.IsInContact AndAlso x >= 0 AndAlso y >= 0 AndAlso x < App.SIMULATION_SIZE AndAlso y < App.SIMULATION_SIZE Then
             Dim pointerColor = If(e.GetCurrentPoint(canvas1).Properties.IsRightButtonPressed, pointerColorRight, pointerColorLeft)
-            App.pixels(y * App.CWIDTH + x) = pointerColor
-            surface1.SetPixelColors({pointerColor}, x, y, 1, 1)
+            App.pixels(y * App.SIMULATION_SIZE + x) = pointerColor
+            surface1.SetPixelColorFs({pointerColor}, x, y, 1, 1)
             canvas1.Invalidate()
         End If
 
-        Dim c As Color? = Nothing
-        If x >= 0 AndAlso y >= 0 AndAlso x < App.CWIDTH AndAlso y < App.CHEIGHT Then
-            c = surface1.GetPixelColors(x, y, 1, 1).First
-        ElseIf x >= 0 AndAlso y >= App.CHEIGHT + 1 AndAlso x < App.CWIDTH AndAlso y < App.CHEIGHT + 1 + App.CHEIGHT Then
-            c = surface2.GetPixelColors(x, y - App.CHEIGHT - 1, 1, 1).First
+        Dim cf As ColorF? = Nothing
+        If x >= 0 AndAlso y >= 0 AndAlso x < App.SIMULATION_SIZE AndAlso y < App.SIMULATION_SIZE Then
+            cf = surface1.GetPixelColorFs(x, y, 1, 1).First
+        ElseIf x >= 0 AndAlso y >= App.SIMULATION_SIZE + 1 AndAlso x < App.SIMULATION_SIZE AndAlso y < App.SIMULATION_SIZE + 1 + App.SIMULATION_SIZE Then
+            cf = surface2.GetPixelColorFs(x, y - App.SIMULATION_SIZE - 1, 1, 1).First
         End If
+        Dim c = CType(cf, Color?)
         ptr1.Text = If(c.HasValue, $"#{c?.R:X2}{c?.G:X2}{c?.B:X2}", "")
-        ptr2.Text = If(c.HasValue, $"rgb({c?.R}, {c?.G}, {c?.B})", "")
-        ptr3.Text = If(c.HasValue, $"rgb({c?.R / 255:0.00}, {c?.G / 255:0.00}, {c?.B / 255:0.00})", "")
-
+        ptr2.Text = If(cf.HasValue, $"r={cf?.R}", "")
+        ptr3.Text = If(cf.HasValue, $"g={cf?.G}", "")
+        ptr4.Text = If(cf.HasValue, $"b={cf?.B}", "")
     End Sub
 
     Private Sub Rectangle_PointerPressed(sender As Object, e As PointerRoutedEventArgs)
         Dim r = CType(sender, Shapes.Rectangle)
         Dim b = CType(r.Fill, SolidColorBrush)
+        Dim c = b.Color
+        ' "c" is an 8bit value, e.g. #808080
+        ' In case the user is doing fancy stuff, we'll silently transform #80 (=0.5019) into 0.5
+        Dim cf As ColorF = c
+        If c.A = 128 Then cf.A = 0.5
+        If c.R = 128 Then cf.R = 0.5
+        If c.G = 128 Then cf.G = 0.5
+        If c.B = 128 Then cf.B = 0.5
         If e.GetCurrentPoint(canvas1).Properties.IsRightButtonPressed Then
-            pointerColorRight = b.Color
+            pointerColorRight = cf
         Else
-            pointerColorLeft = b.Color
+            pointerColorLeft = cf
         End If
     End Sub
 
@@ -197,6 +288,31 @@ End Class
 
 
 Module Utils
+
+    <Extension>
+    Async Function ExceptionsToNull(Of T)(this As Task(Of T)) As Task(Of T)
+        Try
+            Return Await this
+        Catch ex As Exception
+            Return Nothing
+        End Try
+    End Function
+
+    <Extension>
+    Async Sub FireAndForget(t As Task)
+        Try
+            Await t
+        Catch ex As Exception
+            Debug.WriteLine("OOPS! AN UNEXPECTED EXCEPTION OCCURED")
+            Debug.WriteLine(ex.Message)
+            Stop
+        End Try
+    End Sub
+
+    <Extension>
+    Sub FireAndForget(t As IAsyncAction)
+        FireAndForget(t.AsTask)
+    End Sub
 
     <Extension>
     Function GetDescendentsOfType(Of T As DependencyObject)(start As DependencyObject) As IEnumerable(Of T)
@@ -256,5 +372,237 @@ Module Utils
         Return i
     End Function
 
+    Public Function IntPow(x As Integer, y As Integer) As Integer
+        Dim r = 1
+        For i = 0 To y - 1
+            r *= x
+        Next
+        Return r
+    End Function
+
+    Public Class KernelTracker
+        Public _Matrix As Single()
+        Public _Touched As Boolean()
+        '
+        Public ConvolveDivisor As Integer
+        Public TransferTable As Single()
+        Public ConvolveMatrix As Single()
+
+        Shared Function Generate(values As IEnumerable(Of Single), touches As IEnumerable(Of Kernel), lambda As Func(Of Func(Of Integer, Single), Single)) As KernelTracker
+            touches = touches.Reverse() ' so that when authors write "most significant item first", it's reflected in the transfer table
+            Dim values_Count = values.Count
+            Dim k As New KernelTracker
+            k._Touched = {False, False, False, False, False, False, False, False, False}
+            k._Matrix = New Single(8) {}
+            Dim getMatrixLambda = Function(pos As Integer)
+                                      k._Touched(pos) = True
+                                      Return k._Matrix(pos)
+                                  End Function
+            '
+            Dim results As New List(Of Single)
+            For i = 0 To IntPow(values_Count, touches.Count) - 1
+                Dim v = i
+                For Each t In touches
+                    k._Matrix(t) = values(v Mod values_Count)
+                    v \= values_Count
+                Next
+                Dim r = lambda(getMatrixLambda)
+                results.Add(r)
+            Next
+            '
+            k.TransferTable = results.ToArray()
+            k.ConvolveMatrix = New Single(8) {}
+            k.ConvolveDivisor = 0
+            Dim m = 1
+            For Each t In touches
+                k.ConvolveMatrix(t) = m
+                k.ConvolveDivisor += m
+                m *= values_Count
+            Next
+            '
+            If k.ConvolveDivisor > 20 Then Debug.WriteLine("WARNING! This kernel Is complicated. It likely won't work on DX9 devices such as Lumia635 which just don't guarantee the necessary GPU precision")
+            For i = Kernel._First To Kernel._Last
+                If k._Touched(i) AndAlso Not touches.Contains(i) Then Throw New ArgumentException($"Failed to declare that this kernel touches {i}")
+                If Not k._Touched(i) AndAlso touches.Contains(i) Then Throw New ArgumentException($"Declared that this kernel touches {i} but it doesn't")
+            Next
+            Return k
+        End Function
+
+    End Class
+
+    Public Enum Kernel
+        _First = 0
+        UpLeft = 8
+        Up = 7
+        UpRight = 6
+        Left = 5
+        Center = 4
+        Right = 3
+        DownLeft = 2
+        Down = 1
+        DownRight = 0
+        _Last = 8
+    End Enum
+
+
+
+
+    Function BitConverter_ToHalf(buf As Byte(), offset As Integer) As Single
+        Dim hbits = CUInt(buf(offset)) Or (CUInt(buf(offset + 1)) << 8)
+        Dim sign = hbits And &H8000
+        Dim mant = hbits And &H03FF
+        Dim exp = hbits And &H7C00
+        If exp = &H7C00 Then
+            exp = &H3FC00 ' NaN/Inf
+        ElseIf exp <> 0 Then ' normal
+            exp += &H1C000
+        ElseIf exp = 0 AndAlso mant <> 0 Then ' subnormal
+            exp = &H1C400
+            Do
+                mant = mant << 1
+                exp -= &H400
+            Loop While (mant And &H400) = 0
+        Else
+            ' +/- 0
+        End If
+        '
+        Dim hbits2 = sign << 16 Or exp << 13 Or mant << 13
+        Return BitConverter.ToSingle(BitConverter.GetBytes(hbits2), 0)
+    End Function
+
+    Function BitConverter_GetHalfBytes(value As Single) As Byte()
+        If value < 0 Then Throw New ArgumentOutOfRangeException(NameOf(value), "negatives not implemented")
+        Dim fbits = BitConverter.ToUInt32(BitConverter.GetBytes(CSng(value)), 0)
+        Dim val = (fbits And &H7FFFFFFFUI) + &H1000
+        If val >= &H47800000 Then Throw New ArgumentOutOfRangeException(NameOf(value), "NaN/Inf/overflow not implemented")
+        If val >= &H38800000 Then Return BitConverter.GetBytes(CUShort((val - &H38000000) >> 13))
+        If val < &H33000000 Then Return {0, 0}
+        Throw New ArgumentOutOfRangeException(NameOf(value), "subnormals not implemented")
+    End Function
+
+    <Extension>
+    Sub SetPixelColorFs(bmp As CanvasRenderTarget, cols As ColorF())
+        SetPixelColorFs(bmp, cols, 0, 0, bmp.Description.Width, bmp.Description.Height)
+    End Sub
+
+    <Extension>
+    Sub SetPixelColorFs(bmp As CanvasRenderTarget, cols As ColorF(), left As Integer, top As Integer, width As Integer, height As Integer)
+        If bmp.Description.Format = DirectXPixelFormat.B8G8R8A8UIntNormalized Then
+            Dim buf = cols.Select(Function(c) CType(c, Color)).ToArray
+            bmp.SetPixelColors(buf, left, top, width, height)
+        ElseIf bmp.Description.Format = DirectXPixelFormat.R32G32B32A32Float Then
+            Dim buf = New Byte(cols.Length * 16 - 1) {}
+            For i = 0 To cols.Length - 1
+                Array.Copy(BitConverter.GetBytes(cols(i).R), 0, buf, i * 16 + 0, 4)
+                Array.Copy(BitConverter.GetBytes(cols(i).G), 0, buf, i * 16 + 4, 4)
+                Array.Copy(BitConverter.GetBytes(cols(i).B), 0, buf, i * 16 + 8, 4)
+                Array.Copy(BitConverter.GetBytes(cols(i).A), 0, buf, i * 16 + 12, 4)
+            Next
+            bmp.SetPixelBytes(buf, left, top, width, height)
+        ElseIf bmp.Description.Format = DirectXPixelFormat.R16G16B16A16Float Then
+            Dim buf = New Byte(cols.Length * 8 - 1) {}
+            For i = 0 To cols.Length - 1
+                Array.Copy(BitConverter_GetHalfBytes(cols(i).R), 0, buf, i * 8 + 0, 2)
+                Array.Copy(BitConverter_GetHalfBytes(cols(i).G), 0, buf, i * 8 + 2, 2)
+                Array.Copy(BitConverter_GetHalfBytes(cols(i).B), 0, buf, i * 8 + 4, 2)
+                Array.Copy(BitConverter_GetHalfBytes(cols(i).A), 0, buf, i * 8 + 6, 2)
+            Next
+            bmp.SetPixelBytes(buf, left, top, width, height)
+        Else
+            Throw New ArgumentException(NameOf(bmp.Description.Format))
+        End If
+    End Sub
+
+
+    <Extension>
+    Function GetPixelColorFs(bmp As CanvasRenderTarget) As ColorF()
+        Return GetPixelColorFs(bmp, 0, 0, bmp.Description.Width, bmp.Description.Height)
+    End Function
+
+    <Extension>
+    Function GetPixelColorFs(bmp As CanvasRenderTarget, left As Integer, top As Integer, width As Integer, height As Integer) As ColorF()
+        Dim c = New ColorF(width * height - 1) {}
+        If bmp.Description.Format = DirectXPixelFormat.B8G8R8A8UIntNormalized Then
+            Dim buf = bmp.GetPixelColors(left, top, width, height)
+            For i = 0 To c.Length - 1
+                c(i) = buf(i)
+            Next
+        ElseIf bmp.Description.Format = DirectXPixelFormat.R32G32B32A32Float Then
+            Dim buf = bmp.GetPixelBytes(left, top, width, height)
+            For i = 0 To c.Length - 1
+                c(i).R = BitConverter.ToSingle(buf, i * 16 + 0)
+                c(i).G = BitConverter.ToSingle(buf, i * 16 + 4)
+                c(i).B = BitConverter.ToSingle(buf, i * 16 + 8)
+                c(i).A = BitConverter.ToSingle(buf, i * 16 + 12)
+            Next
+        ElseIf bmp.Description.Format = DirectXPixelFormat.R16G16B16A16Float Then
+            Dim buf = bmp.GetPixelBytes(left, top, width, height)
+            For i = 0 To c.Length - 1
+                c(i).R = BitConverter_ToHalf(buf, i * 8 + 0)
+                c(i).G = BitConverter_ToHalf(buf, i * 8 + 2)
+                c(i).B = BitConverter_ToHalf(buf, i * 8 + 4)
+                c(i).A = BitConverter_ToHalf(buf, i * 8 + 6)
+            Next
+        Else
+            Throw New ArgumentException(NameOf(bmp.Description.Format))
+        End If
+        Return c
+    End Function
+
+
 End Module
 
+Public Structure ColorF
+    Public R As Single
+    Public G As Single
+    Public B As Single
+    Public A As Single
+    Public Shared ReadOnly White As ColorF = ColorF.FromArgb(1, 1, 1, 1)
+    Public Shared ReadOnly Gray As ColorF = ColorF.FromArgb(1, 0.5, 0.5, 0.5)
+    Public Shared ReadOnly Black As ColorF = ColorF.FromArgb(1, 0, 0, 0)
+    Public Shared ReadOnly Red As ColorF = ColorF.FromArgb(1, 1, 0, 0)
+
+    Public Shared Function FromArgb(a As Double, r As Double, g As Double, b As Double) As ColorF
+        Return New ColorF With {.A = CSng(a), .R = CSng(r), .G = CSng(g), .B = CSng(b)}
+    End Function
+    Public Shared Widening Operator CType(x As Color) As ColorF
+        Return ColorF.FromArgb(x.A / 255, x.R / 255, x.G / 255, x.B / 255)
+    End Operator
+    Public Function Clamp() As ColorF
+        Return ColorF.FromArgb(Math.Max(0, Math.Min(1, A)), Math.Max(0, Math.Min(1, R)), Math.Max(0, Math.Min(1, G)), Math.Max(0, Math.Min(1, B)))
+    End Function
+    Public Overrides Function ToString() As String
+        Return $"<{A:0.00},{R:0.00},{G:0.00},{B:0.00}>"
+    End Function
+    Public Shared Operator =(x As ColorF, y As ColorF) As Boolean
+        Return x.A = y.A AndAlso x.R = y.R AndAlso x.G = y.G AndAlso x.B = y.B
+    End Operator
+    Public Shared Operator <>(x As ColorF, y As ColorF) As Boolean
+        Return x.A <> y.A OrElse x.R = y.R OrElse x.G = y.G OrElse x.B = y.B
+    End Operator
+    Public Overrides Function Equals(obj As Object) As Boolean
+        If obj Is Nothing Then Return False
+        Dim you = CType(obj, ColorF)
+        Return Me = you
+    End Function
+    Private Shared Function bb(s As Single) As Byte
+        If s < 0 Then Return 0
+        If s > 1 Then Return 255
+        Return CByte(s * 255)
+    End Function
+    Public Shared Narrowing Operator CType(x As ColorF) As Color
+        Return Color.FromArgb(bb(x.A), bb(x.R), bb(x.G), bb(x.B))
+    End Operator
+    Public Shared Operator *(s As Double, x As ColorF) As ColorF
+        Return ColorF.FromArgb(s * x.A, s * x.R, s * x.G, s * x.B)
+    End Operator
+    Public Shared Operator *(x As ColorF, s As Double) As ColorF
+        Return ColorF.FromArgb(s * x.A, s * x.R, s * x.G, s * x.B)
+    End Operator
+    Public Shared Operator /(x As ColorF, s As Double) As ColorF
+        Return ColorF.FromArgb(x.A / s, x.R / s, x.G / s, x.B / s)
+    End Operator
+    Public Shared Operator +(x As ColorF, y As ColorF) As ColorF
+        Return ColorF.FromArgb(x.A + y.A, x.R + y.R, x.G + y.G, x.B + y.B)
+    End Operator
+End Structure

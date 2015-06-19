@@ -110,6 +110,7 @@ Public NotInheritable Class MainPageCPU
         DisplayEffect2.TransformMatrix = Matrix3x2.CreateScale(CSng(scale))
         args.DrawingSession.DrawImage(DisplayEffect2)
 
+        ' Draw gridlines, if they'll fit
         If SIMULATION_SIZE > 20 Then Return
         Dim w = CSng(canvas1.ActualWidth), h = CSng(canvas1.ActualHeight)
         Dim rule = Color.FromArgb(255, 202, 235, 253)

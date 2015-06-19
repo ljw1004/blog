@@ -11,22 +11,34 @@ NotInheritable Class App
         End Get
     End Property
 
-    Public Shared ReadOnly CWIDTH As Integer = 8
-    Public Shared ReadOnly CHEIGHT As Integer = 8
+    Public Event Loaded As Action
+
+    Public Shared ReadOnly SIMULATION_SIZE As Integer = 8
     Public Shared Property model As EffectsModel
-    Public Shared Property pixels As Color()
+    Public Shared Property pixels As ColorF()
 
     Protected Overrides Sub OnLaunched(e As LaunchActivatedEventArgs)
+        ApplicationView.GetForCurrentView().SetDesiredBoundsMode(ApplicationViewBoundsMode.UseCoreWindow)
+        If Metadata.ApiInformation.IsTypePresent("Windows.UI.ViewManagement.StatusBar") Then
+            StatusBar.GetForCurrentView().HideAsync().FireAndForget()
+        End If
+
+
         Dim rootFrame As Frame = TryCast(Window.Current.Content, Frame)
         If rootFrame Is Nothing Then
             rootFrame = New Frame()
             '
-            Dim json = CStr(ApplicationData.Current.LocalSettings.Values("model"))
-            If json IsNot Nothing Then model = JsonConvert.DeserializeObject(Of EffectsModel)(json)
-            If model Is Nothing Then model = New EffectsModel
-            json = CStr(ApplicationData.Current.LocalSettings.Values("pixels"))
-            If json IsNot Nothing Then pixels = JsonConvert.DeserializeObject(Of Color())(json)
-            If pixels Is Nothing Then pixels = Enumerable.Repeat(Colors.Black, CWIDTH * CHEIGHT).ToArray()
+            Dim loadTask = Async Function()
+                               model = Await LoadJsonAsync(Of EffectsModel)("model.json").ExceptionsToNull
+                               If model Is Nothing Then model = New EffectsModel
+                               pixels = Await LoadJsonAsync(Of ColorF())("pixels.json").ExceptionsToNull
+                               If pixels Is Nothing Then pixels = Enumerable.Repeat(ColorF.Black, SIMULATION_SIZE * SIMULATION_SIZE).ToArray()
+                               For i = 0 To pixels.Length - 1
+                                   pixels(i).A = 1
+                               Next
+                               RaiseEvent Loaded()
+                           End Function()
+            loadTask.FireAndForget()
             '
             Window.Current.Content = rootFrame
         End If
@@ -34,12 +46,29 @@ NotInheritable Class App
         Window.Current.Activate()
     End Sub
 
-    Private Sub OnSuspending(sender As Object, e As SuspendingEventArgs) Handles Me.Suspending
+    Private Async Sub OnSuspending(sender As Object, e As SuspendingEventArgs) Handles Me.Suspending
         Dim deferral As SuspendingDeferral = e.SuspendingOperation.GetDeferral()
-        ApplicationData.Current.LocalSettings.Values("model") = JsonConvert.SerializeObject(model)
-        ApplicationData.Current.LocalSettings.Values("pixels") = JsonConvert.SerializeObject(pixels)
+        Await SaveJsonAsync("model.json", model)
+        Await SaveJsonAsync("pixels.json", pixels)
         deferral.Complete()
     End Sub
+
+    Async Function SaveJsonAsync(name As String, o As Object) As Task
+        Dim file = Await ApplicationData.Current.LocalFolder.CreateFileAsync(name, CreationCollisionOption.ReplaceExisting)
+        Dim s = JsonConvert.SerializeObject(o)
+        Using stream = Await file.OpenStreamForWriteAsync(), writer As New StreamWriter(stream)
+            Await writer.WriteAsync(s)
+        End Using
+    End Function
+
+    Async Function LoadJsonAsync(Of T)(name As String) As Task(Of T)
+        Dim file = Await ApplicationData.Current.LocalFolder.GetFileAsync(name)
+        If file Is Nothing Then Return Nothing
+        Using stream = Await file.OpenStreamForReadAsync(), reader As New StreamReader(stream)
+            Dim s = Await reader.ReadToEndAsync()
+            Return JsonConvert.DeserializeObject(Of T)(s)
+        End Using
+    End Function
 
 End Class
 
