@@ -8,9 +8,9 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid Background="#FFE6FAE6">
+    <Grid Background="#FFE6E6FA">
         <canvas:CanvasControl x:Name="canvas1"/>
-        <Button x:Name="button1" Content="Switch to GPU" VerticalAlignment="Bottom" Background="#FFE6E6FA"/>
+        <Button x:Name="button1" Content="Switch to GPU" VerticalAlignment="Bottom" Background="#FFE6FAE6"/>
     </Grid>
 
 </Page>

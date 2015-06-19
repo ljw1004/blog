@@ -10,7 +10,7 @@ Imports Windows.UI
 Public NotInheritable Class MainPageCPU
     Inherits Page
 
-    Const SIMULATION_SIZE = 48
+    Const SIMULATION_SIZE = 16
 
     ' We use double-buffering, drawing onto Buffer1 on one frame, then Buffer2 the next, and so on.
     ' For rendering, we copy the pixels onto a Win2d surface that can be scaled and drawn onscreen.
@@ -109,6 +109,15 @@ Public NotInheritable Class MainPageCPU
         Dim scale = canvas1.Width / canvas1.ConvertPixelsToDips(SIMULATION_SIZE)
         DisplayEffect2.TransformMatrix = Matrix3x2.CreateScale(CSng(scale))
         args.DrawingSession.DrawImage(DisplayEffect2)
+
+        If SIMULATION_SIZE > 20 Then Return
+        Dim w = CSng(canvas1.ActualWidth), h = CSng(canvas1.ActualHeight)
+        Dim rule = Color.FromArgb(255, 202, 235, 253)
+        For i = 0 To SIMULATION_SIZE
+            Dim f = CSng(i / SIMULATION_SIZE)
+            args.DrawingSession.DrawLine(0, f * h, w, f * h, rule)
+            args.DrawingSession.DrawLine(f * w, 0, f * w, h, rule)
+        Next
     End Sub
 
 
