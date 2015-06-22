@@ -19,8 +19,8 @@ Imports Windows.UI.Core
 '   ||   color the pixel (px,py) according to the number of iterations done
 '
 '
-' Conventionally, if you had a 480x480 pixel screen, you'd do the outer loop
-' 480x480 = 230 thousand times, and the inner loop 11 million times.
+' Conventionally, if you had a 500x500 pixel screen, you'd do the outer loop
+' 500x500 = 250 thousand times, and the inner loop 12.5 million times.
 ' That's a lot of loops!
 '
 '
@@ -29,20 +29,20 @@ Imports Windows.UI.Core
 ' pixel on the screen at once -- that way the entire Mandelbrot Set will
 ' be finished in just 50 iterations! ...
 '
-'   ||   start with a 480x480 matrix, where wach element at location (px, py) is
-'   ||   itself a pair of numbers <x,y> initialized to <0,0>.
+'   ||   start with a 500x500 matrix, where each element at location (x, y) is
+'   ||   itself a pair of numbers (a,b) initialized to (0,0).
 '   ||
 '   ||   repeat this loop 50 times:
 '   ||       simultaneously for every pixel (px, py) in the matrix,
-'   ||       <x,y> := < x*x - y*y + px,  2*x*y + py >
+'   ||       (a,b)' := ( a*a - b*b + x,  2*a*b + y )
 '   ||
-'   ||   at the end, color every pixel according to whether <x,y> > 2.
+'   ||   at the end, color every pixel according to whether x*x+y*y > 4.
 '
 '
 ' Under the hood, the graphics card can't quite do every pixel simultaneously.
-' A modern graphics card has about 2000 cores, so it will split the 480x480
-' matrix into 2000 tiles of 100 pixels Each. So really the work takes
-' 50 * 100 = 5000 iterations total. Still, that's plenty fast enough!
+' A modern graphics card has about 2000 cores, so it will split the 500x500
+' matrix into 2000 tiles of 120 pixels Each. So really the work takes
+' 50 * 120 = 6000 iterations total. Still, that's plenty fast enough!
 '
 '
 ' Ideally we'd code that fast algorithm directly using GPGPU, like these
@@ -56,11 +56,15 @@ Imports Windows.UI.Core
 ' and they aren't exposed in Win2d, so we'll make do with what we have:
 '
 ' ArithmeticCompositeEffect - given two bitmaps A and B, gives a third bitmap x*A + y*B + z*A*B
+' CompositeEffect - given a number of bitmaps P,Q,R, gives a fourth bitmap P+Q+R
 '
 '
 ' Incidentally, phones typically don't support "Double" floating point precision numbers (64bits)
 ' They don't even support "Single" precision (32bits)
 ' Instead they have "Half" precision floating points (16bits).
+' And also they don't support bitmaps with only a single value per pixel.
+' They only work with four values (R,G,B,A) per pixel. So we're basically having to do
+' four times as much work as we'd like to do.
 
 
 Public NotInheritable Class MainPage
@@ -94,7 +98,13 @@ Public NotInheritable Class MainPage
         Accumulator = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Ignore)
         DrawBuffer = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Ignore)
 
-        ' Initialize the "unitX and unitY" surfaces.
+        ' Initialize the "unitX and unitY" surfaces...
+        '
+        ' COMPLICATION: the only floating-point pixel format supported on low-end devices like Phone is
+        ' "half-precision floating point" R16G16B16A16Float.
+        ' This half-precision floating-point isn't supported by .NET, and isn't supported by Win2d,
+        ' so we roll our own routine "GetHalfFloatBytes" which turns a double-precision floating point
+        ' number into the correct bit pattern for half-precision, and we write raw bytes to the surface.
         Dim range = New Byte(8 * CSIZE - 1) {}
         Dim buf1 = GetHalfFloatBytes(1.0F)
         For i = 0 To CSIZE - 1
@@ -144,35 +154,54 @@ Public NotInheritable Class MainPage
         End Using
 
 
-        ' a' = a*a - b*b + x
+        ' A' = A*A - B*B + X
         Dim A_squared As New ArithmeticCompositeEffect With {.Source1 = A, .Source2 = A}
         Dim minus_B_squared As New ArithmeticCompositeEffect With {.Source1 = B, .Source2 = B, .MultiplyAmount = -1}
         Dim A_prime As New CompositeEffect With {.Mode = CanvasComposite.Add}
         A_prime.Sources.Add(A_squared) : A_prime.Sources.Add(minus_B_squared) : A_prime.Sources.Add(X)
 
-        ' b' = 2ab + y
+        ' B' = 2*A*B + Y
         Dim two_A_B As New ArithmeticCompositeEffect With {.Source1 = A, .Source2 = B, .MultiplyAmount = 2}
         Dim B_prime As New CompositeEffect With {.Mode = CanvasComposite.Add}
         B_prime.Sources.Add(two_A_B) : B_prime.Sources.Add(Y)
 
-        ' For display... the thing is that we wish to treat "NaN" and "x^2+y^2>4" as equivalent,
-        ' since both diverge. Therefore we have to clamp. But clamping always turns NaN into 0.
-        ' So we'll negate it, "clamp(1 - 0.25*x*x*y*y)", which will turn NaN into 0, and
-        ' large x^2+y^2>4 into 0, and small xy into the range 0..1
-        ' We need to correct alpha prior (via color-matix) prior to the final step,
-        ' a discrete transfer effect to turn 0 into "1", and everything else into "0"
-        Dim dinvert As New ArithmeticCompositeEffect With {.Source1 = A_squared, .Source2 = minus_B_squared, .MultiplyAmount = 0, .Source1Amount = -0.25, .Source2Amount = 0.25, .Offset = 1, .ClampOutput = True}
-        Dim dalpha As New ColorMatrixEffect With {.Source = dinvert, .AlphaMode = CanvasAlphaMode.Straight, .ColorMatrix = New Matrix5x4 With {.M11 = 1, .M22 = 1, .M33 = 1, .M44 = 0, .M54 = 1}}
+        ' D = A*A + B*B...
+        '
+        ' COMPLICATION: We want to clip "D" so that all values >= 4 count just as "diverged".
+        ' But Win2d only offers clamping to the range 0..1, and it clamps NaN into "0" rather than "1".
+        ' So instead we do "clamp(1 - 0.25*X*X - 0.25*Y*Y)", re-using the X*X and -Y*Y intermediates from earlier.
+        ' This will give 0 for all diverged pixels, and 0..1 for all not-yet-diverged pixels.
+        Dim one_minus_quarter_d As New ArithmeticCompositeEffect With {.Source1 = A_squared, .Source2 = minus_B_squared, .MultiplyAmount = 0, .Source1Amount = -0.25, .Source2Amount = 0.25, .Offset = 1, .ClampOutput = True}
+        '
+        ' COMPLICATION: The result of all those ArithmeticCompositeEffects has turned the alpha channel
+        ' into something useless. This isn't a problem for the ArithmeticCompositeEffects used above since
+        ' they treat it independently, but it is a problem for "D" the way we're going to use it.
+        ' So we'll use a ColorMatrixEffect to reset the alpha channel to 1.0 everywhere:
+        Dim one_minus_quarter_d_fixed_alpha As New ColorMatrixEffect With {.Source = one_minus_quarter_d, .AlphaMode = CanvasAlphaMode.Straight, .ColorMatrix = New Matrix5x4 With {.M11 = 1, .M22 = 1, .M33 = 1, .M44 = 0, .M54 = 1}}
+        '
+        ' COMPLICATION: for display purposes, we want to calculate the number of iterations it takes
+        ' before "D" diverges. The way we'll do this is to steadily accumulate the following:
+        ' if the above "clamp(1 - ...)" value is 0, i.e. if this pixel is either currently diverged
+        ' or has diverged in the past, then add 1/50th greyscale to our accumulator. This way
+        ' over 50 iterations we'll accumulate solid black for the things never diverge, and we'll color
+        ' dark grey the things that eventually diverge after 30+ iterations, and we'll color light grey
+        ' or white those things that diverge immediately.
+        ' We can't quite do "if value is equal to 0", but we can use a DiscreteTransferFunction to do
+        ' the close approximation "if value is <= 1/20"...
         Dim table As Single() = {CSng(1 / CITER), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-        Dim d1and0 As New DiscreteTransferEffect With {.Source = dalpha, .RedTable = table, .GreenTable = table, .BlueTable = table, .AlphaTable = {1}}
+        Dim is_d_diverged As New DiscreteTransferEffect With {.Source = one_minus_quarter_d_fixed_alpha, .RedTable = table, .GreenTable = table, .BlueTable = table, .AlphaTable = {1}}
+
 
         For iter = 1 To CITER
 
             Using daprime = Me.A_prime.CreateDrawingSession(), dbprime = Me.B_prime.CreateDrawingSession(), dacc = Accumulator.CreateDrawingSession
                 daprime.Blend = CanvasBlend.Copy : daprime.DrawImage(A_prime)
                 dbprime.Blend = CanvasBlend.Copy : dbprime.DrawImage(B_prime)
-                dacc.Blend = CanvasBlend.Add : dacc.DrawImage(d1and0)
+                dacc.Blend = CanvasBlend.Add : dacc.DrawImage(is_d_diverged)
             End Using
+            ' COMPLICATION: The CanvasBlend mode is "SourceOver", which interacts badly with the alpha
+            ' values in A_prime and B_prime. So instead we use "Copy".
+
 
             ' Swap "a" and "a_prime" around, and likewise "b" and "b_prime"
             Dim ta = A : A = Me.A_prime : Me.A_prime = ta
