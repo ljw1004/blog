@@ -278,6 +278,7 @@ Public Structure ColorF
     Public Shared ReadOnly White As ColorF = ColorF.FromArgb(1, 1, 1, 1)
     Public Shared ReadOnly Gray As ColorF = ColorF.FromArgb(1, 0.5, 0.5, 0.5)
     Public Shared ReadOnly Black As ColorF = ColorF.FromArgb(1, 0, 0, 0)
+    Public Shared ReadOnly Red As ColorF = ColorF.FromArgb(1, 1, 0, 0)
 
     Public Shared Function FromArgb(a As Double, r As Double, g As Double, b As Double) As ColorF
         Return New ColorF With {.A = CSng(a), .R = CSng(r), .G = CSng(g), .B = CSng(b)}
@@ -362,6 +363,13 @@ Module Win2dSimulator_Utils
         Throw New ArgumentOutOfRangeException(NameOf(value), "subnormals not implemented")
     End Function
 
+
+
+    <Extension>
+    Sub SetPixelColorFs(bmp As CanvasRenderTarget, cols As ColorF())
+        SetPixelColorFs(bmp, cols, 0, 0, bmp.Description.Width, bmp.Description.Height)
+    End Sub
+
     <Extension>
     Sub SetPixelColorFs(bmp As CanvasRenderTarget, cols As ColorF(), left As Integer, top As Integer, width As Integer, height As Integer)
         If bmp.Description.Format = DirectXPixelFormat.B8G8R8A8UIntNormalized Then
@@ -393,6 +401,11 @@ Module Win2dSimulator_Utils
     End Sub
 
     <Extension>
+    Function GetPixelColorFs(bmp As CanvasRenderTarget) As ColorF()
+        Return GetPixelColorFs(bmp, 0, 0, bmp.Description.Width, bmp.Description.Height)
+    End Function
+
+    <Extension>
     Function GetPixelColorFs(bmp As CanvasRenderTarget, left As Integer, top As Integer, width As Integer, height As Integer) As ColorF()
         Dim c = New ColorF(width * height - 1) {}
         If bmp.Description.Format = DirectXPixelFormat.B8G8R8A8UIntNormalized Then
@@ -421,6 +434,7 @@ Module Win2dSimulator_Utils
         End If
         Return c
     End Function
+
 
 End Module
 

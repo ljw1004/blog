@@ -380,229 +380,69 @@ Module Utils
         Return r
     End Function
 
-    Public Class KernelTracker
-        Public _Matrix As Single()
-        Public _Touched As Boolean()
-        '
-        Public ConvolveDivisor As Integer
-        Public TransferTable As Single()
-        Public ConvolveMatrix As Single()
-
-        Shared Function Generate(values As IEnumerable(Of Single), touches As IEnumerable(Of Kernel), lambda As Func(Of Func(Of Integer, Single), Single)) As KernelTracker
-            touches = touches.Reverse() ' so that when authors write "most significant item first", it's reflected in the transfer table
-            Dim values_Count = values.Count
-            Dim k As New KernelTracker
-            k._Touched = {False, False, False, False, False, False, False, False, False}
-            k._Matrix = New Single(8) {}
-            Dim getMatrixLambda = Function(pos As Integer)
-                                      k._Touched(pos) = True
-                                      Return k._Matrix(pos)
-                                  End Function
-            '
-            Dim results As New List(Of Single)
-            For i = 0 To IntPow(values_Count, touches.Count) - 1
-                Dim v = i
-                For Each t In touches
-                    k._Matrix(t) = values(v Mod values_Count)
-                    v \= values_Count
-                Next
-                Dim r = lambda(getMatrixLambda)
-                results.Add(r)
-            Next
-            '
-            k.TransferTable = results.ToArray()
-            k.ConvolveMatrix = New Single(8) {}
-            k.ConvolveDivisor = 0
-            Dim m = 1
-            For Each t In touches
-                k.ConvolveMatrix(t) = m
-                k.ConvolveDivisor += m
-                m *= values_Count
-            Next
-            '
-            If k.ConvolveDivisor > 20 Then Debug.WriteLine("WARNING! This kernel Is complicated. It likely won't work on DX9 devices such as Lumia635 which just don't guarantee the necessary GPU precision")
-            For i = Kernel._First To Kernel._Last
-                If k._Touched(i) AndAlso Not touches.Contains(i) Then Throw New ArgumentException($"Failed to declare that this kernel touches {i}")
-                If Not k._Touched(i) AndAlso touches.Contains(i) Then Throw New ArgumentException($"Declared that this kernel touches {i} but it doesn't")
-            Next
-            Return k
-        End Function
-
-    End Class
-
-    Public Enum Kernel
-        _First = 0
-        UpLeft = 8
-        Up = 7
-        UpRight = 6
-        Left = 5
-        Center = 4
-        Right = 3
-        DownLeft = 2
-        Down = 1
-        DownRight = 0
-        _Last = 8
-    End Enum
-
-
-
-
-    Function BitConverter_ToHalf(buf As Byte(), offset As Integer) As Single
-        Dim hbits = CUInt(buf(offset)) Or (CUInt(buf(offset + 1)) << 8)
-        Dim sign = hbits And &H8000
-        Dim mant = hbits And &H03FF
-        Dim exp = hbits And &H7C00
-        If exp = &H7C00 Then
-            exp = &H3FC00 ' NaN/Inf
-        ElseIf exp <> 0 Then ' normal
-            exp += &H1C000
-        ElseIf exp = 0 AndAlso mant <> 0 Then ' subnormal
-            exp = &H1C400
-            Do
-                mant = mant << 1
-                exp -= &H400
-            Loop While (mant And &H400) = 0
-        Else
-            ' +/- 0
-        End If
-        '
-        Dim hbits2 = sign << 16 Or exp << 13 Or mant << 13
-        Return BitConverter.ToSingle(BitConverter.GetBytes(hbits2), 0)
-    End Function
-
-    Function BitConverter_GetHalfBytes(value As Single) As Byte()
-        If value < 0 Then Throw New ArgumentOutOfRangeException(NameOf(value), "negatives not implemented")
-        Dim fbits = BitConverter.ToUInt32(BitConverter.GetBytes(CSng(value)), 0)
-        Dim val = (fbits And &H7FFFFFFFUI) + &H1000
-        If val >= &H47800000 Then Throw New ArgumentOutOfRangeException(NameOf(value), "NaN/Inf/overflow not implemented")
-        If val >= &H38800000 Then Return BitConverter.GetBytes(CUShort((val - &H38000000) >> 13))
-        If val < &H33000000 Then Return {0, 0}
-        Throw New ArgumentOutOfRangeException(NameOf(value), "subnormals not implemented")
-    End Function
-
-    <Extension>
-    Sub SetPixelColorFs(bmp As CanvasRenderTarget, cols As ColorF())
-        SetPixelColorFs(bmp, cols, 0, 0, bmp.Description.Width, bmp.Description.Height)
-    End Sub
-
-    <Extension>
-    Sub SetPixelColorFs(bmp As CanvasRenderTarget, cols As ColorF(), left As Integer, top As Integer, width As Integer, height As Integer)
-        If bmp.Description.Format = DirectXPixelFormat.B8G8R8A8UIntNormalized Then
-            Dim buf = cols.Select(Function(c) CType(c, Color)).ToArray
-            bmp.SetPixelColors(buf, left, top, width, height)
-        ElseIf bmp.Description.Format = DirectXPixelFormat.R32G32B32A32Float Then
-            Dim buf = New Byte(cols.Length * 16 - 1) {}
-            For i = 0 To cols.Length - 1
-                Array.Copy(BitConverter.GetBytes(cols(i).R), 0, buf, i * 16 + 0, 4)
-                Array.Copy(BitConverter.GetBytes(cols(i).G), 0, buf, i * 16 + 4, 4)
-                Array.Copy(BitConverter.GetBytes(cols(i).B), 0, buf, i * 16 + 8, 4)
-                Array.Copy(BitConverter.GetBytes(cols(i).A), 0, buf, i * 16 + 12, 4)
-            Next
-            bmp.SetPixelBytes(buf, left, top, width, height)
-        ElseIf bmp.Description.Format = DirectXPixelFormat.R16G16B16A16Float Then
-            Dim buf = New Byte(cols.Length * 8 - 1) {}
-            For i = 0 To cols.Length - 1
-                Array.Copy(BitConverter_GetHalfBytes(cols(i).R), 0, buf, i * 8 + 0, 2)
-                Array.Copy(BitConverter_GetHalfBytes(cols(i).G), 0, buf, i * 8 + 2, 2)
-                Array.Copy(BitConverter_GetHalfBytes(cols(i).B), 0, buf, i * 8 + 4, 2)
-                Array.Copy(BitConverter_GetHalfBytes(cols(i).A), 0, buf, i * 8 + 6, 2)
-            Next
-            bmp.SetPixelBytes(buf, left, top, width, height)
-        Else
-            Throw New ArgumentException(NameOf(bmp.Description.Format))
-        End If
-    End Sub
-
-
-    <Extension>
-    Function GetPixelColorFs(bmp As CanvasRenderTarget) As ColorF()
-        Return GetPixelColorFs(bmp, 0, 0, bmp.Description.Width, bmp.Description.Height)
-    End Function
-
-    <Extension>
-    Function GetPixelColorFs(bmp As CanvasRenderTarget, left As Integer, top As Integer, width As Integer, height As Integer) As ColorF()
-        Dim c = New ColorF(width * height - 1) {}
-        If bmp.Description.Format = DirectXPixelFormat.B8G8R8A8UIntNormalized Then
-            Dim buf = bmp.GetPixelColors(left, top, width, height)
-            For i = 0 To c.Length - 1
-                c(i) = buf(i)
-            Next
-        ElseIf bmp.Description.Format = DirectXPixelFormat.R32G32B32A32Float Then
-            Dim buf = bmp.GetPixelBytes(left, top, width, height)
-            For i = 0 To c.Length - 1
-                c(i).R = BitConverter.ToSingle(buf, i * 16 + 0)
-                c(i).G = BitConverter.ToSingle(buf, i * 16 + 4)
-                c(i).B = BitConverter.ToSingle(buf, i * 16 + 8)
-                c(i).A = BitConverter.ToSingle(buf, i * 16 + 12)
-            Next
-        ElseIf bmp.Description.Format = DirectXPixelFormat.R16G16B16A16Float Then
-            Dim buf = bmp.GetPixelBytes(left, top, width, height)
-            For i = 0 To c.Length - 1
-                c(i).R = BitConverter_ToHalf(buf, i * 8 + 0)
-                c(i).G = BitConverter_ToHalf(buf, i * 8 + 2)
-                c(i).B = BitConverter_ToHalf(buf, i * 8 + 4)
-                c(i).A = BitConverter_ToHalf(buf, i * 8 + 6)
-            Next
-        Else
-            Throw New ArgumentException(NameOf(bmp.Description.Format))
-        End If
-        Return c
-    End Function
-
-
 End Module
 
-Public Structure ColorF
-    Public R As Single
-    Public G As Single
-    Public B As Single
-    Public A As Single
-    Public Shared ReadOnly White As ColorF = ColorF.FromArgb(1, 1, 1, 1)
-    Public Shared ReadOnly Gray As ColorF = ColorF.FromArgb(1, 0.5, 0.5, 0.5)
-    Public Shared ReadOnly Black As ColorF = ColorF.FromArgb(1, 0, 0, 0)
-    Public Shared ReadOnly Red As ColorF = ColorF.FromArgb(1, 1, 0, 0)
 
-    Public Shared Function FromArgb(a As Double, r As Double, g As Double, b As Double) As ColorF
-        Return New ColorF With {.A = CSng(a), .R = CSng(r), .G = CSng(g), .B = CSng(b)}
+Public Class KernelTracker
+    Public _Matrix As Single()
+    Public _Touched As Boolean()
+    '
+    Public ConvolveDivisor As Integer
+    Public TransferTable As Single()
+    Public ConvolveMatrix As Single()
+
+    Shared Function Generate(values As IEnumerable(Of Single), touches As IEnumerable(Of Kernel), lambda As Func(Of Func(Of Integer, Single), Single)) As KernelTracker
+        touches = touches.Reverse() ' so that when authors write "most significant item first", it's reflected in the transfer table
+        Dim values_Count = values.Count
+        Dim k As New KernelTracker
+        k._Touched = {False, False, False, False, False, False, False, False, False}
+        k._Matrix = New Single(8) {}
+        Dim getMatrixLambda = Function(pos As Integer)
+                                  k._Touched(pos) = True
+                                  Return k._Matrix(pos)
+                              End Function
+        '
+        Dim results As New List(Of Single)
+        For i = 0 To IntPow(values_Count, touches.Count) - 1
+            Dim v = i
+            For Each t In touches
+                k._Matrix(t) = values(v Mod values_Count)
+                v \= values_Count
+            Next
+            Dim r = lambda(getMatrixLambda)
+            results.Add(r)
+        Next
+        '
+        k.TransferTable = results.ToArray()
+        k.ConvolveMatrix = New Single(8) {}
+        k.ConvolveDivisor = 0
+        Dim m = 1
+        For Each t In touches
+            k.ConvolveMatrix(t) = m
+            k.ConvolveDivisor += m
+            m *= values_Count
+        Next
+        '
+        If k.ConvolveDivisor > 20 Then Debug.WriteLine("WARNING! This kernel Is complicated. It likely won't work on DX9 devices such as Lumia635 which just don't guarantee the necessary GPU precision")
+        For i = Kernel._First To Kernel._Last
+            If k._Touched(i) AndAlso Not touches.Contains(i) Then Throw New ArgumentException($"Failed to declare that this kernel touches {i}")
+            If Not k._Touched(i) AndAlso touches.Contains(i) Then Throw New ArgumentException($"Declared that this kernel touches {i} but it doesn't")
+        Next
+        Return k
     End Function
-    Public Shared Widening Operator CType(x As Color) As ColorF
-        Return ColorF.FromArgb(x.A / 255, x.R / 255, x.G / 255, x.B / 255)
-    End Operator
-    Public Function Clamp() As ColorF
-        Return ColorF.FromArgb(Math.Max(0, Math.Min(1, A)), Math.Max(0, Math.Min(1, R)), Math.Max(0, Math.Min(1, G)), Math.Max(0, Math.Min(1, B)))
-    End Function
-    Public Overrides Function ToString() As String
-        Return $"<{A:0.00},{R:0.00},{G:0.00},{B:0.00}>"
-    End Function
-    Public Shared Operator =(x As ColorF, y As ColorF) As Boolean
-        Return x.A = y.A AndAlso x.R = y.R AndAlso x.G = y.G AndAlso x.B = y.B
-    End Operator
-    Public Shared Operator <>(x As ColorF, y As ColorF) As Boolean
-        Return x.A <> y.A OrElse x.R = y.R OrElse x.G = y.G OrElse x.B = y.B
-    End Operator
-    Public Overrides Function Equals(obj As Object) As Boolean
-        If obj Is Nothing Then Return False
-        Dim you = CType(obj, ColorF)
-        Return Me = you
-    End Function
-    Private Shared Function bb(s As Single) As Byte
-        If s < 0 Then Return 0
-        If s > 1 Then Return 255
-        Return CByte(s * 255)
-    End Function
-    Public Shared Narrowing Operator CType(x As ColorF) As Color
-        Return Color.FromArgb(bb(x.A), bb(x.R), bb(x.G), bb(x.B))
-    End Operator
-    Public Shared Operator *(s As Double, x As ColorF) As ColorF
-        Return ColorF.FromArgb(s * x.A, s * x.R, s * x.G, s * x.B)
-    End Operator
-    Public Shared Operator *(x As ColorF, s As Double) As ColorF
-        Return ColorF.FromArgb(s * x.A, s * x.R, s * x.G, s * x.B)
-    End Operator
-    Public Shared Operator /(x As ColorF, s As Double) As ColorF
-        Return ColorF.FromArgb(x.A / s, x.R / s, x.G / s, x.B / s)
-    End Operator
-    Public Shared Operator +(x As ColorF, y As ColorF) As ColorF
-        Return ColorF.FromArgb(x.A + y.A, x.R + y.R, x.G + y.G, x.B + y.B)
-    End Operator
-End Structure
+
+End Class
+
+Public Enum Kernel
+    _First = 0
+    UpLeft = 8
+    Up = 7
+    UpRight = 6
+    Left = 5
+    Center = 4
+    Right = 3
+    DownLeft = 2
+    Down = 1
+    DownRight = 0
+    _Last = 8
+End Enum

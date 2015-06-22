@@ -73,7 +73,7 @@ Public NotInheritable Class MainPage
     Dim MSize As New Vector2(4, 4)      ' size of mandlebrot
 
     Dim IsUpToDate As Boolean ' If MSize/MTopLeft change, then this gets reset, to indicate a recalc is needed
-    Dim UnitX, UnitY, RangeX, RangeY, IterX, IterX2, IterY, IterY2, Accumulator, DrawBuffer As CanvasRenderTarget
+    Dim UnitX, UnitY, X, Y, A, A_prime, B, B_prime, Accumulator, DrawBuffer As CanvasRenderTarget
     Dim DrawEffect As Transform2DEffect
 
     WithEvents NavigationManager As SystemNavigationManager = SystemNavigationManager.GetForCurrentView ' for back button
@@ -81,15 +81,16 @@ Public NotInheritable Class MainPage
 
     Sub Canvas_CreateResources(sender As CanvasControl, args As Object) Handles canvas1.CreateResources
         Const defaultDpi = 96.0F
+        IsUpToDate = False
 
         UnitX = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
         UnitY = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        RangeX = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        RangeY = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        IterX = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        IterX2 = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        IterY = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        IterY2 = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
+        X = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
+        Y = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
+        A = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
+        A_prime = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
+        B = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
+        B_prime = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
         Accumulator = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Ignore)
         DrawBuffer = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Ignore)
 
@@ -124,37 +125,35 @@ Public NotInheritable Class MainPage
         Throw New ArgumentOutOfRangeException(NameOf(value), "subnormals not implemented")
     End Function
 
+
     Sub Update()
         Dim sw = Stopwatch.StartNew
 
-        ' Set up rangeX and rangeY
-        Dim ex As New LinearTransferEffect With {.Source = UnitX, .AlphaDisable = True, .RedOffset = MTopLeft.X, .RedSlope = MSize.X, .GreenOffset = MTopLeft.X, .GreenSlope = MSize.X, .BlueOffset = MTopLeft.X, .BlueSlope = MSize.X}
-        Dim ey As New LinearTransferEffect With {.Source = UnitY, .AlphaDisable = True, .RedOffset = MTopLeft.Y, .RedSlope = MSize.Y, .GreenOffset = MTopLeft.Y, .GreenSlope = MSize.Y, .BlueOffset = MTopLeft.Y, .BlueSlope = MSize.Y}
-        Using dsx = RangeX.CreateDrawingSession(), dsy = RangeY.CreateDrawingSession()
-            dsx.DrawImage(ex)
-            dsy.DrawImage(ey)
+        ' Set up X and Y for the current zoom
+        Using dsx = Me.X.CreateDrawingSession(), dsy = Me.Y.CreateDrawingSession()
+            dsx.DrawImage(New LinearTransferEffect With {.Source = UnitX, .AlphaDisable = True, .RedOffset = MTopLeft.X, .RedSlope = MSize.X, .GreenOffset = MTopLeft.X, .GreenSlope = MSize.X, .BlueOffset = MTopLeft.X, .BlueSlope = MSize.X})
+            dsy.DrawImage(New LinearTransferEffect With {.Source = UnitY, .AlphaDisable = True, .RedOffset = MTopLeft.Y, .RedSlope = MSize.Y, .GreenOffset = MTopLeft.Y, .GreenSlope = MSize.Y, .BlueOffset = MTopLeft.Y, .BlueSlope = MSize.Y})
         End Using
 
         ' Initialize the iteration and the accumulator
-        Dim eblack As New ColorSourceEffect With {.Color = Colors.Black}
-        Using dsx = IterX.CreateDrawingSession(), dsy = IterY.CreateDrawingSession(), dsa = Accumulator.CreateDrawingSession()
-            dsx.DrawImage(eblack)
-            dsy.DrawImage(eblack)
-            dsa.DrawImage(eblack)
+        Dim black As New ColorSourceEffect With {.Color = Colors.Black}
+        Using dsa = A.CreateDrawingSession(), dsb = B.CreateDrawingSession(), dsacc = Accumulator.CreateDrawingSession()
+            dsa.DrawImage(black)
+            dsb.DrawImage(black)
+            dsacc.DrawImage(black)
         End Using
 
-        Dim oldx = IterX, oldy = IterY
 
-        ' newx = x*x - y*y + x0
-        Dim xx As New ArithmeticCompositeEffect With {.Source1 = oldx, .Source2 = oldx}
-        Dim yyneg As New ArithmeticCompositeEffect With {.Source1 = oldy, .Source2 = oldy, .MultiplyAmount = -1}
-        Dim newx As New CompositeEffect With {.Mode = CanvasComposite.Add}
-        newx.Sources.Add(xx) : newx.Sources.Add(yyneg) : newx.Sources.Add(RangeX)
+        ' a' = a*a - b*b + x
+        Dim A_squared As New ArithmeticCompositeEffect With {.Source1 = A, .Source2 = A}
+        Dim minus_B_squared As New ArithmeticCompositeEffect With {.Source1 = B, .Source2 = B, .MultiplyAmount = -1}
+        Dim A_prime As New CompositeEffect With {.Mode = CanvasComposite.Add}
+        A_prime.Sources.Add(A_squared) : A_prime.Sources.Add(minus_B_squared) : A_prime.Sources.Add(X)
 
-        ' newy = 2xy + y0
-        Dim xy2 As New ArithmeticCompositeEffect With {.Source1 = oldx, .Source2 = oldy, .MultiplyAmount = 2}
-        Dim newy As New CompositeEffect With {.Mode = CanvasComposite.Add}
-        newy.Sources.Add(xy2) : newy.Sources.Add(RangeY)
+        ' b' = 2ab + y
+        Dim two_A_B As New ArithmeticCompositeEffect With {.Source1 = A, .Source2 = B, .MultiplyAmount = 2}
+        Dim B_prime As New CompositeEffect With {.Mode = CanvasComposite.Add}
+        B_prime.Sources.Add(two_A_B) : B_prime.Sources.Add(Y)
 
         ' For display... the thing is that we wish to treat "NaN" and "x^2+y^2>4" as equivalent,
         ' since both diverge. Therefore we have to clamp. But clamping always turns NaN into 0.
@@ -162,32 +161,31 @@ Public NotInheritable Class MainPage
         ' large x^2+y^2>4 into 0, and small xy into the range 0..1
         ' We need to correct alpha prior (via color-matix) prior to the final step,
         ' a discrete transfer effect to turn 0 into "1", and everything else into "0"
-        Dim dinvert As New ArithmeticCompositeEffect With {.Source1 = xx, .Source2 = yyneg, .MultiplyAmount = 0, .Source1Amount = -0.25, .Source2Amount = 0.25, .Offset = 1, .ClampOutput = True}
-        Dim dm As New Matrix5x4 With {.M11 = 1, .M22 = 1, .M33 = 1, .M44 = 0, .M54 = 1}
-        Dim dalpha As New ColorMatrixEffect With {.Source = dinvert, .AlphaMode = CanvasAlphaMode.Straight, .ColorMatrix = dm}
-        Dim dt As Single() = {CSng(1 / CITER), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-        Dim d1and0 As New DiscreteTransferEffect With {.Source = dalpha, .RedTable = dt, .GreenTable = dt, .BlueTable = dt, .AlphaTable = {1}}
+        Dim dinvert As New ArithmeticCompositeEffect With {.Source1 = A_squared, .Source2 = minus_B_squared, .MultiplyAmount = 0, .Source1Amount = -0.25, .Source2Amount = 0.25, .Offset = 1, .ClampOutput = True}
+        Dim dalpha As New ColorMatrixEffect With {.Source = dinvert, .AlphaMode = CanvasAlphaMode.Straight, .ColorMatrix = New Matrix5x4 With {.M11 = 1, .M22 = 1, .M33 = 1, .M44 = 0, .M54 = 1}}
+        Dim table As Single() = {CSng(1 / CITER), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+        Dim d1and0 As New DiscreteTransferEffect With {.Source = dalpha, .RedTable = table, .GreenTable = table, .BlueTable = table, .AlphaTable = {1}}
 
         For iter = 1 To CITER
 
-            Using dx = IterX2.CreateDrawingSession(), dy = IterY2.CreateDrawingSession(), da = Accumulator.CreateDrawingSession
-                dx.Blend = CanvasBlend.Copy : dy.Blend = CanvasBlend.Copy : da.Blend = CanvasBlend.Add
-                dx.DrawImage(newx)
-                dy.DrawImage(newy)
-                da.DrawImage(d1and0)
+            Using daprime = Me.A_prime.CreateDrawingSession(), dbprime = Me.B_prime.CreateDrawingSession(), dacc = Accumulator.CreateDrawingSession
+                daprime.Blend = CanvasBlend.Copy : daprime.DrawImage(A_prime)
+                dbprime.Blend = CanvasBlend.Copy : dbprime.DrawImage(B_prime)
+                dacc.Blend = CanvasBlend.Add : dacc.DrawImage(d1and0)
             End Using
 
-            ' Swap the buffers around
-            Dim tx = IterX : IterX = IterX2 : IterX2 = tx
-            Dim ty = IterY : IterY = IterY2 : IterY2 = ty
-            xx.Source1 = IterX
-            xx.Source2 = IterX
-            yyneg.Source1 = IterY
-            yyneg.Source2 = IterY
-            xy2.Source1 = IterX
-            xy2.Source2 = IterY
+            ' Swap "a" and "a_prime" around, and likewise "b" and "b_prime"
+            Dim ta = A : A = Me.A_prime : Me.A_prime = ta
+            Dim tb = B : B = Me.B_prime : Me.B_prime = tb
+            A_squared.Source1 = A
+            A_squared.Source2 = A
+            minus_B_squared.Source1 = B
+            minus_B_squared.Source2 = B
+            two_A_B.Source1 = A
+            two_A_B.Source2 = B
         Next
 
+        ' DrawBuffer is what the screen will use whenever it needs to repaint itself
         Using ds = DrawBuffer.CreateDrawingSession()
             ds.DrawImage(Accumulator)
         End Using
@@ -211,15 +209,21 @@ Public NotInheritable Class MainPage
         MSize *= If(e.GetCurrentPoint(canvas1).Properties.IsRightButtonPressed, 2, 0.5F)
         MTopLeft = MCenter - MSize / 2
         IsUpToDate = False : canvas1.Invalidate()
+        ShowBackButton()
     End Sub
 
     Sub BackRequested(sender As Object, e As BackRequestedEventArgs) Handles NavigationManager.BackRequested
+        If MSize.Length > 4 Then Return
         Dim MCenter = MTopLeft + MSize / 2
         MSize *= 2
         MTopLeft = MCenter - MSize / 2
-        If MSize.Length > 6 Then Return
         e.Handled = True
         IsUpToDate = False : canvas1.Invalidate()
+        ShowBackButton()
+    End Sub
+
+    Sub ShowBackButton()
+        NavigationManager.AppViewBackButtonVisibility = If(MSize.Length > 4, AppViewBackButtonVisibility.Collapsed, AppViewBackButtonVisibility.Visible)
     End Sub
 
 End Class
