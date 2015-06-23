@@ -33,6 +33,10 @@ Public NotInheritable Class MainPageGPU
         canvas1.Height = newsizeDips
     End Sub
 
+    Sub Page_Unloaded(sender As Object, e As RoutedEventArgs) Handles Me.Unloaded
+        canvas1.RemoveFromVisualTree() ' http://microsoft.github.io/Win2D/html/RefCycles.htm
+        canvas1 = Nothing
+    End Sub
 
     Sub Canvas_CreateResources(sender As CanvasControl, args As Object) Handles canvas1.CreateResources
         Const defaultDpi = 96.0F
