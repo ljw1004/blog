@@ -53,7 +53,7 @@ Public NotInheritable Class MainPageV2
     WithEvents NavigationManager As SystemNavigationManager = SystemNavigationManager.GetForCurrentView
 
     Async Sub RefinePerf() Handles App.Launched
-        Dim p = Aggregate ms In Perf Into Average
+        Dim p = If(Perf.Count = 0, 100, Aggregate ms In Perf Into Average)
 
         If p < 20 AndAlso CSIZE < CInt(MaxCanvasSize) Then
             CSIZE = CSIZE * 3 \ 2
@@ -333,10 +333,12 @@ Public NotInheritable Class MainPageV2
         End Using
 
         Dim ms = sw.Elapsed.TotalMilliseconds
-        label1.Text = $"{ms:0}ms, <{MTopLeft.X:0.000},{MTopLeft.Y:0.000}>+<{MSize.X:0.000},{MSize.Y:0.000}>"
         Perf.AddLast(ms)
         If Perf.Count = 2 Then Perf.RemoveFirst() : Perf.AddLast(ms) ' to discount the first one
         If Perf.Count > 20 Then Perf.RemoveFirst()
+        ms = Aggregate p In Perf Into Average
+        label1.Text = $"{ms:0}ms, <{MTopLeft.X:0.000},{MTopLeft.Y:0.000}>+<{MSize.X:0.000},{MSize.Y:0.000}>"
+
     End Sub
 
 
