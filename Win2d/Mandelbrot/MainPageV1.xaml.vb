@@ -58,26 +58,19 @@ Imports Windows.UI.Core
 ' ArithmeticCompositeEffect - given two bitmaps A and B, gives a third bitmap x*A + y*B + z*A*B
 ' CompositeEffect - given a number of bitmaps P,Q,R, gives a fourth bitmap P+Q+R
 '
-'
-' Incidentally, phones typically don't support "Double" floating point precision numbers (64bits)
-' They don't even support "Single" precision (32bits)
-' Instead they have "Half" precision floating points (16bits).
-' And also they don't support bitmaps with only a single value per pixel.
-' They only work with four values (R,G,B,A) per pixel. So we're basically having to do
-' four times as much work as we'd like to do.
 
 
-Public NotInheritable Class MainPage
+Public NotInheritable Class MainPageV1
     Inherits Page
 
-    Dim CSIZE As Integer = 300 ' size in pixels of our mandlebrot calculation
+    Dim CSIZE As Integer = 500 ' size in pixels of our mandlebrot calculation
     Dim CITER As Integer = 50  ' how many iterations to do.
 
     Dim MTopLeft As New Vector2(-2, -2) ' top-left corner of Mandlebrot
     Dim MSize As New Vector2(4, 4)      ' size of mandlebrot
 
     Dim IsUpToDate As Boolean ' If MSize/MTopLeft change, then this gets reset, to indicate a recalc is needed
-    Dim UnitX, UnitY, X, Y, A, A_prime, B, B_prime, Accumulator, DrawBuffer As CanvasRenderTarget
+    Dim UnitX, UnitY, X, Y, A, A_prime, B, B_prime, DrawBuffer As CanvasRenderTarget
     Dim DrawEffect As Transform2DEffect
 
     WithEvents NavigationManager As SystemNavigationManager = SystemNavigationManager.GetForCurrentView ' for back button
@@ -87,53 +80,36 @@ Public NotInheritable Class MainPage
         Const defaultDpi = 96.0F
         IsUpToDate = False
 
-        UnitX = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        UnitY = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        X = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        Y = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        A = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        A_prime = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        B = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        B_prime = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        Accumulator = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Ignore)
+        UnitX = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        UnitY = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        X = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        Y = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        A = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        A_prime = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        B = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        B_prime = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
         DrawBuffer = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Ignore)
 
         ' Initialize the "unitX and unitY" surfaces...
-        '
-        ' COMPLICATION: the only floating-point pixel format supported on low-end devices like Phone is
-        ' "half-precision floating point" R16G16B16A16Float.
-        ' This half-precision floating-point isn't supported by .NET, and isn't supported by Win2d,
-        ' so we roll our own routine "GetHalfFloatBytes" which turns a double-precision floating point
-        ' number into the correct bit pattern for half-precision, and we write raw bytes to the surface.
-        Dim range = New Byte(8 * CSIZE - 1) {}
-        Dim buf1 = GetHalfFloatBytes(1.0F)
+        Dim range = New Byte(16 * CSIZE - 1) {}
+        Dim buf1 = BitConverter.GetBytes(CSng(1))
         For i = 0 To CSIZE - 1
-            Dim f = CSng(i / (CSIZE - 1))
-            Dim buf = GetHalfFloatBytes(f)
-            Array.Copy(buf, 0, range, i * 8 + 0, 2)
-            Array.Copy(buf, 0, range, i * 8 + 2, 2)
-            Array.Copy(buf, 0, range, i * 8 + 4, 2)
-            Array.Copy(buf1, 0, range, i * 8 + 6, 2)
+            Dim buf = BitConverter.GetBytes(CSng(i / (CSIZE - 1)))
+            Array.Copy(buf, 0, range, i * 16 + 0, 4)
+            Array.Copy(buf, 0, range, i * 16 + 4, 4)
+            Array.Copy(buf, 0, range, i * 16 + 8, 4)
+            Array.Copy(buf1, 0, range, i * 16 + 12, 4)
         Next
         For i = 0 To CSIZE - 1
             UnitX.SetPixelBytes(range, 0, i, CSIZE, 1)
             UnitY.SetPixelBytes(range, i, 0, 1, CSIZE)
         Next
 
-        ' This is how drawing gets done, in the Canvas_Draw event
+        ' This is how drawing gets done. The actual transform matrix for the Transform2DEffect
+        ' is calculated and supplied in the Draw method.
         Dim draw1 As New DpiCompensationEffect With {.Source = DrawBuffer, .SourceDpi = New Vector2(canvas1.Dpi)}
-        DrawEffect = New Transform2DEffect With {.Source = draw1, .InterpolationMode = CanvasImageInterpolation.NearestNeighbor}
+        DrawEffect = New Transform2DEffect With {.Source = draw1}
     End Sub
-
-    Shared Function GetHalfFloatBytes(value As Single) As Byte()
-        If value < 0 Then Throw New ArgumentOutOfRangeException(NameOf(value), "negatives not implemented")
-        Dim fbits = BitConverter.ToUInt32(BitConverter.GetBytes(CSng(value)), 0)
-        Dim val = (fbits And &H7FFFFFFFUI) + &H1000
-        If val >= &H47800000 Then Throw New ArgumentOutOfRangeException(NameOf(value), "NaN/Inf/overflow not implemented")
-        If val >= &H38800000 Then Return BitConverter.GetBytes(CUShort((val - &H38000000) >> 13))
-        If val < &H33000000 Then Return {0, 0}
-        Throw New ArgumentOutOfRangeException(NameOf(value), "subnormals not implemented")
-    End Function
 
 
     Sub Update()
@@ -147,10 +123,9 @@ Public NotInheritable Class MainPage
 
         ' Initialize the iteration and the accumulator
         Dim black As New ColorSourceEffect With {.Color = Colors.Black}
-        Using dsa = A.CreateDrawingSession(), dsb = B.CreateDrawingSession(), dsacc = Accumulator.CreateDrawingSession()
+        Using dsa = A.CreateDrawingSession(), dsb = B.CreateDrawingSession()
             dsa.DrawImage(black)
             dsb.DrawImage(black)
-            dsacc.DrawImage(black)
         End Using
 
 
@@ -165,39 +140,12 @@ Public NotInheritable Class MainPage
         Dim B_prime As New CompositeEffect With {.Mode = CanvasComposite.Add}
         B_prime.Sources.Add(two_A_B) : B_prime.Sources.Add(Y)
 
-        ' D = A*A + B*B...
-        '
-        ' COMPLICATION: We want to clip "D" so that all values >= 4 count just as "diverged".
-        ' But Win2d only offers clamping to the range 0..1, and it clamps NaN into "0" rather than "1".
-        ' So instead we do "clamp(1 - 0.25*X*X - 0.25*Y*Y)", re-using the X*X and -Y*Y intermediates from earlier.
-        ' This will give 0 for all diverged pixels, and 0..1 for all not-yet-diverged pixels.
-        Dim one_minus_quarter_d As New ArithmeticCompositeEffect With {.Source1 = A_squared, .Source2 = minus_B_squared, .MultiplyAmount = 0, .Source1Amount = -0.25, .Source2Amount = 0.25, .Offset = 1, .ClampOutput = True}
-        '
-        ' COMPLICATION: The result of all those ArithmeticCompositeEffects has turned the alpha channel
-        ' into something useless. This isn't a problem for the ArithmeticCompositeEffects used above since
-        ' they treat it independently, but it is a problem for "D" the way we're going to use it.
-        ' So we'll use a ColorMatrixEffect to reset the alpha channel to 1.0 everywhere:
-        Dim one_minus_quarter_d_fixed_alpha As New ColorMatrixEffect With {.Source = one_minus_quarter_d, .AlphaMode = CanvasAlphaMode.Straight, .ColorMatrix = New Matrix5x4 With {.M11 = 1, .M22 = 1, .M33 = 1, .M44 = 0, .M54 = 1}}
-        '
-        ' COMPLICATION: for display purposes, we want to calculate the number of iterations it takes
-        ' before "D" diverges. The way we'll do this is to steadily accumulate the following:
-        ' if the above "clamp(1 - ...)" value is 0, i.e. if this pixel is either currently diverged
-        ' or has diverged in the past, then add 1/50th greyscale to our accumulator. This way
-        ' over 50 iterations we'll accumulate solid black for the things never diverge, and we'll color
-        ' dark grey the things that eventually diverge after 30+ iterations, and we'll color light grey
-        ' or white those things that diverge immediately.
-        ' We can't quite do "if value is equal to 0", but we can use a DiscreteTransferFunction to do
-        ' the close approximation "if value is <= 1/20"...
-        Dim table As Single() = {CSng(1 / CITER), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-        Dim is_d_diverged As New DiscreteTransferEffect With {.Source = one_minus_quarter_d_fixed_alpha, .RedTable = table, .GreenTable = table, .BlueTable = table, .AlphaTable = {1}}
-
 
         For iter = 1 To CITER
 
-            Using daprime = Me.A_prime.CreateDrawingSession(), dbprime = Me.B_prime.CreateDrawingSession(), dacc = Accumulator.CreateDrawingSession
+            Using daprime = Me.A_prime.CreateDrawingSession(), dbprime = Me.B_prime.CreateDrawingSession()
                 daprime.Blend = CanvasBlend.Copy : daprime.DrawImage(A_prime)
                 dbprime.Blend = CanvasBlend.Copy : dbprime.DrawImage(B_prime)
-                dacc.Blend = CanvasBlend.Add : dacc.DrawImage(is_d_diverged)
             End Using
             ' COMPLICATION: The CanvasBlend mode is "SourceOver", which interacts badly with the alpha
             ' values in A_prime and B_prime. So instead we use "Copy".
@@ -214,9 +162,27 @@ Public NotInheritable Class MainPage
             two_A_B.Source2 = B
         Next
 
+
+        ' D = A*A + B*B...
+        '
+        ' COMPLICATION: We want to clip "D" so that all values >= 4 count just as "diverged".
+        ' But Win2d only offers clamping to the range 0..1, and it clamps NaN into "0" rather than "1".
+        ' So instead we do "clamp(1 - 0.25*X*X - 0.25*Y*Y)", re-using the X*X and -Y*Y intermediates from earlier.
+        ' This will give 0 for all diverged pixels, and 0..1 for all not-yet-diverged pixels.
+        Dim one_minus_quarter_d As New ArithmeticCompositeEffect With {.Source1 = A_squared, .Source2 = minus_B_squared, .MultiplyAmount = 0, .Source1Amount = -0.25, .Source2Amount = 0.25, .Offset = 1, .ClampOutput = True}
+        '
+        ' COMPLICATION: The result of all those ArithmeticCompositeEffects has turned the alpha channel
+        ' into something useless. This isn't a problem for the ArithmeticCompositeEffects used above since
+        ' they treat it independently, but it is a problem for "D" the way we're going to use it.
+        ' So we'll use a ColorMatrixEffect to reset the alpha channel to 1.0 everywhere:
+        Dim one_minus_quarter_d_fixed_alpha As New ColorMatrixEffect With {.Source = one_minus_quarter_d, .AlphaMode = CanvasAlphaMode.Straight, .ColorMatrix = New Matrix5x4 With {.M11 = 1, .M22 = 1, .M33 = 1, .M44 = 0, .M54 = 1}}
+        '
+        Dim quarter_d As New LinearTransferEffect With {.Source = one_minus_quarter_d_fixed_alpha, .RedOffset = 1, .RedSlope = -1, .GreenOffset = 1, .GreenSlope = -1, .BlueOffset = 1, .BlueSlope = -1}
+
+
         ' DrawBuffer is what the screen will use whenever it needs to repaint itself
         Using ds = DrawBuffer.CreateDrawingSession()
-            ds.DrawImage(Accumulator)
+            ds.DrawImage(quarter_d)
         End Using
 
         label1.Text = $"{sw.Elapsed.TotalMilliseconds:0}ms, {MTopLeft}+{MSize}"
@@ -232,23 +198,24 @@ Public NotInheritable Class MainPage
         args.DrawingSession.DrawImage(DrawEffect)
     End Sub
 
-    Sub Page_PointerPressed(sender As Object, e As PointerRoutedEventArgs) Handles Me.PointerPressed
-        Dim frac = e.GetCurrentPoint(canvas1).Position.ToVector2 / canvas1.Size.ToVector2
-        Dim MCenter = MTopLeft + frac * MSize
-        MSize *= If(e.GetCurrentPoint(canvas1).Properties.IsRightButtonPressed, 2, 0.5F)
-        MTopLeft = MCenter - MSize / 2
+    Sub Zoom(isZoomOut As Boolean, center_on As Vector2)
+        Dim MCenter = MTopLeft + center_on * MSize
+        MSize *= If(isZoomOut, 2, 0.5F)
+        MTopLeft = MCenter - center_on * MSize
         IsUpToDate = False : canvas1.Invalidate()
         ShowBackButton()
     End Sub
 
+    Sub Page_PointerPressed(sender As Object, e As PointerRoutedEventArgs) Handles Me.PointerPressed
+        Dim center = e.GetCurrentPoint(canvas1).Position.ToVector2 / canvas1.Size.ToVector2
+        Dim isZoomOut = e.GetCurrentPoint(canvas1).Properties.IsRightButtonPressed
+        Zoom(isZoomOut, center)
+    End Sub
+
     Sub BackRequested(sender As Object, e As BackRequestedEventArgs) Handles NavigationManager.BackRequested
-        If MSize.Length > 4 Then Return
-        Dim MCenter = MTopLeft + MSize / 2
-        MSize *= 2
-        MTopLeft = MCenter - MSize / 2
+        If MSize.Length > 4 Then Return ' leaving the event unhandled: will exit the app
         e.Handled = True
-        IsUpToDate = False : canvas1.Invalidate()
-        ShowBackButton()
+        Zoom(True, New Vector2(0.5))
     End Sub
 
     Sub ShowBackButton()
