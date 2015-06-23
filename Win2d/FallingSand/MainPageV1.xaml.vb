@@ -29,21 +29,34 @@ Public NotInheritable Class MainPageV1
 
     Sub App_Loaded() Handles App.Loaded
         If Surface1 Is Nothing Then Return
-        Dim cols = App.Pixels.Select(Function(c) CType(c, ColorF)).ToArray()
-        Surface1.SetPixelColorFs(cols, 0, 0, App.CWIDTH, App.CHEIGHT)
+        Dim buf = New Byte(App.Pixels.Length * 16 - 1) {}
+        For i = 0 To App.Pixels.Length - 1
+            Dim c = App.Pixels(i)
+            Array.Copy(BitConverter.GetBytes(CSng(c.R / 255)), 0, buf, i * 16 + 0, 4)
+            Array.Copy(BitConverter.GetBytes(CSng(c.G / 255)), 0, buf, i * 16 + 4, 4)
+            Array.Copy(BitConverter.GetBytes(CSng(c.B / 255)), 0, buf, i * 16 + 8, 4)
+            Array.Copy(BitConverter.GetBytes(CSng(c.A / 255)), 0, buf, i * 16 + 12, 4)
+        Next
+        Surface1.SetPixelBytes(buf)
     End Sub
 
     Sub App_Unloading() Handles App.Unloading
         If Surface1 Is Nothing Then Return
-        Dim cols = Surface1.GetPixelColorFs(0, 0, App.CWIDTH, App.CHEIGHT)
-        App.Pixels = cols.Select(Function(c) CType(c, Color)).ToArray()
+        Dim buf = Surface1.GetPixelBytes()
+        For i = 0 To App.Pixels.Length - 1
+            Dim r = BitConverter.ToSingle(buf, i * 16 + 0)
+            Dim g = BitConverter.ToSingle(buf, i * 16 + 4)
+            Dim b = BitConverter.ToSingle(buf, i * 16 + 8)
+            Dim a = BitConverter.ToSingle(buf, i * 16 + 12)
+            App.Pixels(i) = Color.FromArgb(1, CByte(r * 255), CByte(g * 255), CByte(b * 255))
+        Next
     End Sub
 
 
     Sub Canvas_CreateResources(sender As CanvasControl, args As Object) Handles canvas1.CreateResources
         Const defaultDpi = 96.0F
-        Surface1 = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
-        Surface2 = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi, DirectXPixelFormat.R16G16B16A16Float, CanvasAlphaMode.Ignore)
+        Surface1 = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
+        Surface2 = New CanvasRenderTarget(canvas1, App.CWIDTH, App.CHEIGHT, defaultDpi, DirectXPixelFormat.R32G32B32A32Float, CanvasAlphaMode.Ignore)
         App_Loaded()
 
 
