@@ -43,7 +43,7 @@ Public NotInheritable Class MainPageV2
     Dim MSize As New Vector2(4, 4)      ' size of mandlebrot
     ' and to track pinch-zoom and drag:
     Dim ManipulationStart_MSize, ManipulationStart_MTopLeft, ManipulationStart_MCenterOn As Vector2
-    Dim IsUpToDate As Boolean ' If MSize/MTopLeft change, then this gets reset, to indicate a recalc is needed
+    Dim InvalidationTime As New Stopwatch ' Started upon a move/zoom, and used to track performance
 
     ' These are the surfaces and effects, created in Canvas_CreateResources, used in Update() and Canvas_Draw()
     Dim UnitX, UnitY, X, Y, A, A_prime, B, B_prime, Accumulator, MaskR, MaskG, MaskB, DrawBuffer As CanvasRenderTarget
@@ -76,7 +76,7 @@ Public NotInheritable Class MainPageV2
 
     Sub Canvas_CreateResources() Handles canvas1.CreateResources
         Const defaultDpi = 96.0F
-        IsUpToDate = False
+        InvalidationTime.Restart()
 
         DrawBuffer?.Dispose()
         MaskR?.Dispose() : MaskG?.Dispose() : MaskB?.Dispose()
@@ -255,8 +255,6 @@ Public NotInheritable Class MainPageV2
 
 
     Sub Update()
-        Dim sw = Stopwatch.StartNew
-
         ' Set up X and Y for the current zoom
         With e_RangeX
             .RedOffset = MTopLeft.X : .RedSlope = MSize.X
@@ -315,27 +313,32 @@ Public NotInheritable Class MainPageV2
             ds.DrawImage(e_renderB)
         End Using
 
-        Dim perf = sw.Elapsed.TotalMilliseconds
-        Static Dim PerfCounts As New LinkedList(Of Double)
-        PerfCounts.AddLast(perf)
-        If PerfCounts.Count = 2 Then PerfCounts.RemoveFirst() : PerfCounts.AddLast(perf) ' to discount the first one
-        If PerfCounts.Count > 30 Then PerfCounts.RemoveFirst()
-        perf = Aggregate p In PerfCounts Into Average
-        label1.Text = $"{perf:0}ms, <{MTopLeft.X:0.000},{MTopLeft.Y:0.000}>+<{MSize.X:0.000},{MSize.Y:0.000}>"
-        label2.Text = $"{Me.CSIZE}x{Me.CSIZE} pixels, {Me.CITER} iterations"
-
-        Static Dim count As Integer = 0
-        count += 1 : If count Mod 10 = 0 Then RefinePerf(perf)
     End Sub
 
 
     Sub Canvas_Draw(sender As CanvasControl, args As CanvasDrawEventArgs) Handles canvas1.Draw
-        If Not IsUpToDate Then Update() : IsUpToDate = True
+        Static Dim FrameCount As Integer = 0
+        If InvalidationTime.IsRunning Then Update() : FrameCount += 1
 
         Dim sourceSizeDips = New Vector2(canvas1.ConvertPixelsToDips(CSIZE))
         Dim canvasSizeDips = canvas1.Size.ToVector2
         e_Draw.TransformMatrix = Matrix3x2.CreateScale(canvasSizeDips / sourceSizeDips)
         args.DrawingSession.DrawImage(e_Draw)
+
+        ' Perf display and tuning...
+        If Not InvalidationTime.IsRunning Then Return
+        InvalidationTime.Stop()
+        Dim elapsed = InvalidationTime.Elapsed.TotalMilliseconds
+        Static Dim PerfCounts As New LinkedList(Of Double)
+        PerfCounts.AddLast(elapsed)
+        If PerfCounts.Count > 40 Then PerfCounts.RemoveFirst()
+        Dim perf = If(PerfCounts.Count < 10, elapsed, Aggregate p In PerfCounts.Skip(10) Into Average)
+        label1.Text = $"<{MTopLeft.X:0.000},{MTopLeft.Y:0.000}>+<{MSize.X:0.000},{MSize.Y:0.000}>"
+        label2.Text = $"{Me.CSIZE}x{Me.CSIZE} pixels, {Me.CITER} iterations, {perf:0}ms"
+        If FrameCount Mod 10 = 0 AndAlso PerfCounts.Count > 10 Then
+            Dim perfChanged = RefinePerf(perf)
+            If perfChanged Then PerfCounts.Clear()
+        End If
     End Sub
 
 
@@ -343,7 +346,7 @@ Public NotInheritable Class MainPageV2
         Dim MCenter = MTopLeft + MSize * fCenter
         MSize /= CSng(Zoom)
         MTopLeft = MCenter - fCenter * MSize
-        IsUpToDate = False : canvas1.Invalidate()
+        InvalidationTime.Restart()
     End Sub
 
 
@@ -385,7 +388,7 @@ Public NotInheritable Class MainPageV2
         MTopLeft = New Vector2(-2, -2)
         MSize = New Vector2(4, 4)
         e.Handled = True
-        IsUpToDate = False : canvas1.Invalidate()
+        InvalidationTime.Restart()
     End Sub
 
 
@@ -403,7 +406,7 @@ Public NotInheritable Class MainPageV2
             MSize / ManipulationStart_MSize * (ManipulationStart_MTopLeft - ManipulationStart_MCenterOn) -
             e.Cumulative.Translation.ToVector2() / canvas1.Size.ToVector2() * MSize
 
-        IsUpToDate = False : canvas1.Invalidate()
+        InvalidationTime.Restart() : canvas1.Invalidate()
     End Sub
 
 
@@ -423,44 +426,56 @@ Public NotInheritable Class MainPageV2
         If csize0.HasValue Then CSIZE = csize0.Value
     End Sub
 
-    Sub RefinePerf(perf As Double)
-        Dim XGOOD As Integer = 20 ' in milliseconds
-        Dim GOOD As Integer = 50
-        Dim BAD As Integer = 80
-        Dim XBAD As Integer = 200
+    Function RefinePerf(perf As Double) As Boolean
+        Static Dim isRefining As Boolean = False
+        If isRefining Then Return False Else isRefining = True
+        '
+        Dim XGOOD As Integer = 15 ' in milliseconds
+        Dim GOOD As Integer = 30
+        Dim BAD As Integer = 60
+        Dim XBAD As Integer = 100
 
-        Dim oldSize = CSIZE, oldIter = CITER
+        Dim newSize = CSIZE, newIter = CITER
         Select Case True
-            Case perf < XGOOD AndAlso CSIZE < CInt(MaxCanvasSize / 4) : CSIZE = CSIZE * 3 \ 2
-            Case perf < XGOOD : CITER = CITER * 3 \ 2
-            Case perf < GOOD AndAlso CITER < 100 : CITER = CITER * 5 \ 4
-            Case perf < GOOD AndAlso CSIZE < CInt(MaxCanvasSize / 4) : CSIZE = CSIZE * 5 \ 4
-            Case perf < GOOD AndAlso CITER < 120 : CITER = CITER * 5 \ 4
-            Case perf < GOOD AndAlso CSIZE < CInt(MaxCanvasSize) : CSIZE = CInt(MaxCanvasSize)
-            Case perf > XBAD AndAlso CSIZE > 500 : CSIZE = CSIZE * 3 \ 2
-            Case perf > XBAD AndAlso CITER > 150 : CITER = CITER * 3 \ 2
-            Case perf > XBAD AndAlso CSIZE > 300 : CSIZE = CSIZE * 3 \ 2
-            Case perf > BAD AndAlso CITER > 50 : CITER = CITER * 4 \ 5
-            Case perf > BAD AndAlso CSIZE > 300 : CSIZE = CSIZE * 4 \ 5
-            Case perf > BAD AndAlso CITER > 10 : CITER = CITER * 4 \ 5
-            Case Else : Return
+            Case perf < XGOOD AndAlso newSize < CInt(MaxCanvasSize / 4) : newSize = newSize * 3 \ 2
+            Case perf < XGOOD : newIter = newIter * 3 \ 2
+            Case perf < GOOD AndAlso newIter < 100 : newIter = newIter * 5 \ 4
+            Case perf < GOOD AndAlso newSize < CInt(MaxCanvasSize / 4) : newSize = newSize * 5 \ 4
+            Case perf < GOOD AndAlso newIter < 120 : newIter = newIter * 5 \ 4
+            Case perf < GOOD AndAlso newSize < CInt(MaxCanvasSize) : newSize = CInt(MaxCanvasSize)
+            Case perf > XBAD AndAlso newSize > 500 : newSize = newSize * 2 \ 3
+            Case perf > XBAD AndAlso newIter > 150 : newIter = newIter * 2 \ 3
+            Case perf > XBAD AndAlso newSize > 300 : newSize = newSize * 2 \ 3
+            Case perf > BAD AndAlso newIter > 50 : newIter = newIter * 4 \ 5
+            Case perf > BAD AndAlso newSize > 300 : newSize = newSize * 4 \ 5
+            Case perf > BAD AndAlso newIter > 20 : newIter = newIter * 4 \ 5
+            Case Else : Return False
         End Select
 
-        If CSIZE >= MaxCanvasSize - 10 Then CSIZE = CInt(MaxCanvasSize) + 3
-        CSIZE = 3 * (CSIZE \ 3) ' has to be a multiple of 3
-        If CSIZE < 300 Then CSIZE = 300
-        If CITER < 10 Then CITER = 10
-        If oldSize = CSIZE AndAlso oldIter = CITER Then Return
+        If newSize >= MaxCanvasSize - 10 Then newSize = CInt(MaxCanvasSize) + 3
+        newSize = 3 * (newSize \ 3) ' has to be a multiple of 3
+        If newSize < 300 Then newSize = 300
+        If newIter < 20 Then newIter = 20
+        If newSize = CSIZE AndAlso newIter = CITER Then Return False
 
-        If oldSize <> CSIZE Then Canvas_CreateResources()
-        If oldIter <> CITER Then
-            Dim e_graytable As Single() = {CSng(1 / CITER), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-            e_is_d_diverged.RedTable = e_graytable
-            e_is_d_diverged.GreenTable = e_graytable
-            e_is_d_diverged.BlueTable = e_graytable
-        End If
-        canvas1.Invalidate()
-    End Sub
+        ' RefinePerf is called from within Draw. We can't reset the drawing surfaces at that time.
+        ' So we'll postpone it slightly, to a time when it's not inside a Draw/CreateResources callback.
+        ' That's what the Async Sub coupled with Task.Delay achieves.
+        Call Async Sub()
+                 Await Task.Delay(10)
+                 If newSize <> CSIZE Then CSIZE = newSize : Canvas_CreateResources()
+                 If newIter <> CITER Then
+                     CITER = newIter
+                     Dim e_graytable As Single() = {CSng(1 / CITER), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+                     e_is_d_diverged.RedTable = e_graytable
+                     e_is_d_diverged.GreenTable = e_graytable
+                     e_is_d_diverged.BlueTable = e_graytable
+                 End If
+                 canvas1.Invalidate()
+                 isRefining = False
+             End Sub
+        Return True
+    End Function
 
 
     Function ColorFromHSV(h As Double, s As Double, v As Double) As Color
