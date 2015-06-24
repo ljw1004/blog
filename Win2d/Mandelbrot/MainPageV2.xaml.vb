@@ -7,6 +7,7 @@ Imports Windows.Storage
 Imports Windows.Graphics.DirectX
 Imports Windows.UI
 Imports Windows.UI.Core
+Imports Windows.UI.Text
 
 
 ' Differences from V1:
@@ -33,74 +34,37 @@ Imports Windows.UI.Core
 Public NotInheritable Class MainPageV2
     Inherits Page
 
-    Dim CSIZE As Integer = 600 ' size in pixels of our mandlebrot calculation
-    Dim CSIZEX As Integer = CSIZE \ 3
-    Dim CITER As Integer = 50  ' how many iterations to do.
+    Dim CSIZE As Integer = 600  ' size in pixels of our mandlebrot calculation
+    Dim CITER As Integer = 50   ' how many iterations to do.
     Dim MaxCanvasSize As Double ' for tracking perf
-    Dim Perf As New LinkedList(Of Double) ' for tracking perf
+
 
     Dim MTopLeft As New Vector2(-2, -2) ' top-left corner of Mandlebrot
     Dim MSize As New Vector2(4, 4)      ' size of mandlebrot
     ' and to track pinch-zoom and drag:
     Dim ManipulationStart_MSize, ManipulationStart_MTopLeft, ManipulationStart_MCenterOn As Vector2
-
     Dim IsUpToDate As Boolean ' If MSize/MTopLeft change, then this gets reset, to indicate a recalc is needed
+
+    ' These are the surfaces and effects, created in Canvas_CreateResources, used in Update() and Canvas_Draw()
     Dim UnitX, UnitY, X, Y, A, A_prime, B, B_prime, Accumulator, MaskR, MaskG, MaskB, DrawBuffer As CanvasRenderTarget
-    Dim RenderR, RenderG, RenderB As CompositeEffect
-    Dim DrawEffect As Transform2DEffect
+    Dim e_RangeX, e_RangeY As LinearTransferEffect
+    Dim e_Black As ColorSourceEffect
+    Dim e_A_prime, e_B_prime As CompositeEffect
+    Dim e_A_squared, e_minus_B_squared, e_two_A_B As ArithmeticCompositeEffect
+    Dim e_is_d_diverged As DiscreteTransferEffect
+    Dim e_renderR, e_renderG, e_renderB As CompositeEffect
+    Dim e_Draw As Transform2DEffect
 
     WithEvents App As App = CType(Application.Current, App)
     WithEvents NavigationManager As SystemNavigationManager = SystemNavigationManager.GetForCurrentView
 
-    Async Sub RefinePerf() Handles App.Launched
-        Dim p = If(Perf.Count = 0, 100, Aggregate ms In Perf Into Average)
 
-        If p < 20 AndAlso CSIZE < CInt(MaxCanvasSize) Then
-            CSIZE = CSIZE * 3 \ 2
-        ElseIf p < 60 AndAlso CSIZE < CInt(MaxCanvasSize) Then
-            CSIZE = CSIZE * 5 \ 4
-        ElseIf p < 20 Then
-            CITER = CITER * 2
-        ElseIf p < 60 Then
-            CITER = CITER * 5 \ 4
-        ElseIf p > 200 AndAlso CSIZE > 300 Then
-            CSIZE = CSIZE \ 2
-        ElseIf p > 100 AndAlso CSIZE > 300 Then
-            CSIZE = CSIZE * 4 \ 5
-        ElseIf p > 200 Then
-            CITER = CITER \ 2
-        ElseIf p > 100 Then
-            CITER = CITER * 4 \ 5
-        End If
-        CSIZE = 3 * (CSIZE \ 3) ' has to be a multiple of 3
-        If CSIZE >= MaxCanvasSize - 10 Then CSIZE = CInt(MaxCanvasSize)
-        If CSIZE < 300 Then CSIZE = 300
-        If CITER < 10 Then CITER = 10
-        CSIZEX = CSIZE \ 3
-        Await Task.Delay(1000)
-        label1.Text = $"{Me.CSIZE}x{Me.CSIZE} pixels, {Me.CITER} iterations"
-    End Sub
 
     Protected Overrides Sub OnNavigatedTo(e As NavigationEventArgs)
         SystemNavigationManager.GetForCurrentView.AppViewBackButtonVisibility = AppViewBackButtonVisibility.Visible        '
-        '
-        Dim perf0 = CType(ApplicationData.Current.LocalSettings.Values("Perf"), Double?)
-        Dim canvasSize0 = CType(ApplicationData.Current.LocalSettings.Values("MaxCanvasSize"), Double?)
-        Dim citer0 = CType(ApplicationData.Current.LocalSettings.Values("CITER"), Integer?)
-        Dim csize0 = CType(ApplicationData.Current.LocalSettings.Values("CSIZE"), Integer?)
-        '
-        If perf0.HasValue Then Perf.AddLast(perf0.Value)
-        If canvasSize0.HasValue Then MaxCanvasSize = canvasSize0.Value
-        If citer0.HasValue Then CITER = citer0.Value
-        If csize0.HasValue Then CSIZE = csize0.Value : CSIZEX = CSIZE \ 3
+        LoadPerf()
     End Sub
 
-    Sub SavePerf() Handles App.Suspending
-        ApplicationData.Current.LocalSettings.Values("Perf") = Aggregate p In Perf Into Average
-        ApplicationData.Current.LocalSettings.Values("MaxCanvasSize") = MaxCanvasSize
-        ApplicationData.Current.LocalSettings.Values("CITER") = CITER
-        ApplicationData.Current.LocalSettings.Values("CSIZE") = CSIZE
-    End Sub
 
     Sub Page_SizeChanged() Handles Me.SizeChanged
         Dim s = Math.Max(Me.ActualWidth, Me.ActualHeight)
@@ -109,9 +73,19 @@ Public NotInheritable Class MainPageV2
         MaxCanvasSize = Math.Max(MaxCanvasSize, s)
     End Sub
 
-    Sub Canvas_CreateResources(sender As CanvasControl, args As Object) Handles canvas1.CreateResources
+
+    Sub Canvas_CreateResources() Handles canvas1.CreateResources
         Const defaultDpi = 96.0F
         IsUpToDate = False
+
+        DrawBuffer?.Dispose()
+        MaskR?.Dispose() : MaskG?.Dispose() : MaskB?.Dispose()
+        UnitX?.Dispose() : UnitY?.Dispose()
+        X?.Dispose() : Y?.Dispose() : A?.Dispose() : B?.Dispose()
+        A_prime?.Dispose() : B_prime?.Dispose() : Accumulator?.Dispose()
+
+        If CSIZE Mod 3 <> 0 Then Throw New ArgumentException("CSIZE")
+        Dim CSIZEX = CSIZE \ 3
 
         DrawBuffer = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Ignore)
         MaskR = New CanvasRenderTarget(canvas1, CSIZE, CSIZE, defaultDpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Ignore)
@@ -165,6 +139,54 @@ Public NotInheritable Class MainPageV2
         Next
 
 
+        ' Effects to set up X and Y for the current zoom (these are populated in the Update method)
+        e_RangeX = New LinearTransferEffect With {.Source = UnitX, .AlphaDisable = True}
+        e_RangeY = New LinearTransferEffect With {.Source = UnitY, .AlphaDisable = True}
+
+        ' Effects to initialize the iteration and the accumulator
+        e_Black = New ColorSourceEffect With {.Color = Colors.Black}
+
+
+        ' Effects to calculate A' = A*A - B*B + X
+        e_A_squared = New ArithmeticCompositeEffect With {.Source1 = A, .Source2 = A}
+        e_minus_B_squared = New ArithmeticCompositeEffect With {.Source1 = B, .Source2 = B, .MultiplyAmount = -1}
+        e_A_prime = New CompositeEffect With {.Mode = CanvasComposite.Add}
+        e_A_prime.Sources.Add(e_A_squared) : e_A_prime.Sources.Add(e_minus_B_squared) : e_A_prime.Sources.Add(X)
+
+
+        ' Effects to calculate B' = 2*A*B + Y
+        e_two_A_B = New ArithmeticCompositeEffect With {.Source1 = A, .Source2 = B, .MultiplyAmount = 2}
+        e_B_prime = New CompositeEffect With {.Mode = CanvasComposite.Add}
+        e_B_prime.Sources.Add(e_two_A_B) : e_B_prime.Sources.Add(Y)
+
+
+        ' Effects to calculate D = A*A + B*B...
+        '
+        ' COMPLICATION: We want to clip "D" so that all values >= 4 count just as "diverged".
+        ' But Win2d only offers clamping to the range 0..1, and it clamps NaN into "0" rather than "1".
+        ' So instead we do "clamp(1 - 0.25*X*X - 0.25*Y*Y)", re-using the X*X and -Y*Y intermediates from earlier.
+        ' This will give 0 for all diverged pixels, and 0..1 for all not-yet-diverged pixels.
+        Dim e_one_minus_quarter_d As New ArithmeticCompositeEffect With {.Source1 = e_A_squared, .Source2 = e_minus_B_squared, .MultiplyAmount = 0, .Source1Amount = -0.25, .Source2Amount = 0.25, .Offset = 1, .ClampOutput = True}
+        '
+        ' COMPLICATION: The result of all those ArithmeticCompositeEffects has turned the alpha channel
+        ' into something useless. This isn't a problem for the ArithmeticCompositeEffects used above since
+        ' they treat it independently, but it is a problem for "D" the way we're going to use it.
+        ' So we'll use a ColorMatrixEffect to reset the alpha channel to 1.0 everywhere:
+        Dim e_one_minus_quarter_d_fixed_alpha As New ColorMatrixEffect With {.Source = e_one_minus_quarter_d, .AlphaMode = CanvasAlphaMode.Straight, .ColorMatrix = New Matrix5x4 With {.M11 = 1, .M22 = 1, .M33 = 1, .M44 = 0, .M54 = 1}}
+        '
+        ' COMPLICATION: for display purposes, we want to calculate the number of iterations it takes
+        ' before "D" diverges. The way we'll do this is to steadily accumulate the following:
+        ' if the above "clamp(1 - ...)" value is 0, i.e. if this pixel is either currently diverged
+        ' or has diverged in the past, then add 1/50th greyscale to our accumulator. This way
+        ' over 50 iterations we'll accumulate solid black for the things never diverge, and we'll color
+        ' dark grey the things that eventually diverge after 30+ iterations, and we'll color light grey
+        ' or white those things that diverge immediately.
+        ' We can't quite do "if value is equal to 0", but we can use a DiscreteTransferFunction to do
+        ' the close approximation "if value is <= 1/20"...
+        Dim e_graytable As Single() = {CSng(1 / CITER), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+        e_is_d_diverged = New DiscreteTransferEffect With {.Source = e_one_minus_quarter_d_fixed_alpha, .RedTable = e_graytable, .GreenTable = e_graytable, .BlueTable = e_graytable, .AlphaTable = {1}}
+
+
 
 
         ' This is how rendering gets done, from the accumulator into the Render buffer
@@ -205,12 +227,12 @@ Public NotInheritable Class MainPageV2
             MaskB.SetPixelColors(rangeB, 0, i, CSIZE, 1)
         Next
         '
-        RenderR = New CompositeEffect With {.Mode = CanvasComposite.DestinationIn}
-        RenderR.Sources.Add(renderR1) : RenderR.Sources.Add(MaskR)
-        RenderG = New CompositeEffect With {.Mode = CanvasComposite.DestinationIn}
-        RenderG.Sources.Add(renderG1) : RenderG.Sources.Add(MaskG)
-        RenderB = New CompositeEffect With {.Mode = CanvasComposite.DestinationIn}
-        RenderB.Sources.Add(renderB1) : RenderB.Sources.Add(MaskB)
+        e_renderR = New CompositeEffect With {.Mode = CanvasComposite.DestinationIn}
+        e_renderR.Sources.Add(renderR1) : e_renderR.Sources.Add(MaskR)
+        e_renderG = New CompositeEffect With {.Mode = CanvasComposite.DestinationIn}
+        e_renderG.Sources.Add(renderG1) : e_renderG.Sources.Add(MaskG)
+        e_renderB = New CompositeEffect With {.Mode = CanvasComposite.DestinationIn}
+        e_renderB.Sources.Add(renderB1) : e_renderB.Sources.Add(MaskB)
 
 
         ' This is how drawing gets done. The actual transform matrix for the Transform2DEffect
@@ -227,118 +249,83 @@ Public NotInheritable Class MainPageV2
             hsvB(i) = CSng(col.B / 255)
         Next
         Dim draw2 As New DiscreteTransferEffect With {.Source = draw1, .RedTable = hsvR, .GreenTable = hsvG, .BlueTable = hsvB, .AlphaTable = {1}}
-        DrawEffect = New Transform2DEffect With {.Source = draw2}
+        e_Draw = New Transform2DEffect With {.Source = draw2}
     End Sub
 
-    Shared Function GetFloatBytes(bpp As Integer, value As Single) As Byte()
-        If bpp <> 4 AndAlso bpp <> 2 Then Throw New ArgumentOutOfRangeException(NameOf(bpp))
-        If bpp = 4 Then Return BitConverter.GetBytes(value)
-        '
-        If value < 0 Then Throw New ArgumentOutOfRangeException(NameOf(value), "negatives not implemented")
-        Dim fbits = BitConverter.ToUInt32(BitConverter.GetBytes(CSng(value)), 0)
-        Dim val = (fbits And &H7FFFFFFFUI) + &H1000
-        If val >= &H47800000 Then Throw New ArgumentOutOfRangeException(NameOf(value), "NaN/Inf/overflow not implemented")
-        If val >= &H38800000 Then Return BitConverter.GetBytes(CUShort((val - &H38000000) >> 13))
-        If val < &H33000000 Then Return {0, 0}
-        Throw New ArgumentOutOfRangeException(NameOf(value), "subnormals not implemented")
-    End Function
 
 
     Sub Update()
         Dim sw = Stopwatch.StartNew
 
         ' Set up X and Y for the current zoom
-        Using dsx = Me.X.CreateDrawingSession(), dsy = Me.Y.CreateDrawingSession()
-            dsx.DrawImage(New LinearTransferEffect With {.Source = UnitX, .AlphaDisable = True, .RedOffset = MTopLeft.X, .RedSlope = MSize.X, .GreenOffset = MTopLeft.X, .GreenSlope = MSize.X, .BlueOffset = MTopLeft.X, .BlueSlope = MSize.X})
-            dsy.DrawImage(New LinearTransferEffect With {.Source = UnitY, .AlphaDisable = True, .RedOffset = MTopLeft.Y, .RedSlope = MSize.Y, .GreenOffset = MTopLeft.Y, .GreenSlope = MSize.Y, .BlueOffset = MTopLeft.Y, .BlueSlope = MSize.Y})
+        With e_RangeX
+            .RedOffset = MTopLeft.X : .RedSlope = MSize.X
+            .GreenOffset = MTopLeft.X : .GreenSlope = MSize.X
+            .BlueOffset = MTopLeft.X : .BlueSlope = MSize.X
+        End With
+        With e_RangeY
+            .RedOffset = MTopLeft.Y : .RedSlope = MSize.Y
+            .GreenOffset = MTopLeft.Y : .GreenSlope = MSize.Y
+            .BlueOffset = MTopLeft.Y : .BlueSlope = MSize.Y
+        End With
+        Using dsx = X.CreateDrawingSession(), dsy = Y.CreateDrawingSession()
+            dsx.DrawImage(e_RangeX)
+            dsy.DrawImage(e_RangeY)
         End Using
 
         ' Initialize the iteration and the accumulator
-        Dim black As New ColorSourceEffect With {.Color = Colors.Black}
         Using dsa = A.CreateDrawingSession(), dsb = B.CreateDrawingSession(), dsacc = Accumulator.CreateDrawingSession()
-            dsa.DrawImage(black)
-            dsb.DrawImage(black)
-            dsacc.DrawImage(black)
+            dsa.DrawImage(e_Black)
+            dsb.DrawImage(e_Black)
+            dsacc.DrawImage(e_Black)
         End Using
 
 
-        ' A' = A*A - B*B + X
-        Dim A_squared As New ArithmeticCompositeEffect With {.Source1 = A, .Source2 = A}
-        Dim minus_B_squared As New ArithmeticCompositeEffect With {.Source1 = B, .Source2 = B, .MultiplyAmount = -1}
-        Dim A_prime As New CompositeEffect With {.Mode = CanvasComposite.Add}
-        A_prime.Sources.Add(A_squared) : A_prime.Sources.Add(minus_B_squared) : A_prime.Sources.Add(X)
-
-        ' B' = 2*A*B + Y
-        Dim two_A_B As New ArithmeticCompositeEffect With {.Source1 = A, .Source2 = B, .MultiplyAmount = 2}
-        Dim B_prime As New CompositeEffect With {.Mode = CanvasComposite.Add}
-        B_prime.Sources.Add(two_A_B) : B_prime.Sources.Add(Y)
-
-        ' D = A*A + B*B...
-        '
-        ' COMPLICATION: We want to clip "D" so that all values >= 4 count just as "diverged".
-        ' But Win2d only offers clamping to the range 0..1, and it clamps NaN into "0" rather than "1".
-        ' So instead we do "clamp(1 - 0.25*X*X - 0.25*Y*Y)", re-using the X*X and -Y*Y intermediates from earlier.
-        ' This will give 0 for all diverged pixels, and 0..1 for all not-yet-diverged pixels.
-        Dim one_minus_quarter_d As New ArithmeticCompositeEffect With {.Source1 = A_squared, .Source2 = minus_B_squared, .MultiplyAmount = 0, .Source1Amount = -0.25, .Source2Amount = 0.25, .Offset = 1, .ClampOutput = True}
-        '
-        ' COMPLICATION: The result of all those ArithmeticCompositeEffects has turned the alpha channel
-        ' into something useless. This isn't a problem for the ArithmeticCompositeEffects used above since
-        ' they treat it independently, but it is a problem for "D" the way we're going to use it.
-        ' So we'll use a ColorMatrixEffect to reset the alpha channel to 1.0 everywhere:
-        Dim one_minus_quarter_d_fixed_alpha As New ColorMatrixEffect With {.Source = one_minus_quarter_d, .AlphaMode = CanvasAlphaMode.Straight, .ColorMatrix = New Matrix5x4 With {.M11 = 1, .M22 = 1, .M33 = 1, .M44 = 0, .M54 = 1}}
-        '
-        ' COMPLICATION: for display purposes, we want to calculate the number of iterations it takes
-        ' before "D" diverges. The way we'll do this is to steadily accumulate the following:
-        ' if the above "clamp(1 - ...)" value is 0, i.e. if this pixel is either currently diverged
-        ' or has diverged in the past, then add 1/50th greyscale to our accumulator. This way
-        ' over 50 iterations we'll accumulate solid black for the things never diverge, and we'll color
-        ' dark grey the things that eventually diverge after 30+ iterations, and we'll color light grey
-        ' or white those things that diverge immediately.
-        ' We can't quite do "if value is equal to 0", but we can use a DiscreteTransferFunction to do
-        ' the close approximation "if value is <= 1/20"...
-        Dim table As Single() = {CSng(1 / CITER), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-        Dim is_d_diverged As New DiscreteTransferEffect With {.Source = one_minus_quarter_d_fixed_alpha, .RedTable = table, .GreenTable = table, .BlueTable = table, .AlphaTable = {1}}
-
-
+        ' Do the iteration
         For iter = 1 To CITER
 
-            Using daprime = Me.A_prime.CreateDrawingSession(), dbprime = Me.B_prime.CreateDrawingSession(), dacc = Accumulator.CreateDrawingSession
-                daprime.Blend = CanvasBlend.Copy : daprime.DrawImage(A_prime)
-                dbprime.Blend = CanvasBlend.Copy : dbprime.DrawImage(B_prime)
-                dacc.Blend = CanvasBlend.Add : dacc.DrawImage(is_d_diverged)
+            Using daprime = A_prime.CreateDrawingSession(), dbprime = B_prime.CreateDrawingSession(), dacc = Accumulator.CreateDrawingSession
+                daprime.Blend = CanvasBlend.Copy : daprime.DrawImage(e_A_prime)
+                dbprime.Blend = CanvasBlend.Copy : dbprime.DrawImage(e_B_prime)
+                dacc.Blend = CanvasBlend.Add : dacc.DrawImage(e_is_d_diverged)
             End Using
             ' COMPLICATION: The CanvasBlend mode is "SourceOver", which interacts badly with the alpha
             ' values in A_prime and B_prime. So instead we use "Copy".
 
 
             ' Swap "a" and "a_prime" around, and likewise "b" and "b_prime"
-            Dim ta = A : A = Me.A_prime : Me.A_prime = ta
-            Dim tb = B : B = Me.B_prime : Me.B_prime = tb
-            A_squared.Source1 = A
-            A_squared.Source2 = A
-            minus_B_squared.Source1 = B
-            minus_B_squared.Source2 = B
-            two_A_B.Source1 = A
-            two_A_B.Source2 = B
+            Swap(A, A_prime)
+            Swap(B, B_prime)
+            ' And rewire all the effects that depend on "a" and "b"
+            e_A_squared.Source1 = A
+            e_A_squared.Source2 = A
+            e_minus_B_squared.Source1 = B
+            e_minus_B_squared.Source2 = B
+            e_two_A_B.Source1 = A
+            e_two_A_B.Source2 = B
         Next
 
 
         ' DrawBuffer is what the screen will use whenever it needs to repaint itself
         Using ds = DrawBuffer.CreateDrawingSession()
             ds.Blend = CanvasBlend.Copy
-            ds.DrawImage(RenderR)
+            ds.DrawImage(e_renderR)
             ds.Blend = CanvasBlend.Add
-            ds.DrawImage(RenderG)
-            ds.DrawImage(RenderB)
+            ds.DrawImage(e_renderG)
+            ds.DrawImage(e_renderB)
         End Using
 
-        Dim ms = sw.Elapsed.TotalMilliseconds
-        Perf.AddLast(ms)
-        If Perf.Count = 2 Then Perf.RemoveFirst() : Perf.AddLast(ms) ' to discount the first one
-        If Perf.Count > 20 Then Perf.RemoveFirst()
-        ms = Aggregate p In Perf Into Average
-        label1.Text = $"{ms:0}ms, <{MTopLeft.X:0.000},{MTopLeft.Y:0.000}>+<{MSize.X:0.000},{MSize.Y:0.000}>"
+        Dim perf = sw.Elapsed.TotalMilliseconds
+        Static Dim PerfCounts As New LinkedList(Of Double)
+        PerfCounts.AddLast(perf)
+        If PerfCounts.Count = 2 Then PerfCounts.RemoveFirst() : PerfCounts.AddLast(perf) ' to discount the first one
+        If PerfCounts.Count > 30 Then PerfCounts.RemoveFirst()
+        perf = Aggregate p In PerfCounts Into Average
+        label1.Text = $"{perf:0}ms, <{MTopLeft.X:0.000},{MTopLeft.Y:0.000}>+<{MSize.X:0.000},{MSize.Y:0.000}>"
+        label2.Text = $"{Me.CSIZE}x{Me.CSIZE} pixels, {Me.CITER} iterations"
 
+        Static Dim count As Integer = 0
+        count += 1 : If count Mod 10 = 0 Then RefinePerf(perf)
     End Sub
 
 
@@ -347,9 +334,10 @@ Public NotInheritable Class MainPageV2
 
         Dim sourceSizeDips = New Vector2(canvas1.ConvertPixelsToDips(CSIZE))
         Dim canvasSizeDips = canvas1.Size.ToVector2
-        DrawEffect.TransformMatrix = Matrix3x2.CreateScale(canvasSizeDips / sourceSizeDips)
-        args.DrawingSession.DrawImage(DrawEffect)
+        e_Draw.TransformMatrix = Matrix3x2.CreateScale(canvasSizeDips / sourceSizeDips)
+        args.DrawingSession.DrawImage(e_Draw)
     End Sub
+
 
     Sub Zoom(Zoom As Double, fCenter As Vector2)
         Dim MCenter = MTopLeft + MSize * fCenter
@@ -358,13 +346,16 @@ Public NotInheritable Class MainPageV2
         IsUpToDate = False : canvas1.Invalidate()
     End Sub
 
-    Sub Page_PointerPressed(sender As Object, e As TappedRoutedEventArgs) Handles Me.Tapped
+
+    Sub Page_LeftTapped(sender As Object, e As TappedRoutedEventArgs) Handles Me.Tapped
         Zoom(2, e.GetPosition(canvas1).ToVector2 / canvas1.Size.ToVector2)
     End Sub
+
 
     Sub Page_RightTapped(sender As Object, e As RightTappedRoutedEventArgs) Handles Me.RightTapped
         Zoom(0.5, e.GetPosition(canvas1).ToVector2 / canvas1.Size.ToVector2)
     End Sub
+
 
     Sub Page_PointerWheelChanged(sender As Object, e As PointerRoutedEventArgs) Handles Me.PointerWheelChanged
         If Window.Current.CoreWindow.GetKeyState(VirtualKey.Control) = CoreVirtualKeyStates.None Then Return
@@ -374,6 +365,7 @@ Public NotInheritable Class MainPageV2
         If f < 0 Then f = -1 / f
         Zoom(f, pointer.Position.ToVector2 / canvas1.Size.ToVector2)
     End Sub
+
 
     Sub BackRequested(sender As Object, e As BackRequestedEventArgs) Handles NavigationManager.BackRequested
         ' If we're already zoomed in, then the back button just zooms us back out:
@@ -403,6 +395,7 @@ Public NotInheritable Class MainPageV2
         ManipulationStart_MCenterOn = MTopLeft + MSize * TransformToVisual(canvas1).TransformPoint(e.Position).ToVector2() / canvas1.Size.ToVector2
     End Sub
 
+
     Sub Page_ManipulationDelta(sender As Object, e As ManipulationDeltaRoutedEventArgs) Handles Me.ManipulationDelta
         MSize /= e.Delta.Scale
 
@@ -411,6 +404,62 @@ Public NotInheritable Class MainPageV2
             e.Cumulative.Translation.ToVector2() / canvas1.Size.ToVector2() * MSize
 
         IsUpToDate = False : canvas1.Invalidate()
+    End Sub
+
+
+    Sub SavePerf() Handles App.Suspending
+        ApplicationData.Current.LocalSettings.Values("MaxCanvasSize") = MaxCanvasSize
+        ApplicationData.Current.LocalSettings.Values("CITER") = CITER
+        ApplicationData.Current.LocalSettings.Values("CSIZE") = CSIZE
+    End Sub
+
+    Sub LoadPerf()
+        Dim canvasSize0 = CType(ApplicationData.Current.LocalSettings.Values("MaxCanvasSize"), Double?)
+        Dim citer0 = CType(ApplicationData.Current.LocalSettings.Values("CITER"), Integer?)
+        Dim csize0 = CType(ApplicationData.Current.LocalSettings.Values("CSIZE"), Integer?)
+        '
+        If canvasSize0.HasValue Then MaxCanvasSize = canvasSize0.Value
+        If citer0.HasValue Then CITER = citer0.Value
+        If csize0.HasValue Then CSIZE = csize0.Value
+    End Sub
+
+    Sub RefinePerf(perf As Double)
+        Dim XGOOD As Integer = 20 ' in milliseconds
+        Dim GOOD As Integer = 50
+        Dim BAD As Integer = 80
+        Dim XBAD As Integer = 200
+
+        Dim oldSize = CSIZE, oldIter = CITER
+        Select Case True
+            Case perf < XGOOD AndAlso CSIZE < CInt(MaxCanvasSize / 4) : CSIZE = CSIZE * 3 \ 2
+            Case perf < XGOOD : CITER = CITER * 3 \ 2
+            Case perf < GOOD AndAlso CITER < 100 : CITER = CITER * 5 \ 4
+            Case perf < GOOD AndAlso CSIZE < CInt(MaxCanvasSize / 4) : CSIZE = CSIZE * 5 \ 4
+            Case perf < GOOD AndAlso CITER < 120 : CITER = CITER * 5 \ 4
+            Case perf < GOOD AndAlso CSIZE < CInt(MaxCanvasSize) : CSIZE = CInt(MaxCanvasSize)
+            Case perf > XBAD AndAlso CSIZE > 500 : CSIZE = CSIZE * 3 \ 2
+            Case perf > XBAD AndAlso CITER > 150 : CITER = CITER * 3 \ 2
+            Case perf > XBAD AndAlso CSIZE > 300 : CSIZE = CSIZE * 3 \ 2
+            Case perf > BAD AndAlso CITER > 50 : CITER = CITER * 4 \ 5
+            Case perf > BAD AndAlso CSIZE > 300 : CSIZE = CSIZE * 4 \ 5
+            Case perf > BAD AndAlso CITER > 10 : CITER = CITER * 4 \ 5
+            Case Else : Return
+        End Select
+
+        If CSIZE >= MaxCanvasSize - 10 Then CSIZE = CInt(MaxCanvasSize) + 3
+        CSIZE = 3 * (CSIZE \ 3) ' has to be a multiple of 3
+        If CSIZE < 300 Then CSIZE = 300
+        If CITER < 10 Then CITER = 10
+        If oldSize = CSIZE AndAlso oldIter = CITER Then Return
+
+        If oldSize <> CSIZE Then Canvas_CreateResources()
+        If oldIter <> CITER Then
+            Dim e_graytable As Single() = {CSng(1 / CITER), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+            e_is_d_diverged.RedTable = e_graytable
+            e_is_d_diverged.GreenTable = e_graytable
+            e_is_d_diverged.BlueTable = e_graytable
+        End If
+        canvas1.Invalidate()
     End Sub
 
 
@@ -434,6 +483,25 @@ Public NotInheritable Class MainPageV2
             Case Else : rgb = {v, p1, p2}
         End Select
         Return Color.FromArgb(255, CByte(rgb(0) * 255), CByte(rgb(1) * 255), CByte(rgb(2) * 255))
+    End Function
+
+    Shared Sub Swap(Of T)(ByRef x As T, ByRef y As T)
+        Dim temp = x
+        x = y
+        y = temp
+    End Sub
+
+    Shared Function GetFloatBytes(bpp As Integer, value As Single) As Byte()
+        If bpp <> 4 AndAlso bpp <> 2 Then Throw New ArgumentOutOfRangeException(NameOf(bpp))
+        If bpp = 4 Then Return BitConverter.GetBytes(value)
+        '
+        If value < 0 Then Throw New ArgumentOutOfRangeException(NameOf(value), "negatives not implemented")
+        Dim fbits = BitConverter.ToUInt32(BitConverter.GetBytes(CSng(value)), 0)
+        Dim val = (fbits And &H7FFFFFFFUI) + &H1000
+        If val >= &H47800000 Then Throw New ArgumentOutOfRangeException(NameOf(value), "NaN/Inf/overflow not implemented")
+        If val >= &H38800000 Then Return BitConverter.GetBytes(CUShort((val - &H38000000) >> 13))
+        If val < &H33000000 Then Return {0, 0}
+        Throw New ArgumentOutOfRangeException(NameOf(value), "subnormals not implemented")
     End Function
 
 End Class

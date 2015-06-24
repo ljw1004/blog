@@ -3,8 +3,6 @@
 NotInheritable Class App
     Inherits Application
 
-    Public Event Launched As Action
-
     Protected Overrides Sub OnLaunched(e As LaunchActivatedEventArgs)
         ApplicationView.GetForCurrentView().SetPreferredMinSize(New Size(100, 100))
         ApplicationView.GetForCurrentView.SetDesiredBoundsMode(ApplicationViewBoundsMode.UseCoreWindow)
@@ -18,7 +16,6 @@ NotInheritable Class App
             Window.Current.Content = rootFrame
         End If
         If rootFrame.Content Is Nothing Then rootFrame.Navigate(GetType(MainPageV2), e.Arguments)
-        RaiseEvent Launched()
         ApplicationView.GetForCurrentView().SetPreferredMinSize(New Size(200, 100))
         Window.Current.Activate()
     End Sub

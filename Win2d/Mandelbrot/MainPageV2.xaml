@@ -12,7 +12,10 @@
 
     <Grid Background="#FFE6FAE6">
         <canvas:CanvasControl x:Name="canvas1" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-        <TextBlock x:Name="label1" VerticalAlignment="Bottom" Foreground="Red" />
+        <StackPanel VerticalAlignment="Bottom">
+            <TextBlock x:Name="label1" Foreground="Red"/>
+            <TextBlock x:Name="label2" Foreground="Red" />
+        </StackPanel>
     </Grid>
 
 </Page>
