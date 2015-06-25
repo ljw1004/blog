@@ -332,10 +332,10 @@ Public NotInheritable Class MainPageV2
         Static Dim PerfCounts As New LinkedList(Of Double)
         PerfCounts.AddLast(elapsed)
         If PerfCounts.Count > 40 Then PerfCounts.RemoveFirst()
-        Dim perf = If(PerfCounts.Count < 10, elapsed, Aggregate p In PerfCounts.Skip(10) Into Average)
+        Dim perf = If(PerfCounts.Count <= 7, elapsed, Aggregate p In PerfCounts.Skip(7) Into Average)
         label1.Text = $"<{MTopLeft.X:0.000},{MTopLeft.Y:0.000}>+<{MSize.X:0.000},{MSize.Y:0.000}>"
         label2.Text = $"{Me.CSIZE}x{Me.CSIZE} pixels, {Me.CITER} iterations, {perf:0}ms"
-        If FrameCount Mod 10 = 0 AndAlso PerfCounts.Count > 10 Then
+        If FrameCount Mod 10 = 0 AndAlso PerfCounts.Count >= 10 Then
             Dim perfChanged = RefinePerf(perf)
             If perfChanged Then PerfCounts.Clear()
         End If
