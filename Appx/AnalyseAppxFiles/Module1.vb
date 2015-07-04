@@ -22,59 +22,90 @@ Module Module1
     ' Example: to find all of my appxs that use Callisto (i.e. declare the type Callisto.Callisto_XamlTypeInfo.Getter)
     ' and get a list of all the assembly-names that this appx contains:
     Dim example1 As String = "
-SELECT A.DisplayName, F.Name
+Select Case A.DisplayName, F.Name
 FROM Appxs A, Files F, Types T, XAppxTypes AT, XAppxFiles AF
 WHERE T.Name = 'Callisto.Callisto_XamlTypeInfo.Getter'
 AND AT.AppxKey = A.AppxKey AND AT.TypeKey = T.TypeKey
 AND AF.AppxKey = A.AppxKey AND AF.FileKey = F.FileKey
 "
 
-    '
     ' Example: to find all of my appxs that use sqlite-net (i.e. declare the type SQLite.NotNullConstraintViolationException)
     ' as source code rather than the sqlite.net-pcl package (i.e. don't contain the file SQLite.Net.dll):
     Dim example2 As String = "
-SELECT CASE A.DisplayName
+SELECT A.DisplayName
 FROM Appxs A, Types T, XAppxTypes AT
 WHERE T.Name = 'SQLite.NotNullConstraintViolationException'
 AND (SELECT FileKey FROM Files WHERE Name='SQLite.Net.dll') NOT IN (SELECT FileKey FROM XAppxFiles WHERE AppxKey=A.AppxKey)
 AND AT.AppxKey = A.AppxKey And AT.TypeKey = T.TypeKey
 "
 
+    ' Example: count how many appxs have been surveyed and entered into this database
+    Dim example3 As String = "
+SELECT COUNT(*) FROM Appxs
+"
 
     Sub Main()
-        Dim sw As Stopwatch = Stopwatch.StartNew()
-
-        Console.WriteLine("scanning files...")
+        Console.WriteLine("Scanning...")
         Dim appxFns = (From path In AppxPaths
                        From file In Directory.EnumerateFiles(path, "*.appx", SearchOption.AllDirectories)
                        Select file).ToArray
+        Console.WriteLine($"Found {appxFns.Count} appxs")
 
         Dim EffectiveAppxMax = If(AppxMax.HasValue, Math.Min(AppxMax.Value, appxFns.Length), appxFns.Length)
-        Dim prob = EffectiveAppxMax / appxFns.Length
         Dim RND As New Random
-        Dim count = 0
         Dim closeActions As New List(Of Action)
 
-        For i = 0 To appxFns.Length - 1
-            If RND.NextDouble() > prob Then Continue For
-            count += 1
-            Dim appxFn = appxFns(i)
-            Dim ticksPerAppx = sw.Elapsed.Ticks / count
-            Dim remainingTime = New TimeSpan(CLng(ticksPerAppx * (AppxMax - count)))
-            Console.WriteLine(($"Processing appx {count} of {EffectiveAppxMax} ({count / EffectiveAppxMax:P2}, {sw.Elapsed:%h\hmm\mss\s} total; {remainingTime:%h\hmm\mss\s} remaining)..."))
+        Dim sw As New Stopwatch
+        Dim cumulativeCount = 0
+        Dim cumulativeTime As New TimeSpan
 
+        Dim pickAppxFns As Func(Of IEnumerable(Of String))
+        If EffectiveAppxMax > appxFns.Length \ 4 Then
+            pickAppxFns = Iterator Function()
+                              Dim prob = EffectiveAppxMax / appxFns.Length
+                              For i = 0 To appxFns.Length - 1
+                                  If RND.NextDouble() <= prob Then Yield appxFns(i)
+                              Next
+                          End Function
+        Else
+            pickAppxFns = Iterator Function()
+                              For i = 0 To EffectiveAppxMax - 1
+                                  Yield appxFns(RND.Next(appxFns.Length))
+                              Next
+                          End Function
+        End If
+
+        Dim count = 0
+        For Each appxFn In pickAppxFns()
+            count += 1
+
+            sw.Restart()
+            Dim countThisForTimekeeping = False
             Try
-                Appx_EnterIntoDb(appxFn)
+                countThisForTimekeeping = Appx_EnterIntoDb(appxFn)
             Catch ex As Exception
-                Console.Error.WriteLine(($"Error in appx {Path.GetFileName(appxFns(i))} - {ex.Message}"))
+                Console.Error.WriteLine(($"Error in appx {Path.GetFileName(appxFn)} - {ex.Message}"))
             End Try
+
+            If countThisForTimekeeping Then
+                cumulativeTime += sw.Elapsed
+                cumulativeCount += 1
+            End If
+            Dim remaining = ""
+            If cumulativeCount > 0 Then
+                Dim remainingTime = New TimeSpan(CLng(cumulativeTime.Ticks / cumulativeCount * (AppxMax - count)))
+                remaining = $"; {remainingTime:%h\hmm\mss\s} remaining"
+            End If
+
+            Console.WriteLine(($"Processing appx {count} of {EffectiveAppxMax} ({count / EffectiveAppxMax:P2}, {sw.Elapsed:%s\s}{remaining})..."))
+
         Next
 
         Db.Close()
     End Sub
 
 
-    Sub Appx_EnterIntoDb(appxFn As String)
+    Function Appx_EnterIntoDb(appxFn As String) As Boolean
         Dim appxName = Path.GetFileNameWithoutExtension(appxFn)
         Using zip = ZipFile.OpenRead(appxFn)
             Dim appxKey = -1
@@ -84,7 +115,7 @@ AND AT.AppxKey = A.AppxKey And AT.TypeKey = T.TypeKey
                 If r IsNot Nothing Then appxKey = CInt(r)
             End Using
 
-            If appxKey <> -1 Then Return
+            If appxKey <> -1 Then Return False
 
             If appxKey = -1 Then
                 Dim manifestEntry = zip.GetEntry("AppxManifest.xml")
@@ -158,7 +189,7 @@ AND AT.AppxKey = A.AppxKey And AT.TypeKey = T.TypeKey
                     End If
                 End Using
 
-                If Not isNewFile Then Continue For
+                If Not isNewFile AndAlso Not zipentryName.ToLower.EndsWith(".exe") Then Continue For
                 Dim fn = Path.GetTempFileName()
                 Try
                     zipentry.ExtractToFile(fn, True)
@@ -172,8 +203,8 @@ AND AT.AppxKey = A.AppxKey And AT.TypeKey = T.TypeKey
                             Dim typeName = ""
                             Try
                                 Dim typeDef = assembly.GetTypeDefinition(typeDefHandle)
-                                'Dim declaringType = typeDef.GetDeclaringType()
-                                'If Not declaringType.IsNil Then Continue For ' skip nested types
+                                Dim declaringType = typeDef.GetDeclaringType()
+                                If Not declaringType.IsNil Then Continue For ' skip nested types
                                 typeName = assembly.GetString(typeDef.Name)
                                 If Not typeDef.Namespace.IsNil Then typeName = assembly.GetString(typeDef.Namespace) & "." & typeName
                             Catch ex As Exception
@@ -214,7 +245,8 @@ AND AT.AppxKey = A.AppxKey And AT.TypeKey = T.TypeKey
             Next
         End Using
 
-    End Sub
+        Return True
+    End Function
 
     Function InitDb(DbPath As String) As SqlConnection
         Dim dbName = Path.GetFileNameWithoutExtension(DbPath)
