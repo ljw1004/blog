@@ -15,31 +15,33 @@ Module Module1
     ' and stores them in a database that it creates.
     ' Hopefully this will help you get your numerous appx files under control.
 
-    Dim Db As SqlConnection = InitDb("C:\Users\lwischik\Desktop\appxs\AppxDatabase.mdf")
-    Dim AppxPaths As String() = {"C:\Users\lwischik\Desktop\appxs"}
-    Dim AppxMax As Integer? = 1000 ' as if anyone has this many appxs!
+    Dim Db As SqlConnection = InitDb("C:\Users\lwischik\Desktop\AppxDatabase.mdf")
+    Dim AppxPaths As String() = {"C:\users\lwischik\desktop\Appxs"}
+    Dim AppxMax As Integer? = 10000 ' as if anyone has this many appxs!
 
     ' Example: to find all of my appxs that use Callisto (i.e. declare the type Callisto.Callisto_XamlTypeInfo.Getter)
     ' and get a list of all the assembly-names that this appx contains:
-    '    SELECT A.DisplayName, F.Name
-    '    FROM Appxs A, Files F, Types T, XAppxTypes AT, XAppxFiles AF
-    '    WHERE T.Name = 'Callisto.Callisto_XamlTypeInfo.Getter'
-    '    AND AT.AppxKey = A.AppxKey AND AT.TypeKey = T.TypeKey
-    '    AND AF.AppxKey = A.AppxKey AND AF.FileKey = F.FileKey
+    Dim example1 As String = "
+SELECT A.DisplayName, F.Name
+FROM Appxs A, Files F, Types T, XAppxTypes AT, XAppxFiles AF
+WHERE T.Name = 'Callisto.Callisto_XamlTypeInfo.Getter'
+AND AT.AppxKey = A.AppxKey AND AT.TypeKey = T.TypeKey
+AND AF.AppxKey = A.AppxKey AND AF.FileKey = F.FileKey
+"
 
     '
     ' Example: to find all of my appxs that use sqlite-net (i.e. declare the type SQLite.NotNullConstraintViolationException)
     ' as source code rather than the sqlite.net-pcl package (i.e. don't contain the file SQLite.Net.dll):
-    '    SELECT CASE A.DisplayName
-    '    FROM Appxs A, Types T, XAppxTypes AT
-    '    WHERE T.Name = 'SQLite.NotNullConstraintViolationException'
-    '    AND (SELECT FileKey FROM Files WHERE Name='SQLite.Net.dll') NOT IN (SELECT FileKey FROM XAppxFiles WHERE AppxKey=A.AppxKey)
-    '    AND AT.AppxKey = A.AppxKey And AT.TypeKey = T.TypeKey
+    Dim example2 As String = "
+SELECT CASE A.DisplayName
+FROM Appxs A, Types T, XAppxTypes AT
+WHERE T.Name = 'SQLite.NotNullConstraintViolationException'
+AND (SELECT FileKey FROM Files WHERE Name='SQLite.Net.dll') NOT IN (SELECT FileKey FROM XAppxFiles WHERE AppxKey=A.AppxKey)
+AND AT.AppxKey = A.AppxKey And AT.TypeKey = T.TypeKey
+"
 
 
     Sub Main()
-        'MetadataReaderDLL.Test()
-        'Return
         Dim sw As Stopwatch = Stopwatch.StartNew()
 
         Console.WriteLine("scanning files...")
@@ -59,7 +61,7 @@ Module Module1
             Dim appxFn = appxFns(i)
             Dim ticksPerAppx = sw.Elapsed.Ticks / count
             Dim remainingTime = New TimeSpan(CLng(ticksPerAppx * (AppxMax - count)))
-            Console.WriteLine(($"Processing appx {count} of {EffectiveAppxMax} ({count / EffectiveAppxMax:P2}, {sw.Elapsed:%s\s}; {remainingTime:%h\hmm\mss\s} remaining)..."))
+            Console.WriteLine(($"Processing appx {count} of {EffectiveAppxMax} ({count / EffectiveAppxMax:P2}, {sw.Elapsed:%h\hmm\mss\s} total; {remainingTime:%h\hmm\mss\s} remaining)..."))
 
             Try
                 Appx_EnterIntoDb(appxFn)
@@ -133,6 +135,7 @@ Module Module1
                 Dim zipentryName = Path.GetFileName(zipentry.Name).Replace("%20", " ")
 
                 Dim fileKey = -1
+                Dim isNewFile = False
                 Using cmd As New SqlCommand($"SELECT TOP(1) FileKey FROM Files WHERE Name=@zipentryName", Db)
                     cmd.Parameters.AddWithValue("zipentryName", zipentryName)
                     Dim r = cmd.ExecuteScalar()
@@ -141,6 +144,7 @@ Module Module1
                     Else
                         cmd.CommandText = "INSERT INTO Files(Name) OUTPUT INSERTED.FileKey VALUES(@zipentryName)"
                         fileKey = CInt(cmd.ExecuteScalar())
+                        isNewFile = True
                     End If
                 End Using
 
@@ -154,6 +158,7 @@ Module Module1
                     End If
                 End Using
 
+                If Not isNewFile Then Continue For
                 Dim fn = Path.GetTempFileName()
                 Try
                     zipentry.ExtractToFile(fn, True)
