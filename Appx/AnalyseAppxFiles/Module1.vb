@@ -3,6 +3,7 @@ Imports System.IO
 Imports System.IO.Compression
 Imports <xmlns:manifest="http://schemas.microsoft.com/appx/2010/manifest">
 Imports <xmlns:build="http://schemas.microsoft.com/developer/appx/2012/build">
+Imports <xmlns:manifest10="http://schemas.microsoft.com/appx/manifest/foundation/windows10">
 
 Module Module1
 
@@ -16,8 +17,8 @@ Module Module1
     ' Hopefully this will help you get your numerous appx files under control.
 
     Dim Db As SqlConnection = InitDb("C:\Users\lwischik\Desktop\AppxDatabase.mdf")
-    Dim AppxPaths As String() = {"C:\users\lwischik\desktop\Appxs"}
-    Dim AppxMax As Integer? = 10000 ' as if anyone has this many appxs!
+    Dim AppxPaths As String() = Nothing ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
+    Dim AppxMax As Integer? = Nothing   ' Process every appx. Or, you can limit it
 
     ' Example: to find all of my appxs that use Callisto (i.e. declare the type Callisto.Callisto_XamlTypeInfo.Getter)
     ' and get a list of all the assembly-names that this appx contains:
@@ -46,9 +47,22 @@ SELECT COUNT(*) FROM Appxs
 
     Sub Main()
         Console.WriteLine("Scanning...")
-        Dim appxFns = (From path In AppxPaths
+        Dim appxFns As String()
+        If AppxPaths Is Nothing Then
+            Try
+                appxFns = (From d In Directory.EnumerateDirectories("C:\Program Files\WindowsApps")
+                           Let m = $"{d}\AppxManifest.xml"
+                           Where File.Exists(m)
+                           Select m).ToArray()
+            Catch ex As UnauthorizedAccessException
+                Console.Error.WriteLine("Please re-run as administrator, to be able to read the 'C:\Program Files\WindowsApps' directory")
+                Return
+            End Try
+        Else
+            appxFns = (From path In AppxPaths
                        From file In Directory.EnumerateFiles(path, "*.appx", SearchOption.AllDirectories)
                        Select file).ToArray
+        End If
         Console.WriteLine($"Found {appxFns.Count} appxs")
 
         Dim EffectiveAppxMax = If(AppxMax.HasValue, Math.Min(AppxMax.Value, appxFns.Length), appxFns.Length)
@@ -93,11 +107,11 @@ SELECT COUNT(*) FROM Appxs
             End If
             Dim remaining = ""
             If cumulativeCount > 0 Then
-                Dim remainingTime = New TimeSpan(CLng(cumulativeTime.Ticks / cumulativeCount * (AppxMax - count)))
+                Dim remainingTime = New TimeSpan(CLng(cumulativeTime.Ticks / cumulativeCount * (EffectiveAppxMax - count)))
                 remaining = $"; {remainingTime:%h\hmm\mss\s} remaining"
             End If
 
-            Console.WriteLine(($"Processing appx {count} of {EffectiveAppxMax} ({count / EffectiveAppxMax:P2}, {sw.Elapsed:%s\s}{remaining})..."))
+            Console.WriteLine(($"Appx {count} of {EffectiveAppxMax} ({count / EffectiveAppxMax:P2}, {sw.Elapsed:%s\.ff\s}, {cumulativeTime:%h\hmm\mss\s} elapsed{remaining})..."))
 
         Next
 
@@ -106,8 +120,59 @@ SELECT COUNT(*) FROM Appxs
 
 
     Function Appx_EnterIntoDb(appxFn As String) As Boolean
-        Dim appxName = Path.GetFileNameWithoutExtension(appxFn)
-        Using zip = ZipFile.OpenRead(appxFn)
+        Dim appxName As String
+        Dim isWindowsStore = False
+        Dim isPhoneStore = False
+        '
+        Dim GetAppxManifestFile As Func(Of String) = Nothing
+        Dim EnumerateAssemblies As Func(Of IEnumerable(Of Tuple(Of String, String))) = Nothing
+        Dim closeActions As New List(Of Action)
+        '
+        If Path.GetFileName(appxFn).ToLower() = "appxmanifest.xml" Then
+            Dim dir = Path.GetDirectoryName(appxFn)
+            appxName = Path.GetFileName(dir)
+            isWindowsStore = True
+            GetAppxManifestFile = Function() appxFn
+            EnumerateAssemblies = Iterator Function()
+                                      For Each fn In Directory.GetFiles(dir, "*.*", SearchOption.AllDirectories)
+                                          Dim ext = Path.GetExtension(fn).ToLower()
+                                          If ext <> ".exe" AndAlso ext <> ".dll" AndAlso ext <> ".winmd" Then Continue For
+                                          Dim tfn = Path.GetTempFileName()
+                                          File.Copy(fn, tfn, True)
+                                          closeActions.Add(Sub() File.Delete(tfn))
+                                          Yield Tuple.Create(tfn, Path.GetFileName(fn))
+                                      Next
+                                  End Function
+        Else
+            appxName = Path.GetFileNameWithoutExtension(appxFn)
+            isWindowsStore = (appxFn Like "*\windowsstore\*")
+            isPhoneStore = (appxFn Like "*\phone\*")
+            Dim zip = ZipFile.OpenRead(appxFn)
+            closeActions.Add(Sub() zip.Dispose())
+            GetAppxManifestFile = Function()
+                                      Dim zipEntry = zip.GetEntry("AppxManifest.xml")
+                                      Dim tfn = Path.GetTempFileName()
+                                      zipEntry.ExtractToFile(tfn, True)
+                                      closeActions.Add(Sub() File.Delete(tfn))
+                                      Return tfn
+                                  End Function
+            EnumerateAssemblies = Iterator Function()
+                                      For Each zipEntry In zip.Entries
+                                          Dim ext = Path.GetExtension(zipEntry.FullName).ToLower()
+                                          If ext <> ".exe" AndAlso ext <> ".dll" AndAlso ext <> ".winmd" Then Continue For
+                                          Dim assemblyName = Path.GetFileName(zipEntry.Name).Replace("%20", " ")
+                                          Dim tfn = Path.GetTempFileName()
+                                          zipEntry.ExtractToFile(tfn, True)
+                                          Yield Tuple.Create(tfn, assemblyName)
+                                          closeActions.Add(Sub() File.Delete(tfn))
+                                      Next
+                                  End Function
+        End If
+
+
+
+
+        Try
             Dim appxKey = -1
             Using cmd As New SqlCommand($"SELECT TOP(1) AppxKey FROM Appxs WHERE AppxFileName=@appxFileName", Db)
                 cmd.Parameters.AddWithValue("appxFileName", appxName)
@@ -118,62 +183,56 @@ SELECT COUNT(*) FROM Appxs
             If appxKey <> -1 Then Return False
 
             If appxKey = -1 Then
-                Dim manifestEntry = zip.GetEntry("AppxManifest.xml")
-                Dim mfn = Path.GetTempFileName()
-                Try
-                    manifestEntry.ExtractToFile(mfn, True)
-                    Dim xml = XDocument.Parse(File.ReadAllText(mfn))
-                    Dim identity = xml.<manifest:Package>.<manifest:Identity>.@Name
-                    Dim publisher = xml.<manifest:Package>.<manifest:Identity>.@Publisher
-                    Dim processorArchitecture = xml.<manifest:Package>.<manifest:Identity>.@ProcessorArchitecture
-                    Dim displayName = xml.<manifest:Package>.<manifest:Properties>.<manifest:DisplayName>.Value
-                    Dim publisherDisplayName = xml.<manifest:Package>.<manifest:Properties>.<manifest:PublisherDisplayName>.Value
-                    Dim isWindowsStore = (appxFn Like "*\windowsstore\*")
-                    Dim isPhoneStore = (appxFn Like "*\phone\*")
-                    Dim language = "?"
-                    If xml.<manifest:Package>.<manifest:Applications>.<manifest:Application>.@StartPage IsNot Nothing Then
-                        language = "JS"
-                    Else
-                        Dim buildItems = xml.<manifest:Package>.<build:Metadata>.<build:Item>
-                        Dim clBuildItem = (From item In buildItems
-                                           Where item.@Name = "cl.exe").FirstOrDefault
-                        language = If(clBuildItem Is Nothing, ".NET", "C++")
-                    End If
-                    Using cmd As New SqlCommand($"INSERT INTO Appxs(AppxFileName,[Identity],Publisher,DisplayName,PublisherDisplayName,ProcessorArchitecture,IsWindowsStore,IsPhoneStore,Language)
+                Dim manifestFn = GetAppxManifestFile()
+                Dim xml = XDocument.Parse(File.ReadAllText(manifestFn))
+                Dim identity = xml.<manifest:Package>.<manifest:Identity>.@Name
+                Dim publisher = xml.<manifest:Package>.<manifest:Identity>.@Publisher
+                Dim processorArchitecture = xml.<manifest:Package>.<manifest:Identity>.@ProcessorArchitecture
+                Dim displayName = xml.<manifest:Package>.<manifest:Properties>.<manifest:DisplayName>.Value
+                Dim publisherDisplayName = xml.<manifest:Package>.<manifest:Properties>.<manifest:PublisherDisplayName>.Value
+                Dim app = xml.<manifest:Package>.<manifest:Applications>.<manifest:Application>.FirstOrDefault
+                If app Is Nothing Then Return True
+                Dim language = "?"
+                If app.@StartPage IsNot Nothing Then
+                    language = "JS"
+                Else
+                    Dim buildItems = xml.<manifest:Package>.<build:Metadata>.<build:Item>
+                    Dim clBuildItem = (From item In buildItems
+                                       Where item.@Name = "cl.exe").FirstOrDefault
+                    language = If(clBuildItem Is Nothing, ".NET", "C++")
+                End If
+                If identity Is Nothing Then Return False ' probably was a win10 appxmanifest; we don't handle those yet
+                If processorArchitecture Is Nothing Then processorArchitecture = "neutral"
+                Using cmd As New SqlCommand($"INSERT INTO Appxs(AppxFileName,[Identity],Publisher,DisplayName,PublisherDisplayName,ProcessorArchitecture,IsWindowsStore,IsPhoneStore,Language)
                                           OUTPUT INSERTED.AppxKey
                                           VALUES(@appxFileName,@identity,@publisher,@displayName,@publisherDisplayName,@processorArchitecture,@isWindowsStore,@isPhoneStore,@language)", Db)
-                        cmd.Parameters.AddWithValue("appxFileName", appxName)
-                        cmd.Parameters.AddWithValue("identity", identity)
-                        cmd.Parameters.AddWithValue("publisher", publisher)
-                        cmd.Parameters.AddWithValue("displayName", displayName)
-                        cmd.Parameters.AddWithValue("publisherDisplayName", publisherDisplayName)
-                        cmd.Parameters.AddWithValue("processorArchitecture", processorArchitecture)
-                        cmd.Parameters.AddWithValue("isWindowsStore", isWindowsStore)
-                        cmd.Parameters.AddWithValue("isPhoneStore", isPhoneStore)
-                        cmd.Parameters.AddWithValue("language", language)
-                        appxKey = CInt(cmd.ExecuteScalar())
-                    End Using
-                Finally
-                    File.Delete(mfn)
-                End Try
+                    cmd.Parameters.AddWithValue("appxFileName", appxName)
+                    cmd.Parameters.AddWithValue("identity", identity)
+                    cmd.Parameters.AddWithValue("publisher", publisher)
+                    cmd.Parameters.AddWithValue("displayName", displayName)
+                    cmd.Parameters.AddWithValue("publisherDisplayName", publisherDisplayName)
+                    cmd.Parameters.AddWithValue("processorArchitecture", processorArchitecture)
+                    cmd.Parameters.AddWithValue("isWindowsStore", isWindowsStore)
+                    cmd.Parameters.AddWithValue("isPhoneStore", isPhoneStore)
+                    cmd.Parameters.AddWithValue("language", language)
+                    appxKey = CInt(cmd.ExecuteScalar())
+                End Using
             End If
 
-            Dim zipentries = From file In zip.Entries
-                             Let ext = Path.GetExtension(file.FullName).ToLower()
-                             Where {".exe", ".dll", ".winmd"}.Contains(ext)
-                             Select file
-            For Each zipentry In zipentries
-                Dim zipentryName = Path.GetFileName(zipentry.Name).Replace("%20", " ")
+
+            For Each assemblyTuple In EnumerateAssemblies()
+                Dim assemblyFn = assemblyTuple.Item1
+                Dim assemblyName = assemblyTuple.Item2
 
                 Dim fileKey = -1
                 Dim isNewFile = False
-                Using cmd As New SqlCommand($"SELECT TOP(1) FileKey FROM Files WHERE Name=@zipentryName", Db)
-                    cmd.Parameters.AddWithValue("zipentryName", zipentryName)
+                Using cmd As New SqlCommand($"SELECT TOP(1) FileKey FROM Files WHERE Name=@assemblyName", Db)
+                    cmd.Parameters.AddWithValue("assemblyName", assemblyName)
                     Dim r = cmd.ExecuteScalar()
                     If r IsNot Nothing Then
                         fileKey = CInt(r)
                     Else
-                        cmd.CommandText = "INSERT INTO Files(Name) OUTPUT INSERTED.FileKey VALUES(@zipentryName)"
+                        cmd.CommandText = "INSERT INTO Files(Name) OUTPUT INSERTED.FileKey VALUES(@assemblyName)"
                         fileKey = CInt(cmd.ExecuteScalar())
                         isNewFile = True
                     End If
@@ -189,61 +248,57 @@ SELECT COUNT(*) FROM Appxs
                     End If
                 End Using
 
-                If Not isNewFile AndAlso Not zipentryName.ToLower.EndsWith(".exe") Then Continue For
-                Dim fn = Path.GetTempFileName()
-                Try
-                    zipentry.ExtractToFile(fn, True)
-                    Using stream As New FileStream(fn, FileMode.Open),
-                        reader As New Reflection.PortableExecutable.PEReader(stream)
-                        If Not reader.HasMetadata Then Continue For
-                        Dim assembly = MetadataReaderDLL.CreateFromPEReader(reader)
-                        Dim count = 0
-                        For Each typeDefHandle In assembly.TypeDefinitions
-                            count += 1
-                            Dim typeName = ""
-                            Try
-                                Dim typeDef = assembly.GetTypeDefinition(typeDefHandle)
-                                Dim declaringType = typeDef.GetDeclaringType()
-                                If Not declaringType.IsNil Then Continue For ' skip nested types
-                                typeName = assembly.GetString(typeDef.Name)
-                                If Not typeDef.Namespace.IsNil Then typeName = assembly.GetString(typeDef.Namespace) & "." & typeName
-                            Catch ex As Exception
-                                Continue For
-                            End Try
-                            If typeName.StartsWith("<") Then Continue For
+                If Not isNewFile AndAlso Not assemblyName.ToLower.EndsWith(".exe") Then Continue For
+                Using stream As New FileStream(assemblyFn, FileMode.Open),
+                    reader As New Reflection.PortableExecutable.PEReader(stream)
+                    If Not reader.HasMetadata Then Continue For
+                    Dim assembly = MetadataReaderDLL.CreateFromPEReader(reader)
+                    Dim count = 0
+                    For Each typeDefHandle In assembly.TypeDefinitions
+                        count += 1
+                        Dim typeName = ""
+                        Try
+                            Dim typeDef = assembly.GetTypeDefinition(typeDefHandle)
+                            Dim declaringType = typeDef.GetDeclaringType()
+                            If Not declaringType.IsNil Then Continue For ' skip nested types
+                            typeName = assembly.GetString(typeDef.Name)
+                            If Not typeDef.Namespace.IsNil Then typeName = assembly.GetString(typeDef.Namespace) & "." & typeName
+                        Catch ex As Exception
+                            Continue For
+                        End Try
+                        If typeName.StartsWith("<") Then Continue For
 
-                            Dim typeKey = -1
-                            Using cmd As New SqlCommand($"SELECT TOP(1) TypeKey FROM Types WHERE Name=@typeName", Db)
-                                cmd.Parameters.AddWithValue("typeName", typeName)
-                                Dim r = cmd.ExecuteScalar()
-                                If r IsNot Nothing Then
-                                    typeKey = CInt(r)
-                                Else
-                                    cmd.CommandText = "INSERT INTO Types(Name) OUTPUT INSERTED.TypeKey VALUES(@typeName)"
-                                    typeKey = CInt(cmd.ExecuteScalar())
-                                End If
-                            End Using
+                        Dim typeKey = -1
+                        Using cmd As New SqlCommand($"SELECT TOP(1) TypeKey FROM Types WHERE Name=@typeName", Db)
+                            cmd.Parameters.AddWithValue("typeName", typeName)
+                            Dim r = cmd.ExecuteScalar()
+                            If r IsNot Nothing Then
+                                typeKey = CInt(r)
+                            Else
+                                cmd.CommandText = "INSERT INTO Types(Name) OUTPUT INSERTED.TypeKey VALUES(@typeName)"
+                                typeKey = CInt(cmd.ExecuteScalar())
+                            End If
+                        End Using
 
-                            Using cmd As New SqlCommand("Select TOP(1) * from XAppxTypes WHERE AppxKey=@appxKey AND TypeKey=@typeKey", Db)
-                                cmd.Parameters.AddWithValue("appxKey", appxKey)
-                                cmd.Parameters.AddWithValue("typeKey", typeKey)
-                                Dim r = cmd.ExecuteScalar()
-                                If r Is Nothing Then
-                                    cmd.CommandText = "INSERT INTO XAppxTypes(AppxKey,TypeKey) VALUES(@appxKey,@typeKey)"
-                                    cmd.ExecuteNonQuery()
-                                End If
-                            End Using
+                        Using cmd As New SqlCommand("Select TOP(1) * from XAppxTypes WHERE AppxKey=@appxKey AND TypeKey=@typeKey", Db)
+                            cmd.Parameters.AddWithValue("appxKey", appxKey)
+                            cmd.Parameters.AddWithValue("typeKey", typeKey)
+                            Dim r = cmd.ExecuteScalar()
+                            If r Is Nothing Then
+                                cmd.CommandText = "INSERT INTO XAppxTypes(AppxKey,TypeKey) VALUES(@appxKey,@typeKey)"
+                                cmd.ExecuteNonQuery()
+                            End If
+                        End Using
 
 
-                        Next
-                    End Using
-                Catch ex As Exception
-                    Console.Error.WriteLine($"Error in file {appxName}:{zipentryName} - {ex.Message}")
-                Finally
-                    File.Delete(fn)
-                End Try
+                    Next
+                End Using
             Next
-        End Using
+        Finally
+            For Each act In closeActions
+                act()
+            Next
+        End Try
 
         Return True
     End Function
