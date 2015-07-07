@@ -3,11 +3,13 @@ Imports System.IO
 Imports System.IO.Compression
 Imports System.Runtime.CompilerServices
 Imports <xmlns:manifest8="http://schemas.microsoft.com/appx/2010/manifest">
-Imports <xmlns:build="http://schemas.microsoft.com/developer/appx/2012/build">
 Imports <xmlns:manifest10="http://schemas.microsoft.com/appx/manifest/foundation/windows10">
+Imports <xmlns:build="http://schemas.microsoft.com/developer/appx/2012/build">
 Imports <xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest">
-Imports <xmlns:deployment8="http://schemas.microsoft.com/windowsphone/2012/deployment">
 Imports <xmlns:deployment7="http://schemas.microsoft.com/windowsphone/2009/deployment">
+Imports <xmlns:deployment8="http://schemas.microsoft.com/windowsphone/2012/deployment">
+Imports <xmlns:deployment81="http://schemas.microsoft.com/windowsphone/2014/deployment">
+
 
 Module Module1
 
@@ -338,20 +340,18 @@ SELECT COUNT(*) FROM Appxs
                 Dim _is8appx = IsAppx AndAlso Not _is10appx
 
                 If _isXap Then
-                    Dim is8 = True
-                    Dim app = xml.<deployment8:Deployment>.<App>.FirstOrDefault
-                    If app Is Nothing Then
-                        app = xml.<deployment7:Deployment>.<App>.Single : is8 = False
-                    End If
+                    Dim app = xml.<deployment8:Deployment>.<App>.FirstOrDefault, ver = "8"
+                    If app Is Nothing Then app = xml.<deployment7:Deployment>.<App>.FirstOrDefault : ver = "7"
+                    If app Is Nothing Then app = xml.<deployment81:Deployment>.<App>.FirstOrDefault : ver = "81"
+                    If app Is Nothing Then Return Nothing
                     _ai.Name = app.@ProductID.TrimStart({"{"c}).TrimEnd({"}"c})
-                    _ai.Publisher = If(is8, app.@PublisherID.TrimStart({"{"c}).TrimEnd({"}"c}), app.@Publisher)
+                    _ai.Publisher = If(ver = "7", app.@Publisher, app.@PublisherID.TrimStart({"{"c}).TrimEnd({"}"c}))
                     _ai.ProcessorArchitecture = "neutral"
                     _ai.Version = app.@Version
                     _ai.DisplayName = app.@Title
                     _ai.PublisherDisplayName = app.@Publisher
-                    If app.@RuntimeType <> "Silverlight" Then Throw New Exception("Unexpected XAP RuntimeType: " & app.@RuntimeType)
                     _ai.AuthoringLanguage = ".NET"
-                    _ai.TargetPlatform = $"Phone{If(is8, "8", "7")}.Xap"
+                    _ai.TargetPlatform = $"Phone{ver}.{app.@RuntimeType}"
 
                 ElseIf _is8appx Then
                     Dim identity = xml.<manifest8:Package>.<manifest8:Identity>.Single
@@ -706,7 +706,7 @@ SELECT COUNT(*) FROM Appxs
     End Function
 
 
-    Declare Function LoadLibrary Lib "kernel32" Alias "LoadLibraryA" (fn As String) As IntPtr
-    Declare Function LoadString Lib "user32" Alias "LoadStringA" (hInstance As IntPtr, uID As UInt32, buf As Text.StringBuilder, nBufMax As Integer) As Integer
+    Declare Function LoadLibrary Lib "kernel32" Alias "LoadLibraryW" (fn As String) As IntPtr
+    Declare Function LoadString Lib "user32" Alias "LoadStringW" (hInstance As IntPtr, uID As UInt32, buf As Text.StringBuilder, nBufMax As Integer) As Integer
     Declare Function FreeLibrary Lib "kernel32" (hInstance As IntPtr) As IntPtr
 End Module
