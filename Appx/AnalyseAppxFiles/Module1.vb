@@ -15,80 +15,84 @@ Module Module1
 
     ' AnalyzeAppxFiles
     ' ==================
-    ' So you have a bunch of appx files for all the projects you've submitted to the store,
-    ' but you've begun to lose track of them? What they all are, what they do?
-    ' Don't know which of them use a particular library that might need updating?
-    ' This code reads through them and extracts out filenames, types and names,
-    ' and stores them in a database that it creates.
-    ' Hopefully this will help you get your numerous appx files under control.
+    ' Curious about the apps installed on your machine?
+    ' Have a bunch of appx/xap files which you've submitted to the store but you've lost track of what's in them?
+    ' This code reads through such apps and extracts out app metadata, the assemblies it contains, and the types in them.
+    ' It stores the results in a database...
 
     Dim Db As SqlConnection = InitDb($"{My.Computer.FileSystem.SpecialDirectories.Desktop}\AppDatabase.mdf")
     Dim AppPaths As String() = Nothing ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
     Dim AppMax As Integer? = Nothing   ' Process every app. Or, you can limit it
 
-    ' Example: to find all of my appxs that use Callisto (i.e. declare the type Callisto.Callisto_XamlTypeInfo.Getter)
-    ' and get a list of all the assembly-names that this appx contains:
+    ' Example: How many apps use each namespace?
     Dim example1 As String = "
-SELECT A.DisplayName, F.Name
-FROM Appxs A, Files F, Types T, XAppxTypes AT, XAppxFiles AF
-WHERE T.Name = 'Callisto.Callisto_XamlTypeInfo.Getter'
-AND AT.AppxKey = A.AppxKey AND AT.TypeKey = T.TypeKey
-AND AF.AppxKey = A.AppxKey AND AF.FileKey = F.FileKey
+How many apps are using each namespace?
+SELECT N.Name Namespace, (
+    SELECT COUNT(DISTINCT A.AppKey) FROM Apps A
+    INNER JOIN XAppTypes AT ON A.AppKey = AT.AppKey
+    INNER JOIN Types T ON AT.TypeKey = T.TypeKey
+    WHERE T.NamespaceKey = N.NamespaceKey) AppCount
+FROM Namespaces N
+ORDER BY AppCount DESC
 "
 
-    ' Example: to find all of my appxs that use sqlite-net (i.e. declare the type SQLite.NotNullConstraintViolationException)
-    ' as source code rather than the sqlite.net-pcl package (i.e. don't contain the file SQLite.Net.dll):
+    ' Example: how many ratings have been given to apps that use each namespace?
     Dim example2 As String = "
-SELECT A.DisplayName
-FROM Appxs A, Types T, XAppxTypes AT
-WHERE T.Name = 'SQLite.NotNullConstraintViolationException'
-AND (SELECT FileKey FROM Files WHERE Name='SQLite.Net.dll') NOT IN (SELECT FileKey FROM XAppxFiles WHERE AppxKey=A.AppxKey)
-AND AT.AppxKey = A.AppxKey And AT.TypeKey = T.TypeKey
+SELECT N.Name Namespace, (
+    SELECT SUM(A.RatingCount) FROM Apps A
+    INNER JOIN XAppTypes AT ON A.AppKey = AT.AppKey
+    INNER JOIN Types T ON AT.TypeKey = T.TypeKey
+    WHERE T.NamespaceKey = N.NamespaceKey) TotalRatings
+FROM Namespaces N
+ORDER BY TotalRatings DESC
 "
 
-    ' Example: count how many appxs have been surveyed and entered into this database
-    Dim example3 As String = "
-SELECT COUNT(*) FROM Appxs
-"
+
 
     Sub Main()
         Console.WriteLine("Scanning...")
-        Dim appFns As String()
+        Dim apps As AppInvestigator()
         If AppPaths Is Nothing Then
             Try
-                appFns = (From d In Directory.EnumerateDirectories("C:\Program Files\WindowsApps")
-                          Let m = $"{d}\AppxManifest.xml"
-                          Where File.Exists(m)
-                          Select d).ToArray()
+                apps = (From d In Directory.EnumerateDirectories("C:\Program Files\WindowsApps")
+                        Let m = $"{d}\AppxManifest.xml"
+                        Where File.Exists(m)
+                        Select New AppInvestigator With {.Path = d}).ToArray()
             Catch ex As UnauthorizedAccessException
                 Console.Error.WriteLine("Please re-run as administrator, to be able to read the 'C:\Program Files\WindowsApps' directory")
                 Return
             End Try
+        ElseIf AppPaths.Count = 1 AndAlso Path.GetExtension(AppPaths(0)).ToLower = ".csv" Then
+            Using reader As New StreamReader(AppPaths(0), Text.Encoding.UTF8), csv As New CsvHelper.CsvReader(reader)
+                apps = csv.GetRecords(Of AppInvestigator).ToArray()
+            End Using
+            For Each app In apps
+                app.IsTop = True
+            Next
         Else
-            appFns = (From path In AppPaths
-                      From file In Directory.EnumerateFiles(path, "*.*x*", SearchOption.AllDirectories)
-                      Let ext = IO.Path.GetExtension(file).ToLowerInvariant()
-                      Where ext = ".appx" OrElse ext = ".xap"
-                      Select file).ToArray
+            apps = (From path In AppPaths
+                    From file In Directory.EnumerateFiles(path, "*.*x*", SearchOption.AllDirectories)
+                    Let ext = IO.Path.GetExtension(file).ToLowerInvariant()
+                    Where ext = ".appx" OrElse ext = ".xap"
+                    Select New AppInvestigator With {.Path = file}).ToArray
         End If
-        Dim SubsetCount = If(AppMax.HasValue, Math.Min(AppMax.Value, appFns.Length), appFns.Length)
-        Console.WriteLine($"Found {appFns.Count} appxs{If(SubsetCount = AppMax, "", $", doing {SubsetCount}")}")
+        Dim SubsetCount = If(AppMax.HasValue, Math.Min(AppMax.Value, apps.Length), apps.Length)
+        Console.WriteLine($"Found {apps.Count} appxs{If(SubsetCount = AppMax, "", $", doing {SubsetCount}")}")
 
         Dim sw As New Stopwatch
         Dim cumulativeCount = 0
         Dim cumulativeTime As New TimeSpan
 
         Dim count = 0
-        For Each appFn In appFns.SelectRandomSubset(SubsetCount)
+        For Each app In apps.SelectRandomSubset(SubsetCount)
             count += 1
 
             sw.Restart()
             Dim countThisForTimekeeping = False
-            Dim app As New AppInvestigator With {.AppFn = appFn}
             Try
                 App_EnterIntoDb(app, countThisForTimekeeping)
             Catch ex As Exception
-                Console.Error.WriteLine(($"Error In appx {Path.GetFileName(appFn)} - {ex.Message}"))
+                Console.Error.WriteLine(($"Error In appx {Path.GetFileName(app.Path)} - {ex.Message}"))
             Finally
                 app.Dispose()
             End Try
@@ -135,9 +139,9 @@ SELECT COUNT(*) FROM Appxs
         If appKey = -1 Then
             Dim ai = app.AppInfo
             If ai Is Nothing Then Return
-            Using cmd = Sql($"INSERT INTO Apps(Name,Publisher,ProcessorArchitecture,Version,TargetPlatform,StoreGuid,DisplayName,PublisherDisplayName,AuthoringLanguage)
+            Using cmd = Sql($"INSERT INTO Apps(Name,Publisher,ProcessorArchitecture,Version,TargetPlatform,StoreGuid,DisplayName,PublisherDisplayName,AuthoringLanguage,IsTop,Rating,RatingCount,MediaType,Category)
                                           OUTPUT INSERTED.AppKey
-                                          VALUES({ai.Name},{ai.Publisher},{ai.ProcessorArchitecture},{ai.Version},{ai.TargetPlatform},{ai.StoreGuid},{ai.DisplayName},{ai.PublisherDisplayName},{ai.AuthoringLanguage})", Db)
+                                          VALUES({ai.Name},{ai.Publisher},{ai.ProcessorArchitecture},{ai.Version},{ai.TargetPlatform},{ai.StoreGuid},{ai.DisplayName},{ai.PublisherDisplayName},{ai.AuthoringLanguage},{app.IsTop},{CInt(app.Rating * 10)},{app.RatingCount},{app.MediaType},{app.Category})", Db)
                 appKey = CInt(cmd.ExecuteScalar())
                 isNewApp = True
             End Using
@@ -174,8 +178,6 @@ SELECT COUNT(*) FROM Appxs
                     cmd.ExecuteNonQuery()
                 End If
             End Using
-
-            If Not isNewFile Then Return ' If the file already exists in the DB, we won't bother getting its types...
 
 
             Using stream As New FileStream(assemblyFn, FileMode.Open),
@@ -257,6 +259,7 @@ SELECT COUNT(*) FROM Appxs
     End Function
 
 
+
     Class AppInfo
         Public Name As String
         Public Publisher As String
@@ -271,7 +274,12 @@ SELECT COUNT(*) FROM Appxs
     End Class
 
     Class AppInvestigator : Implements IDisposable
-        Public AppFn As String ' either a path to a .appx/.xap file, or a directory
+        Public Property Rating As Double
+        Public Property RatingCount As Integer
+        Public Property MediaType As String
+        Public Property Category As String
+        Public Property IsTop As Boolean
+        Public Property Path As String ' either a path to a .appx/.xap file, or a directory
 
         Private _zip As ZipArchive
         Private _tfns As New Dictionary(Of String, String)
@@ -290,14 +298,14 @@ SELECT COUNT(*) FROM Appxs
 
         Public ReadOnly Property StoreGuidIfKnown As String
             Get
-                If Not IsDir Then Return Path.GetFileNameWithoutExtension(AppFn)
+                If Not IsDir Then Return IO.Path.GetFileNameWithoutExtension(Path)
                 Return Nothing
             End Get
         End Property
 
         Private ReadOnly Property IsDir As Boolean
             Get
-                Dim attr = File.GetAttributes(AppFn)
+                Dim attr = File.GetAttributes(Path)
                 Return attr.HasFlag(FileAttributes.Directory)
             End Get
         End Property
@@ -306,7 +314,7 @@ SELECT COUNT(*) FROM Appxs
             Get
                 If _zip IsNot Nothing Then Return _zip
                 If IsDir Then Throw New Exception("Not a zipfile")
-                _zip = ZipFile.OpenRead(AppFn)
+                _zip = ZipFile.OpenRead(Path)
                 Return _zip
             End Get
         End Property
@@ -321,7 +329,7 @@ SELECT COUNT(*) FROM Appxs
                     If f2 IsNot Nothing Then _isAppx = False : Return _isAppx.Value
                     Throw New Exception("This directory isn't appx or xap")
                 Else
-                    Dim ext = Path.GetExtension(AppFn).ToLowerInvariant()
+                    Dim ext = IO.Path.GetExtension(Path).ToLowerInvariant()
                     If ext = ".appx" Then _isAppx = True : Return _isAppx.Value
                     If ext = ".xap" Then _isAppx = False : Return _isAppx.Value
                     Throw New Exception("This file isn't appx or xap")
@@ -428,18 +436,18 @@ SELECT COUNT(*) FROM Appxs
 
         Private Function GetFile(fn As String) As String
             If _tfns.ContainsKey(fn) Then Return _tfns(fn)
-            Dim ext = Path.GetExtension(fn)
+            Dim ext = IO.Path.GetExtension(fn)
             '
             If IsDir Then
-                If Not File.Exists($"{AppFn}\{fn}") Then Return Nothing
-                Dim tfn = $"{Path.GetTempPath}{Guid.NewGuid}{ext}"
-                File.Copy($"{AppFn}\{fn}", tfn, True)
+                If Not File.Exists($"{Path}\{fn}") Then Return Nothing
+                Dim tfn = $"{IO.Path.GetTempPath}{Guid.NewGuid}{ext}"
+                File.Copy($"{Path}\{fn}", tfn, True)
                 _tfns(fn) = tfn
                 Return tfn
             Else
                 Dim ze = Zip.GetEntry(fn)
                 If ze Is Nothing Then Return Nothing
-                Dim tfn = $"{Path.GetTempPath}{Guid.NewGuid}{ext}"
+                Dim tfn = $"{IO.Path.GetTempPath}{Guid.NewGuid}{ext}"
                 ze.ExtractToFile(tfn, True)
                 _tfns(fn) = tfn
                 Return tfn
@@ -448,27 +456,27 @@ SELECT COUNT(*) FROM Appxs
 
         Public Iterator Function Assemblies() As IEnumerable(Of Tuple(Of String, String))
             If IsDir Then
-                For Each fn In Directory.GetFiles(AppFn, "*.*", SearchOption.AllDirectories)
-                    Dim ext = Path.GetExtension(fn).ToLower()
+                For Each fn In Directory.GetFiles(Path, "*.*", SearchOption.AllDirectories)
+                    Dim ext = IO.Path.GetExtension(fn).ToLower()
                     If ext <> ".exe" AndAlso ext <> ".dll" AndAlso ext <> ".winmd" Then Continue For
                     If Not _tfns.ContainsKey(fn) Then
-                        Dim tfn = Path.GetTempFileName()
+                        Dim tfn = IO.Path.GetTempFileName()
                         File.Copy(fn, tfn, True)
                         _tfns(fn) = tfn
                     End If
-                    Dim assemblyName = Path.GetFileName(fn)
+                    Dim assemblyName = IO.Path.GetFileName(fn)
                     Yield Tuple.Create(_tfns(fn), assemblyName)
                 Next
             Else
                 For Each ze In Zip.Entries
-                    Dim ext = Path.GetExtension(ze.FullName).ToLower()
+                    Dim ext = IO.Path.GetExtension(ze.FullName).ToLower()
                     If ext <> ".exe" AndAlso ext <> ".dll" AndAlso ext <> ".winmd" Then Continue For
                     If Not _tfns.ContainsKey(ze.FullName) Then
-                        Dim tfn = Path.GetTempFileName
+                        Dim tfn = IO.Path.GetTempFileName
                         ze.ExtractToFile(tfn, True)
                         _tfns(ze.FullName) = tfn
                     End If
-                    Dim assemblyName = Path.GetFileName(ze.FullName).UnescapePercentUtf8()
+                    Dim assemblyName = IO.Path.GetFileName(ze.FullName).UnescapePercentUtf8()
                     If assemblyName.Contains("\") OrElse assemblyName.Contains("/") Then Stop
                     Yield Tuple.Create(_tfns(ze.FullName), assemblyName)
                 Next
@@ -513,7 +521,7 @@ SELECT COUNT(*) FROM Appxs
                                     [PublisherDisplayName] NVARCHAR(200) NOT NULL,
                                     [AuthoringLanguage] NVARCHAR(5) NOT NULL,
                                     [IsTop] BIT,
-                                    [AverageRating] INT,
+                                    [Rating] INT,
                                     [RatingCount] INT,
                                     [MediaType] NVARCHAR(5),
                                     [Category] NVARCHAR(60),
