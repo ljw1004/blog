@@ -103,7 +103,7 @@ SELECT COUNT(*) FROM Appxs
                 remaining = $"; {remainingTime.ToConciseString} remaining"
             End If
 
-            Console.WriteLine(($"Appx {count} of {SubsetCount} ({count / SubsetCount:0%}, {sw.Elapsed.ToConciseString}, {cumulativeTime.ToConciseString} elapsed{remaining})..."))
+            Console.WriteLine(($"App {count} of {SubsetCount} ({count / SubsetCount:0%}, {sw.Elapsed.ToConciseString}, {cumulativeTime.ToConciseString} elapsed{remaining})..."))
 
         Next
 
@@ -376,7 +376,7 @@ SELECT COUNT(*) FROM Appxs
                         _ai.AuthoringLanguage = If(clBuildItems.Any(), "C++", ".NET")
                     End If
                     '
-                    _ai.TargetPlatform = If(phoneIdentity Is Nothing, "Win.Appx", "Phone81.Appx")
+                    _ai.TargetPlatform = If(phoneIdentity Is Nothing, "Win8*.Appx", "Phone81.Appx")
 
                 Else ' UWP APPX
                     Dim identity = xml.<manifest10:Package>.<manifest10:Identity>.Single
