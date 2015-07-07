@@ -376,7 +376,7 @@ SELECT COUNT(*) FROM Appxs
                         _ai.AuthoringLanguage = If(clBuildItems.Any(), "C++", ".NET")
                     End If
                     '
-                    _ai.TargetPlatform = If(phoneIdentity Is Nothing, "Win.Appx", "Phone.Appx")
+                    _ai.TargetPlatform = If(phoneIdentity Is Nothing, "Win.Appx", "Phone81.Appx")
 
                 Else ' UWP APPX
                     Dim identity = xml.<manifest10:Package>.<manifest10:Identity>.Single
