@@ -8,6 +8,7 @@ Imports <xmlns:manifest10="http://schemas.microsoft.com/appx/manifest/foundation
 Imports <xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest">
 Imports <xmlns:deployment8="http://schemas.microsoft.com/windowsphone/2012/deployment">
 Imports <xmlns:deployment7="http://schemas.microsoft.com/windowsphone/2009/deployment">
+Imports <xmlns:m2="http://schemas.microsoft.com/appx/2013/manifest">
 
 Module Module1
 
@@ -21,7 +22,7 @@ Module Module1
     ' Hopefully this will help you get your numerous appx files under control.
 
     Dim Db As SqlConnection = InitDb($"{My.Computer.FileSystem.SpecialDirectories.Desktop}\AppDatabase.mdf")
-    Dim AppPaths As String() = {"c:\users\lwischik\desktop\apps"} ' Nothing ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
+    Dim AppPaths As String() = Nothing ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
     Dim AppMax As Integer? = Nothing   ' Process every app. Or, you can limit it
 
     ' Example: to find all of my appxs that use Callisto (i.e. declare the type Callisto.Callisto_XamlTypeInfo.Getter)
@@ -110,10 +111,6 @@ SELECT COUNT(*) FROM Appxs
 
 
     Sub App_EnterIntoDb(app As AppInvestigator, ByRef CountForTiming As Boolean)
-        If app.AppInfo.DisplayName.ToLower.Contains("cross") Then
-            app.Dispose()
-            Dim a = app.AppInfo
-        End If
         CountForTiming = False
 
         Dim appKey = -1
@@ -127,6 +124,7 @@ SELECT COUNT(*) FROM Appxs
             End Using
         Else
             Dim ai = app.AppInfo
+            If ai Is Nothing Then Return
             Using cmd = Sql($"SELECT TOP(1) AppKey FROM Apps WHERE Name={ai.Name} AND Publisher={ai.Publisher} AND ProcessorArchitecture={ai.ProcessorArchitecture} AND Version={ai.Version} AND TargetPlatform={ai.TargetPlatform}", Db)
                 Dim r = cmd.ExecuteScalar()
                 If r IsNot Nothing Then appKey = CInt(r)
@@ -135,6 +133,7 @@ SELECT COUNT(*) FROM Appxs
 
         If appKey = -1 Then
             Dim ai = app.AppInfo
+            If ai Is Nothing Then Return
             Using cmd = Sql($"INSERT INTO Apps(Name,Publisher,ProcessorArchitecture,Version,TargetPlatform,StoreGuid,DisplayName,PublisherDisplayName,AuthoringLanguage)
                                           OUTPUT INSERTED.AppKey
                                           VALUES({ai.Name},{ai.Publisher},{ai.ProcessorArchitecture},{ai.Version},{ai.TargetPlatform},{ai.StoreGuid},{ai.DisplayName},{ai.PublisherDisplayName},{ai.AuthoringLanguage})", Db)
@@ -143,7 +142,7 @@ SELECT COUNT(*) FROM Appxs
             End Using
         End If
 
-        'TODO: If Not isNewApp Then Return ' If the app already exists in the DB, we won't bother getting its metadata or files or types...
+        If Not isNewApp Then Return ' If the app already exists in the DB, we won't bother getting its metadata or files or types...
         CountForTiming = True
 
         For Each assemblyTuple In app.Assemblies
@@ -297,7 +296,8 @@ SELECT COUNT(*) FROM Appxs
 
         Private ReadOnly Property IsDir As Boolean
             Get
-                Return Path.GetExtension(AppFn) = ""
+                Dim attr = File.GetAttributes(AppFn)
+                Return attr.HasFlag(FileAttributes.Directory)
             End Get
         End Property
 
@@ -313,15 +313,18 @@ SELECT COUNT(*) FROM Appxs
         Private ReadOnly Property IsAppx As Boolean
             Get
                 If _isAppx.HasValue Then Return _isAppx.Value
-                Dim ext = Path.GetExtension(AppFn).ToLowerInvariant()
-                If ext = ".appx" Then _isAppx = True : Return _isAppx.Value
-                If ext = ".xap" Then _isAppx = False : Return _isAppx.Value
-                If ext <> "" Then Throw New Exception("This file isn't appx or xap")
-                Dim f1 = GetFile("AppxManifest.xml")
-                If f1 IsNot Nothing Then _isAppx = True : Return _isAppx.Value
-                Dim f2 = GetFile("WMAppManifest.xml")
-                If f2 IsNot Nothing Then _isAppx = False : Return _isAppx.Value
-                Throw New Exception("This directory isn't appx or xap")
+                If IsDir Then
+                    Dim f1 = GetFile("AppxManifest.xml")
+                    If f1 IsNot Nothing Then _isAppx = True : Return _isAppx.Value
+                    Dim f2 = GetFile("WMAppManifest.xml")
+                    If f2 IsNot Nothing Then _isAppx = False : Return _isAppx.Value
+                    Throw New Exception("This directory isn't appx or xap")
+                Else
+                    Dim ext = Path.GetExtension(AppFn).ToLowerInvariant()
+                    If ext = ".appx" Then _isAppx = True : Return _isAppx.Value
+                    If ext = ".xap" Then _isAppx = False : Return _isAppx.Value
+                    Throw New Exception("This file isn't appx or xap")
+                End If
             End Get
         End Property
 
@@ -352,13 +355,14 @@ SELECT COUNT(*) FROM Appxs
                 ElseIf Not _is10appx Then ' 8 APPX
                     Dim identity = xml.<manifest8:Package>.<manifest8:Identity>.Single
                     Dim properties = xml.<manifest8:Package>.<manifest8:Properties>.Single
-                    Dim app = xml.<manifest8:Package>.<manifest8:Applications>.<manifest8:Application>.Single
+                    Dim app = xml.<manifest8:Package>.<manifest8:Applications>.<manifest8:Application>.FirstOrDefault
                     Dim phoneIdentity = xml.<manifest8:Package>.<mp:PhoneIdentity>.FirstOrDefault
+                    If app Is Nothing Then Return Nothing
                     '
                     _ai.Name = identity.@Name
                     _ai.Publisher = identity.@Publisher
                     _ai.Version = identity.@Version
-                    _ai.ProcessorArchitecture = identity.@ProcessorArchitecture
+                    _ai.ProcessorArchitecture = If(identity.@ProcessorArchitecture, "neutral")
                     _ai.DisplayName = properties.<manifest8:DisplayName>.Value
                     _ai.PublisherDisplayName = properties.<manifest8:PublisherDisplayName>.Value
                     '
@@ -376,9 +380,10 @@ SELECT COUNT(*) FROM Appxs
                 Else ' UWP APPX
                     Dim identity = xml.<manifest10:Package>.<manifest10:Identity>.Single
                     Dim properties = xml.<manifest10:Package>.<manifest10:Properties>.Single
-                    Dim app = xml.<manifest10:Package>.<manifest10:Applications>.<manifest10:Application>.Single
+                    Dim app = xml.<manifest10:Package>.<manifest10:Applications>.<manifest10:Application>.FirstOrDefault
                     Dim phoneIdentity = xml.<manifest10:Package>.<mp:PhoneIdentity>.FirstOrDefault
                     Dim dependencies = xml.<manifest10:Package>.<manifest10:Dependencies>.FirstOrDefault
+                    If app Is Nothing Then Return Nothing
                     '
                     _ai.Name = identity.@Name
                     _ai.Publisher = identity.@Publisher
@@ -395,22 +400,16 @@ SELECT COUNT(*) FROM Appxs
                         _ai.AuthoringLanguage = If(clBuildItems.Any(), "C++", ".NET")
                     End If
                     '
-                    _ai.TargetPlatform = dependencies.<manifest10:TargetDeviceFamily>.@Name.Replace("Windows.", "Win10.")
+                    _ai.TargetPlatform = dependencies.<manifest10:TargetDeviceFamily>.FirstOrDefault?.@Name.Replace("Windows.", "Win10.")
+                    If _ai.TargetPlatform Is Nothing Then _ai.TargetPlatform = dependencies.<manifest10:TargetPlatform>.FirstOrDefault?.@Name.Replace("Windows.", "Win10.")
+                    If _ai.TargetPlatform Is Nothing Then _ai.TargetPlatform = "Win10.Universal"
                 End If
 
                 If Not _ai.DisplayName.StartsWith("ms-resource:") Then Return _ai
                 Dim priFile = GetFile("resources.pri")
                 If priFile Is Nothing Then Return _ai
                 Dim priXml = DumpPri(priFile).GetAwaiter().GetResult()
-                Dim resourceKey = _ai.DisplayName.Substring(12)
-                Dim resource = (From r In priXml.<PriInfo>.<ResourceMap>.<ResourceMapSubtree>.<NamedResource>
-                                Where r.@name = resourceKey).FirstOrDefault
-                If resource Is Nothing Then Return _ai
-                Dim values = resource.<Candidate>.ToDictionary(Function(c) c.@qualifiers.Replace("Language-", ""), Function(c) c.<Value>.Value)
-                If values.TryGetValue("EN-US", _ai.DisplayName) Then Return _ai
-                Dim enKey = values.Keys.Where(Function(k) k.StartsWith("EN")).FirstOrDefault
-                If enKey IsNot Nothing AndAlso values.TryGetValue(enKey, _ai.DisplayName) Then Return _ai
-                If values.Count > 0 Then _ai.DisplayName = values.Values(0) : Return _ai
+                TryGetResourceValue(_ai.DisplayName, priXml, _ai.DisplayName)
                 Return _ai
             End Get
         End Property
@@ -420,7 +419,7 @@ SELECT COUNT(*) FROM Appxs
             Dim ext = Path.GetExtension(fn)
             '
             If IsDir Then
-                If Not File.Exists($"{AppFn}\fn") Then Return Nothing
+                If Not File.Exists($"{AppFn}\{fn}") Then Return Nothing
                 Dim tfn = $"{Path.GetTempPath}{Guid.NewGuid}{ext}"
                 File.Copy($"{AppFn}\{fn}", tfn, True)
                 _tfns(fn) = tfn
@@ -457,7 +456,7 @@ SELECT COUNT(*) FROM Appxs
                         ze.ExtractToFile(tfn, True)
                         _tfns(ze.FullName) = tfn
                     End If
-                    Dim assemblyName = Path.GetFileName(ze.FullName).UnescapePercent()
+                    Dim assemblyName = Path.GetFileName(ze.FullName).UnescapePercentUtf8()
                     If assemblyName.Contains("\") OrElse assemblyName.Contains("/") Then Stop
                     Yield Tuple.Create(_tfns(ze.FullName), assemblyName)
                 Next
@@ -591,17 +590,19 @@ SELECT COUNT(*) FROM Appxs
     End Function
 
     <Extension>
-    Function UnescapePercent(s As String) As String
-        Dim parts = s.Split({"%"c})
-        Dim sb As New Text.StringBuilder
-        For Each part In parts
-            If sb.Length = 0 Then sb.Append(part) : Continue For
-            Dim hex = part.Substring(0, 2)
-            Dim code = Integer.Parse(hex, Globalization.NumberStyles.HexNumber)
-            sb.Append(ChrW(code))
-            sb.Append(part.Substring(2))
+    Function UnescapePercentUtf8(s As String) As String
+        If Not s.Contains("%") Then Return s
+        Dim buf As New List(Of Byte)
+        For i = 0 To s.Length - 1
+            If s(i) = "%" Then
+                If i + 2 >= s.Length Then Throw New ArgumentException(NameOf(s))
+                buf.Add(CByte(Integer.Parse(s(i + 1) & s(i + 2), Globalization.NumberStyles.HexNumber)))
+                i += 2
+            Else
+                buf.Add(CByte(AscW(s(i))))
+            End If
         Next
-        Return sb.ToString()
+        Return Text.Encoding.UTF8.GetString(buf.ToArray)
     End Function
 
 
@@ -639,6 +640,44 @@ SELECT COUNT(*) FROM Appxs
             p.Dispose()
             File.Delete(tfn)
         End Try
+    End Function
+
+
+    Function TryGetResourceValue(id As String, xml As XDocument, ByRef result As String) As Boolean
+        ' ms-resource://ResourceMap/ResourceSubtree/.../NamedResource
+        ' ms-resource:///ResourceSubtree/.../NamedResource -- implicitly use the ResourceMap of the current package
+        ' ms-resource:/ResourceSubtree/.../NamedResource -- again, implicitly use the ResourceMap of the current package
+        ' ms-resource:NamedResource -- implicitly use ResourceMap of current package, and look in ResourceSubtree named "Resources"
+        If Not id.StartsWith("ms-resource:") Then Throw New ArgumentException(NameOf(id))
+        Dim key = id.Substring(12)
+        If key.Length = 0 Then Throw New ArgumentException(NameOf(id))
+        If key(0) <> "/"c Then key = "///Resources/" & key
+        If key(0) = "/"c AndAlso key(1) <> "/"c Then key = "//" & key
+        If Not key.StartsWith("//") Then Throw New Exception("oops, we should at least start with // by now")
+        Dim keys = New LinkedList(Of String)(key.Substring(2).Split({"/"c}))
+
+        ' ResourceMap (we won't bother checking name)
+        Dim x = xml.<PriInfo>.<ResourceMap>
+        keys.RemoveFirst()
+
+        ' ResourceSubtrees
+        While keys.Count > 1
+            Dim k = keys.First.Value.ToLowerInvariant()
+            x = x.<ResourceMapSubtree>.Where(Function(r) r.@name ?.ToLowerInvariant() = k)
+            keys.RemoveFirst()
+        End While
+
+        ' NamedResource
+        If keys.Count = 0 Then Throw New ArgumentException(NameOf(id))
+        x = x.<NamedResource>.Where(Function(r) r.@name = keys.First.Value)
+
+        ' Candidates
+        Dim values = x.<Candidate>.ToDictionary(Function(c) c.@qualifiers.ToLowerInvariant.Replace("language-", ""), Function(c) c.<Value>.Value)
+        If values.TryGetValue("en-us", result) Then Return True
+        Dim enKey = values.Keys.Where(Function(k) k.StartsWith("en")).FirstOrDefault
+        If enKey IsNot Nothing AndAlso values.TryGetValue(enKey, result) Then Return True
+        If values.Count > 0 Then result = values.Values(0) : Return True
+        Return False
     End Function
 
 End Module
