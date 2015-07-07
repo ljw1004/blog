@@ -8,7 +8,6 @@ Imports <xmlns:manifest10="http://schemas.microsoft.com/appx/manifest/foundation
 Imports <xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest">
 Imports <xmlns:deployment8="http://schemas.microsoft.com/windowsphone/2012/deployment">
 Imports <xmlns:deployment7="http://schemas.microsoft.com/windowsphone/2009/deployment">
-Imports <xmlns:m2="http://schemas.microsoft.com/appx/2013/manifest">
 
 Module Module1
 
@@ -335,8 +334,10 @@ SELECT COUNT(*) FROM Appxs
                 _ai.StoreGuid = StoreGuidIfKnown
                 Dim xml = XDocument.Parse(File.ReadAllText(GetFile(If(IsAppx, "AppxManifest.xml", "WMAppManifest.xml"))))
                 Dim _is10appx = IsAppx AndAlso xml.<manifest10:Package>.<manifest10:Identity>.FirstOrDefault IsNot Nothing
+                Dim _isXap = Not IsAppx
+                Dim _is8appx = IsAppx AndAlso Not _is10appx
 
-                If Not IsAppx Then ' XAP
+                If _isXap Then
                     Dim is8 = True
                     Dim app = xml.<deployment8:Deployment>.<App>.FirstOrDefault
                     If app Is Nothing Then
@@ -352,7 +353,7 @@ SELECT COUNT(*) FROM Appxs
                     _ai.AuthoringLanguage = ".NET"
                     _ai.TargetPlatform = $"Phone{If(is8, "8", "7")}.Xap"
 
-                ElseIf Not _is10appx Then ' 8 APPX
+                ElseIf _is8appx Then
                     Dim identity = xml.<manifest8:Package>.<manifest8:Identity>.Single
                     Dim properties = xml.<manifest8:Package>.<manifest8:Properties>.Single
                     Dim app = xml.<manifest8:Package>.<manifest8:Applications>.<manifest8:Application>.FirstOrDefault
@@ -405,11 +406,20 @@ SELECT COUNT(*) FROM Appxs
                     If _ai.TargetPlatform Is Nothing Then _ai.TargetPlatform = "Win10.Universal"
                 End If
 
-                If Not _ai.DisplayName.StartsWith("ms-resource:") Then Return _ai
-                Dim priFile = GetFile("resources.pri")
-                If priFile Is Nothing Then Return _ai
-                Dim priXml = DumpPri(priFile).GetAwaiter().GetResult()
-                TryGetResourceValue(_ai.DisplayName, priXml, _ai.DisplayName)
+                If _isXap AndAlso _ai.DisplayName.StartsWith("@") Then
+                    Dim rr = _ai.DisplayName.Substring(1).Split({","c})
+                    Dim dllName = rr(0), dllIndex = CInt(rr(1))
+                    Dim dllFile = GetFile(dllName)
+                    If dllFile IsNot Nothing Then
+                        TryGetStringTableValue(dllFile, dllIndex, _ai.DisplayName)
+                    End If
+                ElseIf IsAppx AndAlso _ai.DisplayName.StartsWith("ms-resource:") Then
+                    Dim priFile = GetFile("resources.pri")
+                    If priFile IsNot Nothing Then
+                        Dim priXml = DumpPri(priFile).GetAwaiter().GetResult()
+                        TryGetResourceValue(_ai.DisplayName, priXml, _ai.DisplayName)
+                    End If
+                End If
                 Return _ai
             End Get
         End Property
@@ -672,7 +682,7 @@ SELECT COUNT(*) FROM Appxs
         x = x.<NamedResource>.Where(Function(r) r.@name = keys.First.Value)
 
         ' Candidates
-        Dim values = x.<Candidate>.ToDictionary(Function(c) c.@qualifiers.ToLowerInvariant.Replace("language-", ""), Function(c) c.<Value>.Value)
+        Dim values = x.<Candidate>.ToDictionary(Function(c) If(c.@qualifiers ?.ToLowerInvariant.Replace("language-", ""), "en-us"), Function(c) c.<Value>.Value)
         If values.TryGetValue("en-us", result) Then Return True
         Dim enKey = values.Keys.Where(Function(k) k.StartsWith("en")).FirstOrDefault
         If enKey IsNot Nothing AndAlso values.TryGetValue(enKey, result) Then Return True
@@ -680,4 +690,18 @@ SELECT COUNT(*) FROM Appxs
         Return False
     End Function
 
+    Function TryGetStringTableValue(fn As String, id As Integer, ByRef result As String) As Boolean
+        Dim hInstance = LoadLibrary(fn) : If hInstance = IntPtr.Zero Then Return False
+        Dim sb As New Text.StringBuilder
+        Dim i = LoadString(hInstance, CUInt(-id), sb, 1000)
+        If i = 0 Then Return False
+        FreeLibrary(hInstance)
+        result = sb.ToString()
+        Return True
+    End Function
+
+
+    Declare Function LoadLibrary Lib "kernel32" Alias "LoadLibraryA" (fn As String) As IntPtr
+    Declare Function LoadString Lib "user32" Alias "LoadStringA" (hInstance As IntPtr, uID As UInt32, buf As Text.StringBuilder, nBufMax As Integer) As Integer
+    Declare Function FreeLibrary Lib "kernel32" (hInstance As IntPtr) As IntPtr
 End Module
