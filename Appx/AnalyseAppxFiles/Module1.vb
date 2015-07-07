@@ -411,13 +411,15 @@ SELECT COUNT(*) FROM Appxs
                     Dim dllName = rr(0), dllIndex = CInt(rr(1))
                     Dim dllFile = GetFile(dllName)
                     If dllFile IsNot Nothing Then
-                        TryGetStringTableValue(dllFile, dllIndex, _ai.DisplayName)
+                        Dim tmp = ""
+                        If TryGetStringTableValue(dllFile, dllIndex, tmp) Then _ai.DisplayName = tmp
                     End If
                 ElseIf IsAppx AndAlso _ai.DisplayName.StartsWith("ms-resource:") Then
                     Dim priFile = GetFile("resources.pri")
                     If priFile IsNot Nothing Then
                         Dim priXml = DumpPri(priFile).GetAwaiter().GetResult()
-                        TryGetResourceValue(_ai.DisplayName, priXml, _ai.DisplayName)
+                        Dim tmp = ""
+                        If TryGetResourceValue(_ai.DisplayName, priXml, tmp) Then _ai.DisplayName = tmp
                     End If
                 End If
                 Return _ai
@@ -679,7 +681,10 @@ SELECT COUNT(*) FROM Appxs
 
         ' NamedResource
         If keys.Count = 0 Then Throw New ArgumentException(NameOf(id))
-        x = x.<NamedResource>.Where(Function(r) r.@name = keys.First.Value)
+        Dim x1 = x.<NamedResource>.Where(Function(r) r.@name = keys.First.Value).ToArray()
+        If x1.Count = 0 Then x1 = x.<NamedResource>.Where(Function(r) r.@name.ToLowerInvariant() = keys.First.Value.ToLowerInvariant()).ToArray()
+        If x1.Count = 0 Then Return False
+        x = x1
 
         ' Candidates
         Dim values = x.<Candidate>.ToDictionary(Function(c) If(c.@qualifiers ?.ToLowerInvariant.Replace("language-", ""), "en-us"), Function(c) c.<Value>.Value)
