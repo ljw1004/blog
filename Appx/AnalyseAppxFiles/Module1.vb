@@ -24,28 +24,46 @@ Module Module1
     Dim AppPaths As String() = Nothing ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
     Dim AppMax As Integer? = Nothing   ' Process every app. Or, you can limit it
 
-    ' Example: How many apps use each namespace?
+    ' Example: what are the target platforms of .NET apps?
     Dim example1 As String = "
-How many apps are using each namespace?
-SELECT N.Name Namespace, (
-    SELECT COUNT(DISTINCT A.AppKey) FROM Apps A
-    INNER JOIN XAppTypes AT ON A.AppKey = AT.AppKey
-    INNER JOIN Types T ON AT.TypeKey = T.TypeKey
-    WHERE T.NamespaceKey = N.NamespaceKey) AppCount
-FROM Namespaces N
-ORDER BY AppCount DESC
+SELECT A.TargetPlatform, COUNT(*)
+FROM Apps A
+GROUP BY A.TargetPlatform
 "
 
-    ' Example: how many ratings have been given to apps that use each namespace?
+    ' Example: as above, the target platforms of .NET apps, but also showing percentages
     Dim example2 As String = "
-SELECT N.Name Namespace, (
-    SELECT SUM(A.RatingCount) FROM Apps A
-    INNER JOIN XAppTypes AT ON A.AppKey = AT.AppKey
-    INNER JOIN Types T ON AT.TypeKey = T.TypeKey
-    WHERE T.NamespaceKey = N.NamespaceKey) TotalRatings
-FROM Namespaces N
-ORDER BY TotalRatings DESC
+SELECT A.TargetPlatform,
+       COUNT(*) AppCount,
+	   FORMAT(COUNT(*) * 1.0 / (SELECT SUM(Q.AppCount) FROM (SELECT A.TargetPlatform, COUNT(*) AppCount, SUM(A.RatingCount) SumAppRatings FROM Apps A GROUP BY A.TargetPlatform) Q),'p') PercentByAppCount,
+	   SUM(A.RatingCount) SumAppRatings,
+	   FORMAT(SUM(A.RatingCount) * 1.0 / (SELECT SUM(Q.SumAppRatings) FROM (SELECT A.TargetPlatform, COUNT(*) AppCount, SUM(A.RatingCount) SumAppRatings FROM Apps A GROUP BY A.TargetPlatform) Q), 'p') PercentBySumRatings
+FROM Apps A
+GROUP BY A.TargetPlatform
 "
+
+    ' Example: how many AppX .NET apps are there, and how many ratings have been given to them?
+    Dim example3 As String = "
+SELECT COUNT(*) AppCount, SUM(A.RatingCount) SumRatings
+FROM Apps A
+WHERE (A.TargetPlatform = 'Win8*.appx' OR A.TargetPlatform = 'Phone81.appx')
+AND A.AuthoringLanguage = '.NET'
+"
+
+    ' Example: How many AppX .NET apps use each namespace, and how many ratings have been given to them?
+    Dim example4 As String = "
+SELECT Q.Name, SUM(Q.Count) AppCount, SUM(Q.RatingCount) SumRatings
+FROM (SELECT DISTINCT N.Name, A.AppKey, 1 Count, A.RatingCount
+      FROM Apps A
+      INNER JOIN XAppTypes AT ON A.AppKey = AT.AppKey
+      INNER JOIN Types T ON AT.TypeKey = T.TypeKey
+      INNER JOIN Namespaces N ON T.NamespaceKey = N.NamespaceKey
+      AND (A.TargetPlatform = 'Win8*.Appx' OR A.TargetPlatform = 'Phone81.Appx')
+      AND A.AuthoringLanguage = '.NET') Q
+GROUP BY Q.Name
+ORDER BY SumRatings DESC
+"
+
 
 
 
