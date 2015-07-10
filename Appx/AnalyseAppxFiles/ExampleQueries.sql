@@ -2,33 +2,13 @@
 IF OBJECT_ID('type') IS NOT NULL DROP FUNCTION type
 IF OBJECT_ID('file') IS NOT NULL DROP FUNCTION [file]
 GO
-CREATE FUNCTION namespace() RETURNS NVARCHAR(MAX) AS BEGIN RETURN '%Smaato%' END
+CREATE FUNCTION namespace() RETURNS NVARCHAR(MAX) AS BEGIN RETURN 'FlurryWin8SDK' END
 GO
 CREATE FUNCTION type() RETURNS NVARCHAR(MAX) AS BEGIN RETURN 'WriteableBitmapExtensions' END
 GO
-CREATE FUNCTION [file]() RETURNS NVARCHAR(MAX) AS BEGIN RETURN 'WinRT.Triggers.dll' END
+CREATE FUNCTION [file]() RETURNS NVARCHAR(MAX) AS BEGIN RETURN 'NodaTime.dll' END
 GO
 
-
--- App counts...
-IF OBJECT_ID('appCount') IS NOT NULL DROP VIEW appCount
-IF OBJECT_ID('ratingsSum') IS NOT NULL DROP VIEW ratingsSum
-GO
-CREATE VIEW appCount AS SELECT COUNT(*)*1.0 AppCount FROM Apps WHERE TargetPlatform LIKE '%appx' AND AuthoringLanguage = '.NET'
-GO
-CREATE VIEW ratingsSum AS SELECT SUM(RatingCount)*1.0 RatingsSum FROM Apps WHERE TargetPlatform LIKE '%appx' AND AuthoringLanguage = '.NET'
-GO
-
-
--- Only look at .NET appxs
-IF OBJECT_ID('TopNetAppxs') IS NOT NULL DROP VIEW TopNetAppxs
-GO
-CREATE VIEW TopNetAppxs AS
-SELECT TOP(3000) *,
-   FORMAT(RatingCount / (SELECT RatingsSum FROM ratingsSum),'p') PercentRating
-FROM Apps WHERE TargetPlatform LIKE '%appx' AND AuthoringLanguage = '.NET'
-ORDER BY RatingCount DESC
-GO
 
 
 
@@ -222,3 +202,9 @@ SELECT dbo.[file]() [File], COUNT(*) AppsOf200, 200.0 * SUM(A.RatingCount) / (SE
 FROM Apps200_for_File A
 GO
 
+
+SELECT A.DisplayName, A.TargetPlatform
+FROM Apps A
+INNER JOIN XAppFiles AF ON A.AppKey = AF.AppKey
+INNER JOIN Files F ON AF.FileKey = F.FileKey
+WHERE F.Name LIKE '%NodaTime%'

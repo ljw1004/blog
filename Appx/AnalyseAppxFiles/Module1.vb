@@ -20,25 +20,17 @@ Module Module1
     ' This code reads through such apps and extracts out app metadata, the assemblies it contains, and the types in them.
     ' It stores the results in a database...
 
-    Dim Db As SqlConnection = InitDb($"{My.Computer.FileSystem.SpecialDirectories.Desktop}\AppDatabase.mdf")
-    Dim AppPaths As String() = Nothing ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
+    Dim Db As SqlConnection = InitDb($"{My.Computer.FileSystem.SpecialDirectories.Desktop}\AppDatabase2.mdf")
+    Dim AppPaths As String() = {"c:\users\lwischik\desktop"} ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
     Dim AppMax As Integer? = Nothing   ' Process every app. Or, you can limit it
 
 
     Sub Main()
         Console.WriteLine("Scanning...")
         Dim apps As AppInvestigator()
-        If AppPaths Is Nothing Then
-            Try
-                apps = (From d In Directory.EnumerateDirectories("C:\Program Files\WindowsApps")
-                        Let m = $"{d}\AppxManifest.xml"
-                        Where File.Exists(m)
-                        Select New AppInvestigator With {.Path = d}).ToArray()
-            Catch ex As UnauthorizedAccessException
-                Console.Error.WriteLine("Please re-run as administrator, to be able to read the 'C:\Program Files\WindowsApps' directory")
-                Return
-            End Try
-        ElseIf AppPaths.Count = 1 AndAlso Path.GetExtension(AppPaths(0)).ToLower = ".csv" Then
+
+        ' We might be given a CSV that contains the directories/files to search, or we scan ourselves...
+        If AppPaths.Count = 1 AndAlso Path.GetExtension(AppPaths(0)).ToLower = ".csv" Then
             Using reader As New StreamReader(AppPaths(0), Text.Encoding.UTF8), csv As New CsvHelper.CsvReader(reader)
                 apps = csv.GetRecords(Of AppInvestigator).ToArray()
             End Using
@@ -46,11 +38,23 @@ Module Module1
                 app.IsTop = True
             Next
         Else
-            apps = (From path In AppPaths
+            Dim paths = If(AppPaths, {"C:\Program Files\WindowsApps"})
+            Try
+                Dim dummy = New FileInfo(paths(0))
+            Catch ex As UnauthorizedAccessException
+                Console.Error.WriteLine("Please re-run as administrator, to be able to read the 'C:\Program Files\WindowsApps' directory")
+                Return
+            End Try
+            apps = (From path In paths
                     From file In Directory.EnumerateFiles(path, "*.*x*", SearchOption.AllDirectories)
                     Let ext = IO.Path.GetExtension(file).ToLowerInvariant()
                     Where ext = ".appx" OrElse ext = ".xap"
-                    Select New AppInvestigator With {.Path = file}).ToArray
+                    Select New AppInvestigator With {.Path = file}).Concat(
+                        From path In paths
+                        From dir In Directory.EnumerateDirectories(path, "*", SearchOption.AllDirectories)
+                        Where File.Exists($"{dir}\AppxManifest.xml") OrElse File.Exists($"{dir}\WMAppManifest.xml")
+                        Select New AppInvestigator With {.Path = dir}
+                        ).ToArray
         End If
         Dim SubsetCount = If(AppMax.HasValue, Math.Min(AppMax.Value, apps.Length), apps.Length)
         Console.WriteLine($"Found {apps.Count} appxs{If(SubsetCount = AppMax, "", $", doing {SubsetCount}")}")
@@ -104,7 +108,7 @@ Module Module1
                 If r IsNot Nothing Then appKey = CInt(r)
             End Using
         Else
-            Dim ai = app.AppInfo
+            Dim ai = app.GetAppInfo()
             If ai Is Nothing Then Return
             Using cmd = Sql($"SELECT TOP(1) AppKey FROM Apps WHERE Name={ai.Name} AND Publisher={ai.Publisher} AND ProcessorArchitecture={ai.ProcessorArchitecture} AND Version={ai.Version} AND TargetPlatform={ai.TargetPlatform}", Db)
                 Dim r = cmd.ExecuteScalar()
@@ -113,7 +117,7 @@ Module Module1
         End If
 
         If appKey = -1 Then
-            Dim ai = app.AppInfo
+            Dim ai = app.GetAppInfo()
             If ai Is Nothing Then Return
             Using cmd = Sql($"INSERT INTO Apps(Name,Publisher,ProcessorArchitecture,Version,TargetPlatform,StoreGuid,DisplayName,PublisherDisplayName,AuthoringLanguage,IsTop,Rating,RatingCount,MediaType,Category)
                                           OUTPUT INSERTED.AppKey
@@ -313,102 +317,100 @@ Module Module1
             End Get
         End Property
 
-        Public ReadOnly Property AppInfo As AppInfo
-            Get
-                If _ai IsNot Nothing Then Return _ai
-                _ai = New AppInfo()
-                _ai.StoreGuid = StoreGuidIfKnown
-                Dim xml = XDocument.Parse(File.ReadAllText(GetFile(If(IsAppx, "AppxManifest.xml", "WMAppManifest.xml"))))
-                Dim _is10appx = IsAppx AndAlso xml.<manifest10:Package>.<manifest10:Identity>.FirstOrDefault IsNot Nothing
-                Dim _isXap = Not IsAppx
-                Dim _is8appx = IsAppx AndAlso Not _is10appx
+        Public Function GetAppInfo() As AppInfo
+            If _ai IsNot Nothing Then Return _ai
+            _ai = New AppInfo()
+            _ai.StoreGuid = StoreGuidIfKnown
+            Dim xml = XDocument.Parse(File.ReadAllText(GetFile(If(IsAppx, "AppxManifest.xml", "WMAppManifest.xml"))))
+            Dim _is10appx = IsAppx AndAlso xml.<manifest10:Package>.<manifest10:Identity>.FirstOrDefault IsNot Nothing
+            Dim _isXap = Not IsAppx
+            Dim _is8appx = IsAppx AndAlso Not _is10appx
 
-                If _isXap Then
-                    Dim app = xml.<deployment8:Deployment>.<App>.FirstOrDefault, ver = "8"
-                    If app Is Nothing Then app = xml.<deployment7:Deployment>.<App>.FirstOrDefault : ver = "7"
-                    If app Is Nothing Then app = xml.<deployment81:Deployment>.<App>.FirstOrDefault : ver = "81"
-                    If app Is Nothing Then Return Nothing
-                    _ai.Name = app.@ProductID.TrimStart({"{"c}).TrimEnd({"}"c})
-                    _ai.Publisher = If(ver = "7", app.@Publisher, app.@PublisherID.TrimStart({"{"c}).TrimEnd({"}"c}))
-                    _ai.ProcessorArchitecture = "neutral"
-                    _ai.Version = app.@Version
-                    _ai.DisplayName = app.@Title
-                    _ai.PublisherDisplayName = app.@Publisher
-                    _ai.AuthoringLanguage = ".NET"
-                    _ai.TargetPlatform = $"Phone{ver}.{app.@RuntimeType}"
+            If _isXap Then
+                Dim app = xml.<deployment8:Deployment>.<App>.FirstOrDefault, ver = "8"
+                If app Is Nothing Then app = xml.<deployment7:Deployment>.<App>.FirstOrDefault : ver = "7"
+                If app Is Nothing Then app = xml.<deployment81:Deployment>.<App>.FirstOrDefault : ver = "81"
+                If app Is Nothing Then Return Nothing
+                _ai.Name = app.@ProductID.TrimStart({"{"c}).TrimEnd({"}"c})
+                _ai.Publisher = If(ver = "7", app.@Publisher, app.@PublisherID.TrimStart({"{"c}).TrimEnd({"}"c}))
+                _ai.ProcessorArchitecture = "neutral"
+                _ai.Version = app.@Version
+                _ai.DisplayName = app.@Title
+                _ai.PublisherDisplayName = app.@Publisher
+                _ai.AuthoringLanguage = ".NET"
+                _ai.TargetPlatform = $"Phone{ver}.{app.@RuntimeType}"
 
-                ElseIf _is8appx Then
-                    Dim identity = xml.<manifest8:Package>.<manifest8:Identity>.Single
-                    Dim properties = xml.<manifest8:Package>.<manifest8:Properties>.Single
-                    Dim app = xml.<manifest8:Package>.<manifest8:Applications>.<manifest8:Application>.FirstOrDefault
-                    Dim phoneIdentity = xml.<manifest8:Package>.<mp:PhoneIdentity>.FirstOrDefault
-                    If app Is Nothing Then Return Nothing
-                    '
-                    _ai.Name = identity.@Name
-                    _ai.Publisher = identity.@Publisher
-                    _ai.Version = identity.@Version
-                    _ai.ProcessorArchitecture = If(identity.@ProcessorArchitecture, "neutral")
-                    _ai.DisplayName = properties.<manifest8:DisplayName>.Value
-                    _ai.PublisherDisplayName = properties.<manifest8:PublisherDisplayName>.Value
-                    '
-                    If app.@StartPage IsNot Nothing Then
-                        _ai.AuthoringLanguage = "JS"
-                    Else
-                        Dim clBuildItems = From item In xml.<manifest8:Package>.<build:Metadata>.<build:Item>
-                                           Where item.@Name = "cl.exe"
+            ElseIf _is8appx Then
+                Dim identity = xml.<manifest8:Package>.<manifest8:Identity>.Single
+                Dim properties = xml.<manifest8:Package>.<manifest8:Properties>.Single
+                Dim app = xml.<manifest8:Package>.<manifest8:Applications>.<manifest8:Application>.FirstOrDefault
+                Dim phoneIdentity = xml.<manifest8:Package>.<mp:PhoneIdentity>.FirstOrDefault
+                If app Is Nothing Then Return Nothing
+                '
+                _ai.Name = identity.@Name
+                _ai.Publisher = identity.@Publisher
+                _ai.Version = identity.@Version
+                _ai.ProcessorArchitecture = If(identity.@ProcessorArchitecture, "neutral")
+                _ai.DisplayName = properties.<manifest8:DisplayName>.Value
+                _ai.PublisherDisplayName = properties.<manifest8:PublisherDisplayName>.Value
+                '
+                If app.@StartPage IsNot Nothing Then
+                    _ai.AuthoringLanguage = "JS"
+                Else
+                    Dim clBuildItems = From item In xml.<manifest8:Package>.<build:Metadata>.<build:Item>
+                                       Where item.@Name = "cl.exe"
 
-                        _ai.AuthoringLanguage = If(clBuildItems.Any(), "C++", ".NET")
-                    End If
-                    '
-                    _ai.TargetPlatform = If(phoneIdentity Is Nothing, "Win8*.Appx", "Phone81.Appx")
-
-                Else ' UWP APPX
-                    Dim identity = xml.<manifest10:Package>.<manifest10:Identity>.Single
-                    Dim properties = xml.<manifest10:Package>.<manifest10:Properties>.Single
-                    Dim app = xml.<manifest10:Package>.<manifest10:Applications>.<manifest10:Application>.FirstOrDefault
-                    Dim phoneIdentity = xml.<manifest10:Package>.<mp:PhoneIdentity>.FirstOrDefault
-                    Dim dependencies = xml.<manifest10:Package>.<manifest10:Dependencies>.FirstOrDefault
-                    If app Is Nothing Then Return Nothing
-                    '
-                    _ai.Name = identity.@Name
-                    _ai.Publisher = identity.@Publisher
-                    _ai.Version = identity.@Version
-                    _ai.ProcessorArchitecture = identity.@ProcessorArchitecture
-                    _ai.DisplayName = properties.<manifest10:DisplayName>.Value
-                    _ai.PublisherDisplayName = properties.<manifest10:PublisherDisplayName>.Value
-                    '
-                    If app.@StartPage IsNot Nothing Then
-                        _ai.AuthoringLanguage = "JS"
-                    Else
-                        Dim clBuildItems = From item In xml.<manifest8:Package>.<build:Metadata>.<build:Item>
-                                           Where item.@Name = "cl.exe"
-                        _ai.AuthoringLanguage = If(clBuildItems.Any(), "C++", ".NET")
-                    End If
-                    '
-                    _ai.TargetPlatform = dependencies.<manifest10:TargetDeviceFamily>.FirstOrDefault?.@Name.Replace("Windows.", "Win10.")
-                    If _ai.TargetPlatform Is Nothing Then _ai.TargetPlatform = dependencies.<manifest10:TargetPlatform>.FirstOrDefault?.@Name.Replace("Windows.", "Win10.")
-                    If _ai.TargetPlatform Is Nothing Then _ai.TargetPlatform = "Win10.Universal"
+                    _ai.AuthoringLanguage = If(clBuildItems.Any(), "C++", ".NET")
                 End If
+                '
+                _ai.TargetPlatform = If(phoneIdentity Is Nothing, "Win8*.Appx", "Phone81.Appx")
 
-                If _isXap AndAlso _ai.DisplayName.StartsWith("@") Then
-                    Dim rr = _ai.DisplayName.Substring(1).Split({","c})
-                    Dim dllName = rr(0), dllIndex = CInt(rr(1))
-                    Dim dllFile = GetFile(dllName)
-                    If dllFile IsNot Nothing Then
-                        Dim tmp = ""
-                        If TryGetStringTableValue(dllFile, dllIndex, tmp) Then _ai.DisplayName = tmp
-                    End If
-                ElseIf IsAppx AndAlso _ai.DisplayName.StartsWith("ms-resource:") Then
-                    Dim priFile = GetFile("resources.pri")
-                    If priFile IsNot Nothing Then
-                        Dim priXml = DumpPri(priFile).GetAwaiter().GetResult()
-                        Dim tmp = ""
-                        If TryGetResourceValue(_ai.DisplayName, priXml, tmp) Then _ai.DisplayName = tmp
-                    End If
+            Else ' UWP APPX
+                Dim identity = xml.<manifest10:Package>.<manifest10:Identity>.Single
+                Dim properties = xml.<manifest10:Package>.<manifest10:Properties>.Single
+                Dim app = xml.<manifest10:Package>.<manifest10:Applications>.<manifest10:Application>.FirstOrDefault
+                Dim phoneIdentity = xml.<manifest10:Package>.<mp:PhoneIdentity>.FirstOrDefault
+                Dim dependencies = xml.<manifest10:Package>.<manifest10:Dependencies>.FirstOrDefault
+                If app Is Nothing Then Return Nothing
+                '
+                _ai.Name = identity.@Name
+                _ai.Publisher = identity.@Publisher
+                _ai.Version = identity.@Version
+                _ai.ProcessorArchitecture = identity.@ProcessorArchitecture
+                _ai.DisplayName = properties.<manifest10:DisplayName>.Value
+                _ai.PublisherDisplayName = properties.<manifest10:PublisherDisplayName>.Value
+                '
+                If app.@StartPage IsNot Nothing Then
+                    _ai.AuthoringLanguage = "JS"
+                Else
+                    Dim clBuildItems = From item In xml.<manifest8:Package>.<build:Metadata>.<build:Item>
+                                       Where item.@Name = "cl.exe"
+                    _ai.AuthoringLanguage = If(clBuildItems.Any(), "C++", ".NET")
                 End If
-                Return _ai
-            End Get
-        End Property
+                '
+                _ai.TargetPlatform = dependencies.<manifest10:TargetDeviceFamily>.FirstOrDefault?.@Name.Replace("Windows.", "Win10.")
+                If _ai.TargetPlatform Is Nothing Then _ai.TargetPlatform = dependencies.<manifest10:TargetPlatform>.FirstOrDefault?.@Name.Replace("Windows.", "Win10.")
+                If _ai.TargetPlatform Is Nothing Then _ai.TargetPlatform = "Win10.Universal"
+            End If
+
+            If _isXap AndAlso _ai.DisplayName.StartsWith("@") Then
+                Dim rr = _ai.DisplayName.Substring(1).Split({","c})
+                Dim dllName = rr(0), dllIndex = CInt(rr(1))
+                Dim dllFile = GetFile(dllName)
+                If dllFile IsNot Nothing Then
+                    Dim tmp = ""
+                    If TryGetStringTableValue(dllFile, dllIndex, tmp) Then _ai.DisplayName = tmp
+                End If
+            ElseIf IsAppx AndAlso _ai.DisplayName.StartsWith("ms-resource:") Then
+                Dim priFile = GetFile("resources.pri")
+                If priFile IsNot Nothing Then
+                    Dim priXml = DumpPri(priFile).GetAwaiter().GetResult()
+                    Dim tmp = ""
+                    If TryGetResourceValue(_ai.DisplayName, priXml, tmp) Then _ai.DisplayName = tmp
+                End If
+            End If
+            Return _ai
+        End Function
 
         Private Function GetFile(fn As String) As String
             If _tfns.ContainsKey(fn) Then Return _tfns(fn)
@@ -680,7 +682,7 @@ Module Module1
     End Function
 
     Function TryGetStringTableValue(fn As String, id As Integer, ByRef result As String) As Boolean
-        Dim hInstance = LoadLibrary(fn) : If hInstance = IntPtr.Zero Then Return False
+        Dim hInstance = LoadLibrary(fn) : If hInstance = IntPtr.Zero Then Stop : Return False
         Dim sb As New Text.StringBuilder
         Dim i = LoadString(hInstance, CUInt(-id), sb, 1000)
         If i = 0 Then Return False
@@ -690,7 +692,7 @@ Module Module1
     End Function
 
 
-    Declare Function LoadLibrary Lib "kernel32" Alias "LoadLibraryW" (fn As String) As IntPtr
-    Declare Function LoadString Lib "user32" Alias "LoadStringW" (hInstance As IntPtr, uID As UInt32, buf As Text.StringBuilder, nBufMax As Integer) As Integer
+    Declare Function LoadLibrary Lib "kernel32" Alias "LoadLibraryA" (fn As String) As IntPtr
+    Declare Function LoadString Lib "user32" Alias "LoadStringA" (hInstance As IntPtr, uID As UInt32, buf As Text.StringBuilder, nBufMax As Integer) As Integer
     Declare Function FreeLibrary Lib "kernel32" (hInstance As IntPtr) As IntPtr
 End Module

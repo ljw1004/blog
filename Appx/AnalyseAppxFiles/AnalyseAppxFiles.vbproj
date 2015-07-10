@@ -97,6 +97,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="CreateTables.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="ExampleQueries.sql" />
     <Content Include="makepri.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 public static class MetadataReaderDLL
 {
-    public static System.Reflection.Metadata.MetadataReader CreateFromPEReader(System.Reflection.PortableExecutable.PEReader reader)
+    public static System.Reflection.Metadata.MetadataReader CreateFromPEReader(System.Reflection.PortableExecutable.PEReader pereader)
     {
         unsafe
         {
-            var metadata = reader.GetMetadata();
+            var metadata = pereader.GetMetadata();
             return new System.Reflection.Metadata.MetadataReader(metadata.Pointer, metadata.Length);
         }
     }
