@@ -21,7 +21,7 @@ Module Module1
     ' It stores the results in a database...
 
     Dim Db As SqlConnection = InitDb($"{My.Computer.FileSystem.SpecialDirectories.Desktop}\AppDatabase.mdf")
-    Dim AppPaths As String() = Nothing ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
+    Dim AppPaths As String() = {"\\ddfiles\team\public\lwischik\topapps-machine-readable.csv"} ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
     Dim AppMax As Integer? = Nothing   ' Process every app. Or, you can limit it
 
 
@@ -107,7 +107,6 @@ Module Module1
         End If
 
         If Not isNewApp Then Return ' If the app already exists in the DB, we won't bother getting its metadata or files or types...
-        Return ' TODO: remove this
 
         For Each assemblyTuple In app.Assemblies
             Dim assemblyFn = assemblyTuple.Item1
