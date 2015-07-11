@@ -41,7 +41,8 @@ CREATE TABLE  [dbo].[Types] (
 IF NOT EXISTS(SELECT * FROM sysobjects WHERE id = object_id(N'[dbo].[References]') AND OBJECTPROPERTY(id, N'IsUserTable') = 1)
 CREATE TABLE  [dbo].[References] (
     [ReferenceKey] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    [Name] NVARCHAR(MAX) NOT NULL)
+    [Name] NVARCHAR(MAX) NOT NULL,
+	[Version] NVARCHAR(32))
 
 
 IF NOT EXISTS(SELECT * FROM sysobjects WHERE id = object_id(N'[dbo].[XAppFiles]') AND OBJECTPROPERTY(id, N'IsUserTable') = 1)
@@ -71,32 +72,26 @@ CREATE TABLE  [dbo].[XFileReferences] (
 	CONSTRAINT [PK_FR] PRIMARY KEY (FileKey,ReferenceKey) )
 
 
--- App counts...
-IF OBJECT_ID('appCount') IS NOT NULL DROP VIEW appCount
-IF OBJECT_ID('ratingsSum') IS NOT NULL DROP VIEW ratingsSum
-GO
-CREATE VIEW appCount AS SELECT COUNT(*)*1.0 AppCount FROM Apps WHERE TargetPlatform LIKE '%appx' AND AuthoringLanguage = '.NET'
-GO
-CREATE VIEW ratingsSum AS SELECT SUM(RatingCount)*1.0 RatingsSum FROM Apps WHERE TargetPlatform LIKE '%appx' AND AuthoringLanguage = '.NET'
-GO
 
-
--- Only look at .NET appxs
-IF OBJECT_ID('TopNetAppxs') IS NOT NULL DROP VIEW TopNetAppxs
+IF OBJECT_ID('AppsTypes') IS NOT NULL DROP VIEW AppsTypes
 GO
-CREATE VIEW TopNetAppxs AS
-SELECT *
-FROM Apps A WHERE TargetPlatform LIKE '%appx' AND AuthoringLanguage = '.NET'
-GO
-
-
-IF OBJECT_ID('TopNetAppxsAll') IS NOT NULL DROP VIEW TopNetAppxsAll
-GO
-SELECT *
-FROM TopNetAppxs A
+CREATE VIEW AppsTypes AS
+SELECT A.*, F.Name Filename, N.Name Namespace, T.Name Type
+FROM Apps A
 INNER JOIN XAppFiles AF ON A.AppKey = AF.AppKey
 INNER JOIN Files F ON AF.FileKey = F.FileKey
 INNER JOIN XFileTypes FT ON F.FileKey = FT.FileKey
 INNER JOIN Types T ON FT.TypeKey = T.TypeKey
 INNER JOIN Namespaces N ON T.NamespaceKey = N.NamespaceKey
+GO
+
+IF OBJECT_ID('AppsReferences') IS NOT NULL DROP VIEW AppsReferences
+GO
+CREATE VIEW AppsReferences AS
+SELECT A.*, F.Name Filename, R.Name Reference, R.Version RefVersion
+FROM Apps A
+INNER JOIN XAppFiles AF ON A.AppKey = AF.AppKey
+INNER JOIN Files F ON AF.FileKey = F.FileKey
+INNER JOIN XFileReferences FR ON F.FileKey = FR.FileKey
+INNER JOIN [References] R ON FR.ReferenceKey = R.ReferenceKey
 GO

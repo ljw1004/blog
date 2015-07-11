@@ -21,7 +21,7 @@ Module Module1
     ' It stores the results in a database...
 
     Dim Db As SqlConnection = InitDb($"{My.Computer.FileSystem.SpecialDirectories.Desktop}\AppDatabase2.mdf")
-    Dim AppPaths As String() = {"c:\users\lwischik\desktop"} ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
+    Dim AppPaths As String() = {"c:\users\lwischik\desktop\apps"} ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
     Dim AppMax As Integer? = Nothing   ' Process every app. Or, you can limit it
 
 
@@ -133,17 +133,19 @@ Module Module1
         For Each assemblyTuple In app.Assemblies
             Dim assemblyFn = assemblyTuple.Item1
             Dim assemblyName = assemblyTuple.Item2
+            Dim assemblySize = New FileInfo(assemblyFn).Length
 
             Dim fileKey = -1
             Dim isNewFile = False
 
-            Using cmd As New SqlCommand($"SELECT TOP(1) FileKey FROM Files WHERE Name=@assemblyName", Db)
+            Using cmd As New SqlCommand($"SELECT TOP(1) FileKey FROM Files WHERE Name=@assemblyName AND Size=@assemblySize", Db)
                 cmd.Parameters.AddWithValue("assemblyName", assemblyName)
+                cmd.Parameters.AddWithValue("assemblySize", assemblySize)
                 Dim r = cmd.ExecuteScalar()
                 If r IsNot Nothing Then
                     fileKey = CInt(r)
                 Else
-                    cmd.CommandText = "INSERT INTO Files(Name) OUTPUT INSERTED.FileKey VALUES(@assemblyName)"
+                    cmd.CommandText = "INSERT INTO Files(Name,Size) OUTPUT INSERTED.FileKey VALUES(@assemblyName,@assemblySize)"
                     fileKey = CInt(cmd.ExecuteScalar())
                     isNewFile = True
                 End If
@@ -159,11 +161,44 @@ Module Module1
                 End If
             End Using
 
+            If Not isNewFile Then Return ' If the file already exists in the DB, short circuit...
 
             Using stream As New FileStream(assemblyFn, FileMode.Open),
                     reader As New Reflection.PortableExecutable.PEReader(stream)
                 If Not reader.HasMetadata Then Continue For
                 Dim assembly = MetadataReaderDLL.CreateFromPEReader(reader)
+
+                For Each referenceHandle In assembly.AssemblyReferences
+                    Dim reference = assembly.GetAssemblyReference(referenceHandle)
+                    Dim referenceNameHandle = reference.Name
+                    Dim referenceName = assembly.GetString(referenceNameHandle)
+                    Dim referenceVersion = reference.Version.ToString
+
+                    Dim referenceKey = -1
+                    Using cmd As New SqlCommand($"SELECT TOP(1) ReferenceKey FROM [References] WHERE Name=@referenceName AND Version=@referenceVersion", Db)
+                        cmd.Parameters.AddWithValue("referenceName", referenceName)
+                        cmd.Parameters.AddWithValue("referenceVersion", referenceVersion)
+                        Dim r = cmd.ExecuteScalar()
+                        If r IsNot Nothing Then
+                            referenceKey = CInt(r)
+                        Else
+                            cmd.CommandText = "INSERT INTO [References](Name,Version) OUTPUT INSERTED.ReferenceKey VALUES(@referenceName,@referenceVersion)"
+                            referenceKey = CInt(cmd.ExecuteScalar())
+                        End If
+                    End Using
+
+                    Using cmd As New SqlCommand("SELECT TOP(1) * from XFileReferences WHERE FileKey=@fileKey AND ReferenceKey=@referenceKey", Db)
+                        cmd.Parameters.AddWithValue("fileKey", fileKey)
+                        cmd.Parameters.AddWithValue("referenceKey", referenceKey)
+                        Dim r = cmd.ExecuteScalar()
+                        If r Is Nothing Then
+                            cmd.CommandText = "INSERT INTO XFileReferences(FileKey,ReferenceKey) VALUES(@fileKey,@referenceKey)"
+                            cmd.ExecuteNonQuery()
+                        End If
+                    End Using
+                Next
+
+
                 Dim count = 0
 
                 For Each typeDefHandle In assembly.TypeDefinitions
@@ -208,12 +243,12 @@ Module Module1
                     End Using
 
 
-                    Using cmd As New SqlCommand("Select TOP(1) * from XAppTypes WHERE AppKey=@appKey AND TypeKey=@typeKey", Db)
-                        cmd.Parameters.AddWithValue("appKey", appKey)
+                    Using cmd As New SqlCommand("Select TOP(1) * from XFileTypes WHERE FileKey=@fileKey AND TypeKey=@typeKey", Db)
+                        cmd.Parameters.AddWithValue("fileKey", fileKey)
                         cmd.Parameters.AddWithValue("typeKey", typeKey)
                         Dim r = cmd.ExecuteScalar()
                         If r Is Nothing Then
-                            cmd.CommandText = "INSERT INTO XAppTypes(AppKey,TypeKey) VALUES(@appKey,@typeKey)"
+                            cmd.CommandText = "INSERT INTO XFileTypes(FileKey,TypeKey) VALUES(@fileKey,@typeKey)"
                             cmd.ExecuteNonQuery()
                         End If
                     End Using
@@ -485,69 +520,10 @@ Module Module1
         db.Open()
 
         Using cmd = db.CreateCommand()
-            cmd.CommandText = $"IF NOT EXISTS(SELECT * FROM sysobjects WHERE id = object_id(N'[dbo].[Apps]')
-                                AND OBJECTPROPERTY(id, N'IsUserTable') = 1)
-                                CREATE TABLE  [dbo].[Apps] (
-                                    [AppKey] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
-                                    [Name] NVARCHAR(128) NOT NULL,
-                                    [Publisher] NVARCHAR(128) NOT NULL,
-                                    [ProcessorArchitecture] NVARCHAR(20) NOT NULL,
-                                    [Version] NVARCHAR(20) NOT NULL,
-                                    [TargetPlatform] NVARCHAR(20) NOT NULL,
-                                    [StoreGuid] NVARCHAR(200),
-                                    [DisplayName] NVARCHAR(200) NOT NULL,
-                                    [PublisherDisplayName] NVARCHAR(200) NOT NULL,
-                                    [AuthoringLanguage] NVARCHAR(5) NOT NULL,
-                                    [IsTop] BIT,
-                                    [Rating] INT,
-                                    [RatingCount] INT,
-                                    [MediaType] NVARCHAR(5),
-                                    [Category] NVARCHAR(60),
-                                )"
-            cmd.ExecuteNonQuery()
-
-            cmd.CommandText = $"IF NOT EXISTS(SELECT * FROM sysobjects WHERE id = object_id(N'[dbo].[Files]')
-                                AND OBJECTPROPERTY(id, N'IsUserTable') = 1)
-                                CREATE TABLE  [dbo].[Files] (
-                                    [FileKey] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
-                                    [Name] NVARCHAR(128) NOT NULL)"
-            cmd.ExecuteNonQuery()
-
-            cmd.CommandText = $"IF NOT EXISTS(SELECT * FROM sysobjects WHERE id = object_id(N'[dbo].[Namespaces]')
-                                AND OBJECTPROPERTY(id, N'IsUserTable') = 1)
-                                CREATE TABLE  [dbo].[Namespaces] (
-                                    [NamespaceKey] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
-                                    [Name] NVARCHAR(128) NOT NULL)"
-            cmd.ExecuteNonQuery()
-
-            cmd.CommandText = $"IF NOT EXISTS(SELECT * FROM sysobjects WHERE id = object_id(N'[dbo].[Types]')
-                                AND OBJECTPROPERTY(id, N'IsUserTable') = 1)
-                                CREATE TABLE  [dbo].[Types] (
-                                    [TypeKey] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
-                                    [NamespaceKey] INT NOT NULL,
-                                    [Name] NVARCHAR(MAX) NOT NULL,
-                                    CONSTRAINT [FK_T_N] FOREIGN KEY ([NamespaceKey]) REFERENCES [Namespaces]([NamespaceKey]) )"
-            cmd.ExecuteNonQuery()
-
-            cmd.CommandText = $"IF NOT EXISTS(SELECT * FROM sysobjects WHERE id = object_id(N'[dbo].[XAppFiles]')
-                                AND OBJECTPROPERTY(id, N'IsUserTable') = 1)
-                                CREATE TABLE  [dbo].[XAppFiles] (
-                                	[AppKey] INT NOT NULL,
-	                                [FileKey] INT NOT NULL,
-	                                CONSTRAINT [FK_AF_A] FOREIGN KEY ([AppKey]) REFERENCES [Apps]([AppKey]),
-	                                CONSTRAINT [FK_AF_F] FOREIGN KEY ([FileKey]) REFERENCES [Files]([FileKey]),
-	                                CONSTRAINT [PK_AF] PRIMARY KEY (AppKey,FileKey) )"
-            cmd.ExecuteNonQuery()
-
-            cmd.CommandText = $"IF NOT EXISTS(SELECT * FROM sysobjects WHERE id = object_id(N'[dbo].[XAppTypes]')
-                                AND OBJECTPROPERTY(id, N'IsUserTable') = 1)
-                                CREATE TABLE  [dbo].[XAppTypes] (
-                                	[AppKey] INT NOT NULL,
-	                                [TypeKey] INT NOT NULL,
-	                                CONSTRAINT [FK_AT_A] FOREIGN KEY ([AppKey]) REFERENCES [Apps]([AppKey]),
-	                                CONSTRAINT [FK_AT_F] FOREIGN KEY ([TypeKey]) REFERENCES [Types]([TypeKey]),
-	                                CONSTRAINT [PK_AT] PRIMARY KEY (AppKey,TypeKey) )"
-            cmd.ExecuteNonQuery()
+            For Each batch In File.ReadAllText("CreateTables.sql").Split({"GO"}, StringSplitOptions.RemoveEmptyEntries)
+                cmd.CommandText = batch
+                cmd.ExecuteNonQuery()
+            Next
         End Using
 
         Return db
