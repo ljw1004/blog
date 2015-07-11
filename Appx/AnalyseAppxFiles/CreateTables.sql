@@ -6,7 +6,7 @@ CREATE TABLE  [dbo].[Apps] (
     [ProcessorArchitecture] NVARCHAR(20) NOT NULL,
     [Version] NVARCHAR(20) NOT NULL,
     [TargetPlatform] NVARCHAR(20) NOT NULL,
-    [StoreGuid] NVARCHAR(200),
+    [Path] NVARCHAR(200),
     [DisplayName] NVARCHAR(200) NOT NULL,
     [PublisherDisplayName] NVARCHAR(200) NOT NULL,
     [AuthoringLanguage] NVARCHAR(5) NOT NULL,

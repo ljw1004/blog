@@ -91,12 +91,6 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\MetadataReaderDLL\MetadataReaderDLL.csproj">
-      <Project>{98719381-9e58-49d5-bb59-ed466af73661}</Project>
-      <Name>MetadataReaderDLL</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="CreateTables.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

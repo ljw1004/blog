@@ -20,8 +20,8 @@ Module Module1
     ' This code reads through such apps and extracts out app metadata, the assemblies it contains, and the types in them.
     ' It stores the results in a database...
 
-    Dim Db As SqlConnection = InitDb($"{My.Computer.FileSystem.SpecialDirectories.Desktop}\AppDatabase2.mdf")
-    Dim AppPaths As String() = {"c:\users\lwischik\desktop\apps"} ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
+    Dim Db As SqlConnection = InitDb($"{My.Computer.FileSystem.SpecialDirectories.Desktop}\AppDatabase.mdf")
+    Dim AppPaths As String() = Nothing ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
     Dim AppMax As Integer? = Nothing   ' Process every app. Or, you can limit it
 
 
@@ -30,13 +30,10 @@ Module Module1
         Dim apps As AppInvestigator()
 
         ' We might be given a CSV that contains the directories/files to search, or we scan ourselves...
-        If AppPaths.Count = 1 AndAlso Path.GetExtension(AppPaths(0)).ToLower = ".csv" Then
+        If AppPaths IsNot Nothing AndAlso AppPaths.Count = 1 AndAlso Path.GetExtension(AppPaths(0)).ToLower = ".csv" Then
             Using reader As New StreamReader(AppPaths(0), Text.Encoding.UTF8), csv As New CsvHelper.CsvReader(reader)
                 apps = csv.GetRecords(Of AppInvestigator).ToArray()
             End Using
-            For Each app In apps
-                app.IsTop = True
-            Next
         Else
             Dim paths = If(AppPaths, {"C:\Program Files\WindowsApps"})
             Try
@@ -68,25 +65,19 @@ Module Module1
             count += 1
 
             sw.Restart()
-            Dim countThisForTimekeeping = False
             Try
-                App_EnterIntoDb(app, countThisForTimekeeping)
+                App_EnterIntoDb(app)
             Catch ex As Exception
                 Console.Error.WriteLine(($"Error In appx {Path.GetFileName(app.Path)} - {ex.Message}"))
             Finally
                 app.Dispose()
             End Try
 
-            If countThisForTimekeeping Then
-                cumulativeTime += sw.Elapsed
-                cumulativeCount += 1
-            End If
+            cumulativeTime += sw.Elapsed
+            cumulativeCount += 1
             Dim remaining = ""
-            If cumulativeCount > 0 Then
-                Dim remainingTime = New TimeSpan(CLng(cumulativeTime.Ticks / cumulativeCount * (SubsetCount - count)))
-                remaining = $"; {remainingTime.ToConciseString} remaining"
-            End If
-
+            Dim remainingTime = New TimeSpan(CLng(cumulativeTime.Ticks / cumulativeCount * (SubsetCount - count)))
+            remaining = $"; {remainingTime.ToConciseString} remaining"
             Console.WriteLine(($"App {count} of {SubsetCount} ({count / SubsetCount:0%}, {sw.Elapsed.ToConciseString}, {cumulativeTime.ToConciseString} elapsed{remaining})..."))
 
         Next
@@ -95,40 +86,28 @@ Module Module1
     End Sub
 
 
-    Sub App_EnterIntoDb(app As AppInvestigator, ByRef CountForTiming As Boolean)
-        CountForTiming = False
-
+    Sub App_EnterIntoDb(app As AppInvestigator)
         Dim appKey = -1
         Dim isNewApp = False
 
-        Dim storeGuid = app.StoreGuidIfKnown
-        If storeGuid IsNot Nothing Then
-            Using cmd = Sql($"SELECT TOP(1) AppKey FROM Apps WHERE StoreGuid={storeGuid}", Db)
-                Dim r = cmd.ExecuteScalar()
-                If r IsNot Nothing Then appKey = CInt(r)
-            End Using
-        Else
-            Dim ai = app.GetAppInfo()
-            If ai Is Nothing Then Return
-            Using cmd = Sql($"SELECT TOP(1) AppKey FROM Apps WHERE Name={ai.Name} AND Publisher={ai.Publisher} AND ProcessorArchitecture={ai.ProcessorArchitecture} AND Version={ai.Version} AND TargetPlatform={ai.TargetPlatform}", Db)
-                Dim r = cmd.ExecuteScalar()
-                If r IsNot Nothing Then appKey = CInt(r)
-            End Using
-        End If
-
+        Dim path = app.Path
+        Using cmd = Sql($"SELECT TOP(1) AppKey FROM Apps WHERE Path={path}", Db)
+            Dim r = cmd.ExecuteScalar()
+            If r IsNot Nothing Then appKey = CInt(r)
+        End Using
         If appKey = -1 Then
             Dim ai = app.GetAppInfo()
             If ai Is Nothing Then Return
-            Using cmd = Sql($"INSERT INTO Apps(Name,Publisher,ProcessorArchitecture,Version,TargetPlatform,StoreGuid,DisplayName,PublisherDisplayName,AuthoringLanguage,IsTop,Rating,RatingCount,MediaType,Category)
+            Using cmd = Sql($"INSERT INTO Apps(Name,Publisher,ProcessorArchitecture,Version,TargetPlatform,Path,DisplayName,PublisherDisplayName,AuthoringLanguage,IsTop,Rating,RatingCount,MediaType,Category)
                                           OUTPUT INSERTED.AppKey
-                                          VALUES({ai.Name},{ai.Publisher},{ai.ProcessorArchitecture},{ai.Version},{ai.TargetPlatform},{ai.StoreGuid},{ai.DisplayName},{ai.PublisherDisplayName},{ai.AuthoringLanguage},{app.IsTop},{CInt(app.Rating * 10)},{app.RatingCount},{app.MediaType},{app.Category})", Db)
+                                          VALUES({ai.Name},{ai.Publisher},{ai.ProcessorArchitecture},{ai.Version},{ai.TargetPlatform},{ai.Path},{ai.DisplayName},{ai.PublisherDisplayName},{ai.AuthoringLanguage},{app.IsTop},{CType(app.Rating * 10, Integer?)},{app.RatingCount},{app.MediaType},{app.Category})", Db)
                 appKey = CInt(cmd.ExecuteScalar())
                 isNewApp = True
             End Using
         End If
 
         If Not isNewApp Then Return ' If the app already exists in the DB, we won't bother getting its metadata or files or types...
-        CountForTiming = True
+        Return ' TODO: remove this
 
         For Each assemblyTuple In app.Assemblies
             Dim assemblyFn = assemblyTuple.Item1
@@ -164,9 +143,9 @@ Module Module1
             If Not isNewFile Then Return ' If the file already exists in the DB, short circuit...
 
             Using stream As New FileStream(assemblyFn, FileMode.Open),
-                    reader As New Reflection.PortableExecutable.PEReader(stream)
-                If Not reader.HasMetadata Then Continue For
-                Dim assembly = MetadataReaderDLL.CreateFromPEReader(reader)
+                    pereader As New Reflection.PortableExecutable.PEReader(stream)
+                If Not pereader.HasMetadata Then Continue For
+                Dim assembly = Reflection.Metadata.PEReaderExtensions.GetMetadataReader(pereader)
 
                 For Each referenceHandle In assembly.AssemblyReferences
                     Dim reference = assembly.GetAssemblyReference(referenceHandle)
@@ -282,19 +261,19 @@ Module Module1
         Public Version As String
         Public TargetPlatform As String
         '
-        Public StoreGuid As String
+        Public Path As String
         Public DisplayName As String
         Public PublisherDisplayName As String
         Public AuthoringLanguage As String
     End Class
 
     Class AppInvestigator : Implements IDisposable
-        Public Property Rating As Double
-        Public Property RatingCount As Integer
+        Public Property Rating As Double?
+        Public Property RatingCount As Integer?
         Public Property MediaType As String
         Public Property Category As String
-        Public Property IsTop As Boolean
-        Public Property Path As String ' either a path to a .appx/.xap file, or a directory
+        Public Property IsTop As Boolean?
+        Public Property Path As String
 
         Private _zip As ZipArchive
         Private _tfns As New Dictionary(Of String, String)
@@ -310,13 +289,6 @@ Module Module1
             _isAppx = Nothing
             _ai = Nothing
         End Sub
-
-        Public ReadOnly Property StoreGuidIfKnown As String
-            Get
-                If Not IsDir Then Return IO.Path.GetFileNameWithoutExtension(Path)
-                Return Nothing
-            End Get
-        End Property
 
         Private ReadOnly Property IsDir As Boolean
             Get
@@ -355,7 +327,7 @@ Module Module1
         Public Function GetAppInfo() As AppInfo
             If _ai IsNot Nothing Then Return _ai
             _ai = New AppInfo()
-            _ai.StoreGuid = StoreGuidIfKnown
+            _ai.Path = Path
             Dim xml = XDocument.Parse(File.ReadAllText(GetFile(If(IsAppx, "AppxManifest.xml", "WMAppManifest.xml"))))
             Dim _is10appx = IsAppx AndAlso xml.<manifest10:Package>.<manifest10:Identity>.FirstOrDefault IsNot Nothing
             Dim _isXap = Not IsAppx
@@ -649,7 +621,12 @@ Module Module1
         x = x1
 
         ' Candidates
-        Dim values = x.<Candidate>.ToDictionary(Function(c) If(c.@qualifiers ?.ToLowerInvariant.Replace("language-", ""), "en-us"), Function(c) c.<Value>.Value)
+        Dim values As New Dictionary(Of String, String)
+        For Each c In x.<Candidate>
+            Dim lang = If(c.@qualifiers ?.ToLowerInvariant.Replace("language-", ""), "en-us")
+            Dim val = c.<Value>.Value
+            If Not values.ContainsKey(lang) Then values.Add(lang, val)
+        Next
         If values.TryGetValue("en-us", result) Then Return True
         Dim enKey = values.Keys.Where(Function(k) k.StartsWith("en")).FirstOrDefault
         If enKey IsNot Nothing AndAlso values.TryGetValue(enKey, result) Then Return True
@@ -666,6 +643,40 @@ Module Module1
         result = sb.ToString()
         Return True
     End Function
+
+
+    Sub Main_NameToPath()
+        ' If the input file is a .csv where the "Path" column actually contains PackageFamilyName
+        ' instead of Path, this routine looks up in the database for the Path that matches
+        ' this PFN, and writes it
+        Dim srcFn = AppPaths(0)
+        Dim dstFn = $"{Path.GetDirectoryName(srcFn)}\{Path.GetFileNameWithoutExtension(srcFn)}_out{Path.GetExtension(srcFn)}"
+        Dim apps As AppInvestigator()
+
+        Console.WriteLine($"Reading {Path.GetFileName(srcFn)}")
+        Using srcStream As New StreamReader(srcFn, Text.Encoding.UTF8),
+            srcCsv As New CsvHelper.CsvReader(srcStream)
+            apps = srcCsv.GetRecords(Of AppInvestigator).ToArray()
+        End Using
+
+        Console.WriteLine("Processing...")
+        For i = 0 To apps.Length - 1
+            Dim app = apps(i)
+            Dim name = app.Path
+            Using cmd = Sql($"SELECT TOP(1) Path FROM Apps WHERE Name={name}", Db)
+                Dim r = cmd.ExecuteScalar()
+                Dim path = If(r Is Nothing OrElse r Is DBNull.Value, Nothing, CStr(r))
+                app.Path = path
+            End Using
+            If (i Mod 100) = 99 Then Console.WriteLine($"... {i + 1}/{apps.Length}")
+        Next
+
+        Console.WriteLine($"Writing {Path.GetFileName(dstFn)}")
+        Using dstStream As New StreamWriter(dstFn, False, Text.Encoding.UTF8),
+            dstCsv As New CsvHelper.CsvWriter(dstStream)
+            dstCsv.WriteRecords(apps)
+        End Using
+    End Sub
 
 
     Declare Function LoadLibrary Lib "kernel32" Alias "LoadLibraryA" (fn As String) As IntPtr
