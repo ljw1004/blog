@@ -2,6 +2,7 @@
 Imports System.IO
 Imports System.IO.Compression
 Imports System.Runtime.CompilerServices
+Imports System.Runtime.InteropServices
 Imports <xmlns:manifest8="http://schemas.microsoft.com/appx/2010/manifest">
 Imports <xmlns:manifest10="http://schemas.microsoft.com/appx/manifest/foundation/windows10">
 Imports <xmlns:build="http://schemas.microsoft.com/developer/appx/2012/build">
@@ -21,8 +22,7 @@ Module Module1
     ' It stores the results in a database...
 
     Dim Db As SqlConnection = InitDb($"{My.Computer.FileSystem.SpecialDirectories.Desktop}\AppDatabase.mdf")
-    Dim AppPaths As String() = {"\\ddfiles\team\public\lwischik\topapps-machine-readable.csv"} ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
-    Dim AppMax As Integer? = Nothing   ' Process every app. Or, you can limit it
+    Dim AppPaths As String() = Nothing ' Search all apps installed on this machine. Or, you can provide a list of paths of appx files
 
 
     Sub Main()
@@ -36,35 +36,32 @@ Module Module1
             End Using
         Else
             Dim paths = If(AppPaths, {"C:\Program Files\WindowsApps"})
+            Dim appFiles = From path In paths
+                           From file In Directory.EnumerateFiles(path, "*.*x*", SearchOption.AllDirectories)
+                           Let ext = IO.Path.GetExtension(file).ToLowerInvariant()
+                           Where ext = ".appx" OrElse ext = ".xap"
+                           Select New AppInvestigator With {.Path = file}
+            Dim appDirs = From path In paths
+                          From dir In Directory.EnumerateDirectories(path, "*", SearchOption.AllDirectories)
+                          Where File.Exists($"{dir}\AppxManifest.xml") OrElse File.Exists($"{dir}\WMAppManifest.xml")
+                          Select New AppInvestigator With {.Path = dir}
+
             Try
-                Dim dummy = New FileInfo(paths(0))
+                apps = appFiles.Concat(appDirs).ToArray()
             Catch ex As UnauthorizedAccessException
                 Console.Error.WriteLine("Please re-run as administrator, to be able to read the 'C:\Program Files\WindowsApps' directory")
                 Return
             End Try
-            apps = (From path In paths
-                    From file In Directory.EnumerateFiles(path, "*.*x*", SearchOption.AllDirectories)
-                    Let ext = IO.Path.GetExtension(file).ToLowerInvariant()
-                    Where ext = ".appx" OrElse ext = ".xap"
-                    Select New AppInvestigator With {.Path = file}).Concat(
-                        From path In paths
-                        From dir In Directory.EnumerateDirectories(path, "*", SearchOption.AllDirectories)
-                        Where File.Exists($"{dir}\AppxManifest.xml") OrElse File.Exists($"{dir}\WMAppManifest.xml")
-                        Select New AppInvestigator With {.Path = dir}
-                        ).ToArray
         End If
-        Dim SubsetCount = If(AppMax.HasValue, Math.Min(AppMax.Value, apps.Length), apps.Length)
-        Console.WriteLine($"Found {apps.Count} appxs{If(SubsetCount = AppMax, "", $", doing {SubsetCount}")}")
 
-        Dim sw As New Stopwatch
-        Dim cumulativeCount = 0
-        Dim cumulativeTime As New TimeSpan
+        Console.WriteLine($"Found {apps.Length} apps")
+        Dim sw = Stopwatch.StartNew()
 
-        Dim count = 0
-        For Each app In apps.SelectRandomSubset(SubsetCount)
-            count += 1
+        For i = 0 To apps.Length - 1
+            Dim app = apps(i)
+            Dim thisAppStartTime = sw.Elapsed
+            If i < 806 Then Continue For
 
-            sw.Restart()
             Try
                 App_EnterIntoDb(app)
             Catch ex As Exception
@@ -73,13 +70,10 @@ Module Module1
                 app.Dispose()
             End Try
 
-            cumulativeTime += sw.Elapsed
-            cumulativeCount += 1
-            Dim remaining = ""
-            Dim remainingTime = New TimeSpan(CLng(cumulativeTime.Ticks / cumulativeCount * (SubsetCount - count)))
-            remaining = $"; {remainingTime.ToConciseString} remaining"
-            Console.WriteLine(($"App {count} of {SubsetCount} ({count / SubsetCount:0%}, {sw.Elapsed.ToConciseString}, {cumulativeTime.ToConciseString} elapsed{remaining})..."))
-
+            Console.WriteLine(($"App {i} of {apps.Length} " &
+                              $"took {(sw.Elapsed - thisAppStartTime).ToConciseString} " &
+                              $"({i / apps.Length:0%} in {sw.Elapsed.ToConciseString} elapsed; " &
+                              $"{New TimeSpan(CLng(sw.ElapsedTicks / i * (apps.Length - i))).ToConciseString} remaining)..."))
         Next
 
         Db.Close()
@@ -235,21 +229,6 @@ Module Module1
         Next assemblyTuple
     End Sub
 
-
-    <Extension>
-    Iterator Function SelectRandomSubset(Of T)(src As IList(Of T), count As Integer) As IEnumerable(Of T)
-        Dim RND As New Random
-        If count > src.Count \ 4 Then
-            Dim prob = count / src.Count
-            For i = 0 To src.Count - 1
-                If RND.NextDouble() <= prob Then Yield src(i)
-            Next
-        Else
-            For i = 0 To count - 1
-                Yield src(RND.Next(src.Count))
-            Next
-        End If
-    End Function
 
 
 
@@ -635,8 +614,8 @@ Module Module1
 
     Function TryGetStringTableValue(fn As String, id As Integer, ByRef result As String) As Boolean
         Dim hInstance = LoadLibrary(fn) : If hInstance = IntPtr.Zero Then Stop : Return False
-        Dim sb As New Text.StringBuilder
-        Dim i = LoadString(hInstance, CUInt(-id), sb, 1000)
+        Dim sb As New Text.StringBuilder(1024)
+        Dim i = LoadString(hInstance, CUInt(-id), sb, sb.Capacity + 1)
         If i = 0 Then Return False
         FreeLibrary(hInstance)
         result = sb.ToString()
@@ -678,7 +657,7 @@ Module Module1
     End Sub
 
 
-    Declare Function LoadLibrary Lib "kernel32" Alias "LoadLibraryA" (fn As String) As IntPtr
-    Declare Function LoadString Lib "user32" Alias "LoadStringA" (hInstance As IntPtr, uID As UInt32, buf As Text.StringBuilder, nBufMax As Integer) As Integer
-    Declare Function FreeLibrary Lib "kernel32" (hInstance As IntPtr) As IntPtr
+    Declare Unicode Function LoadLibrary Lib "kernel32" Alias "LoadLibraryW" (fn As String) As IntPtr
+    Declare Unicode Function LoadString Lib "user32" Alias "LoadStringW" (hInstance As IntPtr, uID As UInt32, buf As Text.StringBuilder, nBufMax As Integer) As Integer
+    Declare Unicode Function FreeLibrary Lib "kernel32" (hInstance As IntPtr) As IntPtr
 End Module
