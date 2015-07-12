@@ -57,8 +57,8 @@ Module Module1
         Console.WriteLine($"Found {apps.Length} apps")
         Dim sw = Stopwatch.StartNew()
 
-        For i = 0 To apps.Length - 1
-            Dim app = apps(i)
+        For i = 1 To apps.Length
+            Dim app = apps(i - 1)
             Dim thisAppStartTime = sw.Elapsed
 
             Try
