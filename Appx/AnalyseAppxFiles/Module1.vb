@@ -60,7 +60,6 @@ Module Module1
         For i = 0 To apps.Length - 1
             Dim app = apps(i)
             Dim thisAppStartTime = sw.Elapsed
-            If i < 806 Then Continue For
 
             Try
                 App_EnterIntoDb(app)
