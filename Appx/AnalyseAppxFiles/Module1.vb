@@ -72,7 +72,7 @@ Module Module1
             Console.WriteLine(($"App {i} of {apps.Length} " &
                               $"took {(sw.Elapsed - thisAppStartTime).ToConciseString} " &
                               $"({i / apps.Length:0%} in {sw.Elapsed.ToConciseString} elapsed; " &
-                              $"{New TimeSpan(CLng(sw.ElapsedTicks / i * (apps.Length - i))).ToConciseString} remaining)..."))
+                              $"{TimeSpan.FromSeconds(sw.Elapsed.TotalSeconds / i * (apps.Length - i)).ToConciseString} remaining)..."))
         Next
 
         Db.Close()
