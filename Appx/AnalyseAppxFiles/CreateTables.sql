@@ -21,7 +21,11 @@ IF NOT EXISTS(SELECT * FROM sysobjects WHERE id = object_id(N'[dbo].[Files]') AN
 CREATE TABLE  [dbo].[Files] (
     [FileKey] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
     [Name] NVARCHAR(128) NOT NULL,
-	[Size] INT NOT NULL)
+	[Size] INT NOT NULL,
+	[Title] NVARCHAR(256),
+	[TargetFramework] NVARCHAR(256),
+	[TargetFrameworkDisplayName] NVARCHAR(256),
+	[Flags] NVARCHAR(64))
 
 
 IF NOT EXISTS(SELECT * FROM sysobjects WHERE id = object_id(N'[dbo].[Namespaces]') AND OBJECTPROPERTY(id, N'IsUserTable') = 1)

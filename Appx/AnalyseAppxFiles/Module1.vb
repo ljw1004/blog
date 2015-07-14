@@ -105,37 +105,47 @@ Module Module1
             Dim assemblyFn = assemblyTuple.Item1
             Dim assemblyName = assemblyTuple.Item2
             Dim assemblySize = New FileInfo(assemblyFn).Length
+            Dim assemblyTitle = "", assemblyTargetFramework = "", assemblyTargetFrameworkDisplayName = "", assemblyFlags = ""
 
             Dim fileKey = -1
             Dim isNewFile = False
+            Dim stream As FileStream = Nothing
+            Dim pereader As Reflection.PortableExecutable.PEReader = Nothing
+            Try
 
-            Using cmd As New SqlCommand($"SELECT TOP(1) FileKey FROM Files WHERE Name=@assemblyName AND Size=@assemblySize", Db)
-                cmd.Parameters.AddWithValue("assemblyName", assemblyName)
-                cmd.Parameters.AddWithValue("assemblySize", assemblySize)
-                Dim r = cmd.ExecuteScalar()
-                If r IsNot Nothing Then
-                    fileKey = CInt(r)
-                Else
-                    cmd.CommandText = "INSERT INTO Files(Name,Size) OUTPUT INSERTED.FileKey VALUES(@assemblyName,@assemblySize)"
-                    fileKey = CInt(cmd.ExecuteScalar())
-                    isNewFile = True
-                End If
-            End Using
+                Using cmd = Sql($"SELECT TOP(1) FileKey FROM Files WHERE Name={assemblyName} AND Size={assemblySize}", Db)
+                    cmd.Parameters.AddWithValue("assemblyName", assemblyName)
+                    cmd.Parameters.AddWithValue("assemblySize", assemblySize)
+                    Dim r = cmd.ExecuteScalar()
+                    If r IsNot Nothing Then
+                        fileKey = CInt(r)
+                    Else
+                        stream = New FileStream(assemblyFn, FileMode.Open)
+                        pereader = New Reflection.PortableExecutable.PEReader(stream)
+                        TryGetAssemblyTargets(pereader, assemblyTitle, assemblyTargetFramework, assemblyTargetFrameworkDisplayName, assemblyFlags)
+                        Using cmd2 = Sql($"INSERT INTO Files(Name,Size,Title,TargetFramework,TargetFrameworkDisplayName,Flags)
+                                           OUTPUT INSERTED.FileKey
+                                         VALUES({assemblyName},{assemblySize},{assemblyTitle},{assemblyTargetFramework},{assemblyTargetFrameworkDisplayName},{assemblyFlags})", Db)
+                            fileKey = CInt(cmd2.ExecuteScalar())
+                            isNewFile = True
+                        End Using
+                    End If
+                End Using
 
-            Using cmd As New SqlCommand("SELECT TOP(1) * from XAppFiles WHERE AppKey=@appKey AND FileKey=@fileKey", Db)
-                cmd.Parameters.AddWithValue("appKey", appKey)
-                cmd.Parameters.AddWithValue("fileKey", fileKey)
-                Dim r = cmd.ExecuteScalar()
-                If r Is Nothing Then
-                    cmd.CommandText = "INSERT INTO XAppFiles(AppKey,FileKey) VALUES(@appKey,@fileKey)"
-                    cmd.ExecuteNonQuery()
-                End If
-            End Using
+                Using cmd As New SqlCommand("SELECT TOP(1) * from XAppFiles WHERE AppKey=@appKey AND FileKey=@fileKey", Db)
+                    cmd.Parameters.AddWithValue("appKey", appKey)
+                    cmd.Parameters.AddWithValue("fileKey", fileKey)
+                    Dim r = cmd.ExecuteScalar()
+                    If r Is Nothing Then
+                        cmd.CommandText = "INSERT INTO XAppFiles(AppKey,FileKey) VALUES(@appKey,@fileKey)"
+                        cmd.ExecuteNonQuery()
+                    End If
+                End Using
 
-            If Not isNewFile Then Return ' If the file already exists in the DB, short circuit...
+                If Not isNewFile Then Return ' If the file already exists in the DB, short circuit...
 
-            Using stream As New FileStream(assemblyFn, FileMode.Open),
-                    pereader As New Reflection.PortableExecutable.PEReader(stream)
+                stream = If(stream, New FileStream(assemblyFn, FileMode.Open))
+                pereader = If(pereader, New Reflection.PortableExecutable.PEReader(stream))
                 If Not pereader.HasMetadata Then Continue For
                 Dim assembly = Reflection.Metadata.PEReaderExtensions.GetMetadataReader(pereader)
 
@@ -224,7 +234,10 @@ Module Module1
                         End If
                     End Using
                 Next typeDefHandle
-            End Using
+            Finally
+                pereader?.Dispose() : pereader = Nothing
+                stream?.Dispose() : stream = Nothing
+            End Try
         Next assemblyTuple
     End Sub
 
@@ -654,6 +667,47 @@ Module Module1
             dstCsv.WriteRecords(apps)
         End Using
     End Sub
+
+    Function TryGetAssemblyTargets(pereader As Reflection.PortableExecutable.PEReader, ByRef title As String, ByRef targetFramework As String, ByRef targetFrameworkDisplayName As String, ByRef flags As String) As Boolean
+        title = Nothing : targetFramework = Nothing : targetFrameworkDisplayName = Nothing : flags = Nothing
+        If Not pereader.HasMetadata Then Return False
+        Dim assembly = Reflection.Metadata.PEReaderExtensions.GetMetadataReader(pereader)
+
+        For Each mrAttrHandle In assembly.CustomAttributes
+            flags = $"{pereader.PEHeaders.CorHeader?.Flags}"
+            Dim mrAttr = assembly.GetCustomAttribute(mrAttrHandle)
+            Dim entityHandle = mrAttr.Constructor
+            If entityHandle.Kind <> Reflection.Metadata.HandleKind.MemberReference Then Continue For
+            Dim ctor = assembly.GetMemberReference(CType(entityHandle, Reflection.Metadata.MemberReferenceHandle))
+            Dim ctorParentHandle = ctor.Parent
+            If ctorParentHandle.Kind <> Reflection.Metadata.HandleKind.TypeReference Then Continue For
+            Dim parent = assembly.GetTypeReference(CType(ctorParentHandle, Reflection.Metadata.TypeReferenceHandle))
+            Dim parentName = $"{assembly.GetString(parent.Namespace)}.{assembly.GetString(parent.Name)}"
+            If parentName = "System.Reflection.AssemblyTitleAttribute" Then
+                Dim reader = assembly.GetBlobReader(mrAttr.Value)
+                If reader.ReadUInt16() <> 1 Then Stop : Continue For ' oops! prolog
+                Dim len = reader.ReadByte()
+                title = If(len = 255, Nothing, reader.ReadUTF8(len))
+            ElseIf parentName = "System.Runtime.Versioning.TargetFrameworkAttribute" Then
+                Dim reader = assembly.GetBlobReader(mrAttr.Value)
+                If reader.ReadUInt16() <> 1 Then Stop : Continue For ' oops! prolog
+                Dim len = reader.ReadByte()
+                targetFramework = If(len = 255, "", reader.ReadUTF8(len))
+                Dim numNamed = reader.ReadUInt16()
+                For i = 1 To numNamed
+                    Dim propKind = reader.ReadByte()
+                    Dim propType = reader.ReadByte()
+                    If propType = &H1D OrElse propType = &H55 Then Stop : Throw New NotImplementedException("unimplemented types for named arguments")
+                    len = reader.ReadByte()
+                    Dim propName = If(len = 255, Nothing, reader.ReadUTF8(len))
+                    len = reader.ReadByte()
+                    Dim propValue = If(len = 255, Nothing, reader.ReadUTF8(len))
+                    If propName = "FrameworkDisplayName" Then targetFrameworkDisplayName = propValue
+                Next
+            End If
+        Next
+        Return True
+    End Function
 
 
     Declare Unicode Function LoadLibrary Lib "kernel32" Alias "LoadLibraryW" (fn As String) As IntPtr
