@@ -7,6 +7,8 @@ Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "AnalyseAppxFiles", "Analyse
 EndProject
 Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "EnumerateTopApps", "EnumerateTopApps\EnumerateTopApps.vbproj", "{8C58C758-2470-4656-8260-653B34389F9D}"
 EndProject
+Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "AnalyzeNugets", "AnalyzeNugets\AnalyzeNugets.vbproj", "{08D8D667-17AA-4F4D-A21F-5E6CDADB08B8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{8C58C758-2470-4656-8260-653B34389F9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C58C758-2470-4656-8260-653B34389F9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8C58C758-2470-4656-8260-653B34389F9D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08D8D667-17AA-4F4D-A21F-5E6CDADB08B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08D8D667-17AA-4F4D-A21F-5E6CDADB08B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08D8D667-17AA-4F4D-A21F-5E6CDADB08B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08D8D667-17AA-4F4D-A21F-5E6CDADB08B8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
