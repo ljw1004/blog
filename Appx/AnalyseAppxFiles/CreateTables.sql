@@ -92,7 +92,7 @@ GO
 IF OBJECT_ID('AppsReferences') IS NOT NULL DROP VIEW AppsReferences
 GO
 CREATE VIEW AppsReferences AS
-SELECT A.*, F.Name Filename, R.Name Reference, R.Version RefVersion
+SELECT A.*, F.Name Filename, F.TargetFramework, F.TargetFrameworkDisplayName, F.Flags, R.Name Reference, R.Version RefVersion
 FROM Apps A
 INNER JOIN XAppFiles AF ON A.AppKey = AF.AppKey
 INNER JOIN Files F ON AF.FileKey = F.FileKey
