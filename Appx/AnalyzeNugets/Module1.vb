@@ -13,31 +13,30 @@ Module Module1
     ' and extracts out some of the metadata.
     ' It stores the results in a database...
 
-    Dim Db As SqlConnection = InitDb($"{My.Computer.FileSystem.SpecialDirectories.Desktop}\NugetDatabase.mdf")
-    Dim NugetPath As String = "c:\users\lwischik\desktop\nugets" ' Search all nugets in user cache. Or you can search a given directory
+    Dim Db As SqlConnection = InitDb($"{My.Computer.FileSystem.SpecialDirectories.Desktop}\NugetDatabase2.mdf")
+    Dim NugetPath As String = Nothing ' Search all nugets in user cache. Or you can search a given directory
 
 
     Sub Main()
-        Console.WriteLine("Scanning...")
         NugetPath = If(NugetPath, Environment.ExpandEnvironmentVariables("%USERPROFILE%\.nuget\packages"))
-
-        Dim nugetFiles = From file In Directory.EnumerateFiles(NugetPath, "*.nupkg", SearchOption.AllDirectories)
-        Dim nugetDirs = From dir In Directory.EnumerateDirectories(NugetPath, "*", SearchOption.AllDirectories)
-                        Where File.Exists($"{dir}\*.nuspec")
-        Dim nugets = nugetFiles.Concat(nugetDirs).ToArray
 
         Dim downloadCounts As New Dictionary(Of String, Integer)
         Dim catalogPath = $"{NugetPath}\_nugetCatalog.xml"
         If File.Exists(catalogPath) Then
+            Console.WriteLine("Reading catalog...")
             Dim catalog = XDocument.Parse(File.ReadAllText(catalogPath))
             For Each package In catalog.<packages>.<package>
-                downloadCounts($"{package.@id}_{package.@version}") = CInt(package.@downloadCount)
+                Dim count = 0 : downloadCounts.TryGetValue(package.@id, count)
+                count += CInt(package.@downloadCount)
+                downloadCounts(package.@id) = count
             Next
         End If
 
+        Console.WriteLine("Scanning...")
+        Dim nugets = Directory.EnumerateFiles(NugetPath, "*.nupkg", SearchOption.AllDirectories).ToArray
         Console.WriteLine($"Found {nugets.Length} nugets")
-        Dim sw = Stopwatch.StartNew()
 
+        Dim sw = Stopwatch.StartNew()
         For i = 1 To nugets.Length
             Dim nuget = nugets(i - 1)
             Dim thisStartTime = sw.Elapsed
@@ -63,15 +62,14 @@ Module Module1
         Dim isDir = File.GetAttributes(path).HasFlag(FileAttributes.Directory)
         Dim zip = If(isDir, Nothing, ZipFile.OpenRead(path))
         Dim files = If(isDir, Directory.GetFiles(path, "*", SearchOption.AllDirectories),
-                        zip.Entries.Select(Function(ze) ze.FullName.UnescapePercentUtf8())).ToList
+                        zip.Entries.Select(Function(ze) ze.FullName)).ToList
         If Not files.Any(Function(f)
                              Dim ext = IO.Path.GetExtension(f).ToLower
                              Return ext = ".cs" OrElse ext = ".vb" OrElse ext = ".dll" OrElse ext = ".winmd"
                          End Function) Then Return
         If files.Any(Function(f) IO.Path.GetExtension(f).ToLower = ".js") Then Return
 
-
-        Dim nuspecFn = files.Single(Function(f) IO.Path.GetExtension(f).ToLower = ".nuspec")
+        Dim nuspecFn = files.Single(Function(f) IO.Path.GetDirectoryName(f) = "" AndAlso IO.Path.GetExtension(f).ToLower = ".nuspec")
         Dim nuspecText = ""
         If isDir Then
             nuspecText = File.ReadAllText($"{path}\{nuspecFn}")
@@ -81,10 +79,8 @@ Module Module1
                 nuspecText = reader.ReadToEnd()
             End Using
         End If
-        Dim xmlnsStart = nuspecText.IndexOf("<package")
-        Dim xmlnsEnd = nuspecText.IndexOf(">", xmlnsStart + 1)
-        nuspecText = nuspecText.Substring(0, xmlnsStart) & "<package" & nuspecText.Substring(xmlnsEnd)
         Dim nuspec = XDocument.Parse(nuspecText)
+        nuspec.StripNamespaces()
 
 
         Dim metadata = nuspec.<package>.<metadata>
@@ -92,9 +88,8 @@ Module Module1
         Dim version = metadata.<version>.Value
         Dim title = metadata.<title>.Value
         Dim authors = metadata.<authors>.Value
-        Dim key = $"{id}_{version}"
         Dim i = 0
-        Dim downloadCount = If(downloadCounts?.TryGetValue(key, i), i, CType(Nothing, Integer?))
+        Dim downloadCount = If(downloadCounts?.TryGetValue(id, i), i, CType(Nothing, Integer?))
 
 
         Using cmd = Sql($"MERGE Nugets WITH (HOLDLOCK) AS n
@@ -151,9 +146,10 @@ Module Module1
 
 
         For Each file In files
-            Dim directory = IO.Path.GetDirectoryName(file)
-            Dim name = IO.Path.GetFileName(file)
-            Dim extension = IO.Path.GetExtension(file).ToLower
+            Dim fn = file.UnescapePercentUtf8
+            Dim directory = IO.Path.GetDirectoryName(fn)
+            Dim name = IO.Path.GetFileName(fn)
+            Dim extension = IO.Path.GetExtension(fn).ToLower
             Using cmd = Sql($"MERGE Files WITH (HOLDLOCK) AS f
                           USING (SELECT {id} AS ID, {directory} AS Directory, {name} AS Name, {extension} as Extension) AS new_row ON f.ID=new_row.ID AND f.Directory=new_row.Directory AND f.Name=new_row.Name
                           WHEN NOT MATCHED THEN INSERT (ID,Directory,Name,Extension) VALUES (new_row.ID,new_row.Directory,new_row.Name,new_row.Extension);", Db)
@@ -166,6 +162,7 @@ Module Module1
 
 
     Function InitDb(DbPath As String) As SqlConnection
+        Console.WriteLine("Connecting to DB...")
         Dim dbName = Path.GetFileNameWithoutExtension(DbPath)
         If Not File.Exists(DbPath) Then
             Dim conn0 = "Data Source=(LocalDB)\MSSQLLocalDB;Initial Catalog=master;Integrated Security=True;"
@@ -243,5 +240,15 @@ Module Module1
         Next
         Return Text.Encoding.UTF8.GetString(buf.ToArray)
     End Function
+
+    <Extension>
+    Sub StripNamespaces(xml As XDocument)
+        For Each e In xml.Descendants
+            e.Name = e.Name.LocalName
+            e.ReplaceAttributes(From a In e.Attributes
+                                Where Not a.IsNamespaceDeclaration
+                                Select New XAttribute(a.Name.LocalName, a.Value))
+        Next
+    End Sub
 
 End Module
