@@ -346,7 +346,7 @@ Public NotInheritable Class MainPageV2
         Dim MCenter = MTopLeft + MSize * fCenter
         MSize /= CSng(Zoom)
         MTopLeft = MCenter - fCenter * MSize
-        InvalidationTime.Restart()
+        InvalidationTime.Restart() : canvas1.Invalidate()
     End Sub
 
 

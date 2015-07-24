@@ -1,8 +1,8 @@
 ﻿<Application
-    x:Class="GameOfLifeVB.App"
+    x:Class="GameOfLife.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:GameOfLifeVB"
+    xmlns:local="using:GameOfLife"
     RequestedTheme="Light">
 
 </Application>

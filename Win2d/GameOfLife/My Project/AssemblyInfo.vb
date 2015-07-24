@@ -8,10 +8,10 @@ Imports System.Runtime.InteropServices
 
 ' Review the values of the assembly attributes
 
-<Assembly: AssemblyTitle("GameOfLifeVB")>
+<Assembly: AssemblyTitle("GameOfLife")>
 <Assembly: AssemblyDescription("")>
 <Assembly: AssemblyCompany("")>
-<Assembly: AssemblyProduct("GameOfLifeVB")>
+<Assembly: AssemblyProduct("GameOfLife")>
 <Assembly: AssemblyCopyright("Copyright ©  2015")>
 <Assembly: AssemblyTrademark("")>
 
