@@ -8,7 +8,7 @@ namespace DemoUWP_CS
     {
         public App()
         {
-            this.InitializeComponent();
+            InitializeComponent();
         }
 
         protected override void OnLaunched(LaunchActivatedEventArgs e)
@@ -17,13 +17,11 @@ namespace DemoUWP_CS
             if (rootFrame == null)
             {
                 rootFrame = new Frame();
-                // if (e.PreviousExecutionState == ApplicationExecutionState.Terminated) //TODO: Load state from previously suspended application
                 Window.Current.Content = rootFrame;
             }
             if (rootFrame.Content == null) rootFrame.Navigate(typeof(MainPage), e.Arguments);
             Window.Current.Activate();
         }
-
 
     }
 }
