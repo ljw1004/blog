@@ -4,9 +4,6 @@ Imports Windows.System.UserProfile
 Public NotInheritable Class MainPage
     Inherits Page
 
-    ' In both of them: Windows.System.UserProfile.UserInformation
-    ' Phone-only: Windows.UI.ViewManagement.StatusBar.GetForCurrentView().HideAsync()
-    ' Desktop-only: Windows.Media.Devices.CallControl
     Sub New()
         InitializeComponent()
     End Sub
