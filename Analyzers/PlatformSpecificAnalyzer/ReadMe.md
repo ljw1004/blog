@@ -55,8 +55,8 @@ And some fields/properties might have the [PlatformSpecific] attribute too.
 
 This analyzer checks that any invocation of a method that's in Windows.* namespace
 but outside the common UWP platform, and any invocation of a method with a
-[*Specific] attribute on it, either (1) is in a method/class/assembly
-marked as [*Specific], or (2) is "properly guarded" as defined below.
+[*Specific] attribute on it, either (1) is in a method marked as [*Specific],
+or (2) is "properly guarded" as defined below.
 
 *Properly Guarded*. You must either have the invocation itself or a Return statement
 inside the positive branch of an `If` block whose conditional includes a "proper guard".
@@ -69,9 +69,18 @@ and this is the one that the code-fixes suggest to insert. But you can chose to 
 your own more descriptive attributes, e.g. `[MyNamespace.XboxSpecific]`, and all
 attributes that end in `Specific` are treated as identical by this analyzer.
 
+The above discussion is a bit loose about exactly what things are checked.
+Places the attribute can go: {methods, properties, fields, constructors}.
+WinRT things that might be platform-specific: {methods, property accessors, fields, constructors, events}.
+Expressions that are checked: {invocations, constructions, property accessors, field accessors, AddHandler}.
+Expressions within these things are checked: {methods, properties, fields, constructors, C# getter-only
+autoprops, autoprop initializers, field initializers}. Everything apart from the last two
+(initializers) can have a [*Specific] attribute.
+
 
 Bugs
 ------
+
 
 * This analyzer currently only examines invocations to check whether they're
 platform-specific. WinRT only has a limited number of operations, and I believe the
@@ -88,23 +97,12 @@ platform-specific. It should also check operations within property accessors, an
 constructors, and inside field/autoprop initializers. (Note that the quick-fix actions
 available to each will be different.)
 
-* By transitivity, if operations are allowed within any of those things due to a class-level
-or assembly-level `[PlatformSpecific]` attribute, then the analyzer would have to check
-accesses to those things. I'm inclined not to bother, and to simply disallow use of
-unguarded platform-specific operations inside bodies that are hard to check. For instance:
-would it check user-defined conversions??
-
-* This analyzer fails to fire when you invoke a method that's defined inside a class marked
-as `[PlatformSpecific]`. Also inside an assembly marked that way. It should.
-
 * Its handling of "else if" is a bit dodgy. In VB it only considers the first "If" condition
 out of a series of if/elseif/elseif/else. In C# it looks up all the conditions preceding
 the current block. I don't really know which is better. Should it account for "if not ApiPresent"?
 Or should it only accept platform-specific operations in a branch whose immediate guard
 was good? I don't have a good idea.
 
-* It should probably suggest to put `[PlatformSpecific]` on structs (VB & C#) and on
-modules (VB). At the moment it only works on classes.
 
 
 Feature backlog

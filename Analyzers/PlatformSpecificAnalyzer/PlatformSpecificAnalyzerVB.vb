@@ -44,7 +44,9 @@ Public Class PlatformSpecificAnalyzerVB
 
     Public Sub AnalyzeCodeBlockStart(context As CodeBlockStartAnalysisContext(Of SyntaxKind))
         Dim reports As New Dictionary(Of Integer, Location)
-        context.RegisterSyntaxNodeAction(Sub(c) AnalyzeInvocation(c, reports), SyntaxKind.InvocationExpression)
+        context.RegisterSyntaxNodeAction(Sub(c) AnalyzeExpression(c, reports), SyntaxKind.IdentifierName)
+        context.RegisterSyntaxNodeAction(Sub(c) AnalyzeExpression(c, reports), SyntaxKind.SimpleMemberAccessExpression)
+        context.RegisterSyntaxNodeAction(Sub(c) AnalyzeExpression(c, reports), SyntaxKind.QualifiedName)
         context.RegisterCodeBlockEndAction(
             Sub(c)
                 For Each span In reports.Values
@@ -53,28 +55,57 @@ Public Class PlatformSpecificAnalyzerVB
             End Sub)
     End Sub
 
-    Public Sub AnalyzeInvocation(context As SyntaxNodeAnalysisContext, reports As Dictionary(Of Integer, Location))
-        Dim invocationExpression = CType(context.Node, InvocationExpressionSyntax)
+    Public Sub AnalyzeExpression(context As SyntaxNodeAnalysisContext, reports As Dictionary(Of Integer, Location))
+        If context.Node.Parent.Kind = SyntaxKind.SimpleMemberAccessExpression Then Return ' will be handled at higher level
+        If context.Node.Parent.Kind = SyntaxKind.QualifiedName Then Return
 
-        Dim targetMethod = context.SemanticModel.GetSymbolInfo(invocationExpression).Symbol
-        If targetMethod Is Nothing Then Return
-        If Not IsTargetPlatformSpecific(targetMethod) Then Return
+        If context.Node.Parent.Kind = SyntaxKind.InvocationExpression AndAlso context.Node Is CType(context.Node.Parent, InvocationExpressionSyntax).Expression Then
+            ' <target>(...)
+            Dim invocationExpression = CType(context.Node.Parent, InvocationExpressionSyntax)
+            Dim target = context.SemanticModel.GetSymbolInfo(invocationExpression).Symbol ' points to the method after overload resolution
+            If Not IsTargetPlatformSpecific(target) Then Return
+        ElseIf context.Node.Parent.Kind = SyntaxKind.AddressOfExpression Then
+            ' AddressOf <target>
+            Dim target = context.SemanticModel.GetSymbolInfo(context.Node).Symbol ' points to the method after overload resolution
+            If Not IsTargetPlatformSpecific(target) Then Return
+        ElseIf context.Node.Parent.Kind = SyntaxKind.ObjectCreationExpression AndAlso context.Node Is CType(context.Node.Parent, ObjectCreationExpressionSyntax).Type Then
+            ' New <target>
+            Dim objectCreationExpression = CType(context.Node.Parent, ObjectCreationExpressionSyntax)
+            Dim target = context.SemanticModel.GetSymbolInfo(objectCreationExpression).Symbol ' points to the constructor after overload resolution
+            If Not IsTargetPlatformSpecific(target) Then Return
+        ElseIf context.node.parent.kind = SyntaxKind.AddHandlerStatement AndAlso context.Node Is CType(context.Node.Parent, AddRemoveHandlerStatementSyntax).EventExpression Then
+            ' AddHandler <target>, delegate
+            Dim target = context.SemanticModel.GetSymbolInfo(context.Node).Symbol ' points to the event
+            If Not IsTargetPlatformSpecific(target) Then Return
+        ElseIf context.Node.Parent.Kind = SyntaxKind.NameOfExpression Then
+            ' NameOf(<target>)
+            Return
+        Else
+            ' f(Of <target>)(...)
+            ' Dim x As <target> = ...
+            ' as well as normal access of properties/fields (which are the only ones I care about)
+            Dim target = context.SemanticModel.GetSymbolInfo(context.Node).Symbol
+            If target Is Nothing Then Return
+            If target.Kind <> SymbolKind.Field AndAlso target.Kind <> SymbolKind.Property Then Return
+            If Not IsTargetPlatformSpecific(target) Then Return
+        End If
 
-        ' Is this invocation outside a method?
-        Dim containingMember = invocationExpression.FirstAncestorOrSelf(Of MethodBlockBaseSyntax)
-        Dim containingMethod = TryCast(containingMember, MethodBlockSyntax)
-        If containingMethod Is Nothing Then Return ' TODO: report something here?
 
-        ' Does the containing method/constructor/property claim to be platform-specific?
-        Dim containingMethodSymbol = context.SemanticModel.GetDeclaredSymbol(containingMethod)
-        If containingMethodSymbol Is Nothing Then Return
-        If HasPlatformSpecificAttribute(containingMethodSymbol) Then Return
+        ' Is this expression inside a method/constructor/property that claims to be platform-specific?
+        Dim containingMember As DeclarationStatementSyntax = context.Node.FirstAncestorOrSelf(Of MethodBlockBaseSyntax) ' used for methods, constructors and property accessors
+        If TypeOf containingMember Is AccessorBlockSyntax Then containingMember = containingMember.FirstAncestorOrSelf(Of PropertyBlockSyntax)
+        If containingMember IsNot Nothing Then
+            Dim containingMemberSymbol = context.SemanticModel.GetDeclaredSymbol(containingMember)
+            If HasPlatformSpecificAttribute(containingMemberSymbol) Then Return
+        End If
 
         ' Is this invocation properly guarded? See readme.txt for explanations.
-        If IsProperlyGuarded(invocationExpression, context.SemanticModel) Then Return
-        For Each ret In containingMethod.DescendantNodes.OfType(Of ReturnStatementSyntax)
-            If IsProperlyGuarded(ret, context.SemanticModel) Then Return
-        Next
+        If IsProperlyGuarded(context.Node, context.SemanticModel) Then Return
+        If containingMember IsNot Nothing Then
+            For Each ret In containingMember.DescendantNodes.OfType(Of ReturnStatementSyntax)
+                If IsProperlyGuarded(ret, context.SemanticModel) Then Return
+            Next
+        End If
 
         ' We'll report only a single diagnostic per line, the first.
         Dim loc = context.Node.GetLocation
@@ -85,6 +116,7 @@ Public Class PlatformSpecificAnalyzerVB
     End Sub
 
     Shared Function HasPlatformSpecificAttribute(symbol As ISymbol) As Boolean
+        If symbol Is Nothing Then Return False
         For Each attr In symbol.GetAttributes
             If attr.AttributeClass.Name.EndsWith("SpecificAttribute") Then Return True
         Next
@@ -92,8 +124,9 @@ Public Class PlatformSpecificAnalyzerVB
     End Function
 
     Shared Function IsTargetPlatformSpecific(symbol As ISymbol) As Boolean
+        If symbol Is Nothing Then Return False
         If symbol.ContainingNamespace?.ToDisplayString.StartsWith("Windows.") Then
-            If symbol.ContainingType.Name = "ApiInformation" Then Return False
+            If symbol.ContainingType?.Name = "ApiInformation" Then Return False
 
             ' HACK: these three target assemblies hard-code what's found in
             ' C:\Program Files (x86)\Windows Kits\10\Platforms\UAP\10.0.10240.0\Platform.xml
@@ -103,12 +136,12 @@ Public Class PlatformSpecificAnalyzerVB
                 targetAssembly = "Windows.Foundation.UniversalApiContract" OrElse
                 targetAssembly = "Windows.Networking.Connectivity.WwanContract" Then Return False
 
+            ' HACK: I don't want to give warning when analyzing code in an 8.1 or PCL project.
+            ' In those two targets, every Windows type is found in Windows.winmd, so that's how we'll suppress it:
+            If targetAssembly = "Windows" Then Return False
+
             ' Some WinRT types like Windows.UI.Color get projected to come from this assembly:
             If targetAssembly = "System.Runtime.WindowsRuntime" Then Return False
-
-            ' HACK: I don't want to give warnings for 8.1 or PCL code. In those two targets, every Windows
-            ' type is found in Windows.winmd, so that's how we'll prevent it:
-            If targetAssembly = "Windows" Then Return False
 
             ' Otherwise, it came from a platform-specific part of Windows:
             Return True
@@ -184,36 +217,62 @@ Public Class PlatformSpecificFixerVB
 
         Dim diagnostic = context.Diagnostics.First
         Dim span = diagnostic.Location.SourceSpan
-        Dim invocationExpression = root.FindToken(span.Start).Parent.AncestorsAndSelf().OfType(Of InvocationExpressionSyntax)().First
+        Dim node = root.FindToken(span.Start).Parent
 
-        ' Introduce a guard? (only if it is a method, i.e. somewhere that allows code)
-        ' Mark method as platform-specific?
-        Dim containingMember = invocationExpression.FirstAncestorOrSelf(Of MethodBlockBaseSyntax)
-        Dim containingMethod = TryCast(containingMember, MethodBlockSyntax)
-        If containingMethod IsNot Nothing Then
-            Dim act1 = CodeAction.Create("Add 'If ApiInformation.IsTypePresent'", Function(c) IntroduceGuardAsync(context.Document, invocationExpression, c), "PlatformSpecificGuard")
+        ' Which node are we interested in? -- the largest IdentifierName/SimpleMemberAccess/QualifiedName
+        ' that encompasses the bottom node...
+        While node.Kind <> SyntaxKind.IdentifierName AndAlso node.Kind <> SyntaxKind.SimpleMemberAccessExpression AndAlso node.Kind <> SyntaxKind.QualifiedName
+            node = node.Parent
+            If node Is Nothing Then Return
+        End While
+        While True
+            If node.Parent?.Kind = SyntaxKind.SimpleMemberAccessExpression Then node = node.Parent : Continue While
+            If node.Parent?.Kind = SyntaxKind.QualifiedName Then node = node.Parent : Continue While
+            Exit While
+        End While
+
+
+        ' Introduce a guard? (only if it is a method/accessor/constructor, i.e. somewhere that allows code)
+        Dim containingBody = node.FirstAncestorOrSelf(Of MethodBlockBaseSyntax)
+        If containingBody IsNot Nothing Then
+            Dim act1 = CodeAction.Create("Add 'If ApiInformation.IsTypePresent'", Function(c) IntroduceGuardAsync(context.Document, node, c), "PlatformSpecificGuard")
             context.RegisterCodeFix(act1, diagnostic)
-            Dim methodName = If(containingMethod.Kind = SyntaxKind.SubBlock, "Sub", "Function")
-            methodName &= " " & containingMethod.SubOrFunctionStatement.Identifier.Text
-            Dim act2 = CodeAction.Create($"Mark '{methodName}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(containingMethod.SubOrFunctionStatement, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c), "PlatformSpecificMethod")
+        End If
+
+        ' Mark method/property/constructor as platform-specific?
+        If TypeOf containingBody Is AccessorBlockSyntax Then
+            Dim propStatement = containingBody.FirstAncestorOrSelf(Of PropertyBlockSyntax).PropertyStatement
+            Dim name = $"Property {propStatement.Identifier.Text}"
+            Dim act2 = CodeAction.Create($"Mark '{name}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(propStatement, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c), "PlatformSpecificMethod")
+            context.RegisterCodeFix(act2, diagnostic)
+        ElseIf TypeOf containingBody Is MethodBlockSyntax Then
+            Dim methodStatement = CType(containingBody, MethodBlockSyntax).SubOrFunctionStatement
+            Dim name = $"{If(containingBody.Kind = SyntaxKind.SubBlock, "Sub", "Function")} {methodStatement.Identifier.Text}"
+            Dim act2 = CodeAction.Create($"Mark '{name}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(methodStatement, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c), "PlatformSpecificMethod")
+            context.RegisterCodeFix(act2, diagnostic)
+        ElseIf TypeOf containingBody Is ConstructorBlockSyntax Then
+            Dim methodStatement = CType(containingBody, ConstructorBlockSyntax).SubNewStatement
+            Dim name = "Sub New"
+            Dim act2 = CodeAction.Create($"Mark '{name}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(methodStatement, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c), "PlatformSpecificMethod")
             context.RegisterCodeFix(act2, diagnostic)
         End If
 
+
         ' Mark some of the conditions as platform-specific?
         Dim semanticModel = Await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(False)
-        For Each symbol In PlatformSpecificAnalyzerVB.GetGuards(invocationExpression, semanticModel)
+        For Each symbol In PlatformSpecificAnalyzerVB.GetGuards(node, semanticModel)
             If symbol.ContainingType.Name = "ApiInformation" Then Continue For
             If Not symbol.Locations.First.IsInSource Then Return
-            Dim act4 As CodeAction = Nothing
+            Dim act3 As CodeAction = Nothing
             Dim symbolSyntax = Await symbol.DeclaringSyntaxReferences.First.GetSyntaxAsync(context.CancellationToken).ConfigureAwait(False)
             Dim fieldSyntax = TryCast(symbolSyntax.Parent.Parent, FieldDeclarationSyntax)
             Dim propSyntax = TryCast(symbolSyntax, PropertyStatementSyntax)
             If fieldSyntax IsNot Nothing Then
-                act4 = CodeAction.Create($"Mark field '{symbol.Name}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(fieldSyntax, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c), "PlatformSpecificSymbol" & symbol.Name)
+                act3 = CodeAction.Create($"Mark field '{symbol.Name}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(fieldSyntax, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c), "PlatformSpecificSymbol" & symbol.Name)
             ElseIf propSyntax IsNot Nothing Then
-                act4 = CodeAction.Create($"Mark property '{symbol.Name}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(propSyntax, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c), "PlatformSpecificSymbol" & symbol.Name)
+                act3 = CodeAction.Create($"Mark property '{symbol.Name}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(propSyntax, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c), "PlatformSpecificSymbol" & symbol.Name)
             End If
-            If act4 IsNot Nothing Then context.RegisterCodeFix(act4, diagnostic)
+            If act3 IsNot Nothing Then context.RegisterCodeFix(act3, diagnostic)
         Next
     End Function
 
@@ -234,22 +293,23 @@ Public Class PlatformSpecificFixerVB
         Return solution.WithDocumentSyntaxRoot(oldDocument.Id, newRoot)
     End Function
 
-    Private Async Function IntroduceGuardAsync(document As Document, invocationExpression As InvocationExpressionSyntax, cancellationToken As CancellationToken) As Task(Of Document)
+    Private Async Function IntroduceGuardAsync(document As Document, node As SyntaxNode, cancellationToken As CancellationToken) As Task(Of Document)
         ' + If Windows.Foundation.Metadata.ApiInformation.IsTypePresent(targetContainingType) Then
         '       old-statement
         ' + End If
 
         Dim semanticModel = Await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(False)
-        Dim targetMethod = semanticModel.GetSymbolInfo(invocationExpression).Symbol
-        If targetMethod Is Nothing Then Return document
-        Dim targetContainingType = targetMethod.ContainingType.ToDisplayString()
-        If Not targetContainingType.StartsWith("Windows.") Then targetContainingType = "???"
+        Dim target = semanticModel.GetSymbolInfo(node).Symbol
+        If target Is Nothing Then Return document
+        Dim targetType = If(target.Kind = SymbolKind.NamedType, target, target.ContainingType)
+        Dim targetName = If(targetType Is Nothing, "", targetType.ToDisplayString)
+        If Not targetName.StartsWith("Windows.") Then targetName = "???"
 
-        Dim oldStatement = invocationExpression.FirstAncestorOrSelf(Of StatementSyntax)()
+        Dim oldStatement = node.FirstAncestorOrSelf(Of StatementSyntax)()
         Dim oldLeadingTrivia = oldStatement.GetLeadingTrivia()
         '
         Dim conditionReceiver = SyntaxFactory.ParseName("Windows.Foundation.Metadata.ApiInformation.IsTypePresent").WithAdditionalAnnotations(Simplifier.Annotation)
-        Dim conditionString = SyntaxFactory.StringLiteralExpression(SyntaxFactory.StringLiteralToken($"""{targetContainingType}""", targetContainingType))
+        Dim conditionString = SyntaxFactory.StringLiteralExpression(SyntaxFactory.StringLiteralToken($"""{targetName}""", targetName))
         Dim conditionArgument = SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(Of ArgumentSyntax)(SyntaxFactory.SimpleArgument(conditionString)))
         Dim condition = SyntaxFactory.InvocationExpression(conditionReceiver, conditionArgument)
         '
