@@ -36,7 +36,7 @@ Public Class PlatformSpecificAnalyzerVB
     Public Overrides Sub Initialize(context As AnalysisContext)
         ' context.RegisterSyntaxNodeAction(AddressOf AnalyzeInvocation)
         ' This would be simplest. It just generates multiple diagnostics per line
-        ' However, until bug https: //github.com/dotnet/roslyn/issues/3311 in Roslyn is fixed,
+        ' However, until bug https://github.com/dotnet/roslyn/issues/3311 in Roslyn is fixed,
         ' it also gives duplicate "Supress" codefixes.
         ' So until then, we'll do work to generate only a single diagnostic per line:
         context.RegisterCodeBlockStartAction(Of SyntaxKind)(AddressOf AnalyzeCodeBlockStart)
@@ -56,41 +56,19 @@ Public Class PlatformSpecificAnalyzerVB
     Public Sub AnalyzeInvocation(context As SyntaxNodeAnalysisContext, reports As Dictionary(Of Integer, Location))
         Dim invocationExpression = CType(context.Node, InvocationExpressionSyntax)
 
-        ' Is this an invocation of a Windows.* method that's outside the UWP common platform?
-        ' HACK: this code works for the current 10069 SDK of UWP. At VS2015 RTM, the list
-        ' of common target assemblies might have to be tweaked. And when the next revision of
-        ' the UWP platform comes out, then we'll have to look into picking up versions
-        ' and looking at TargetMinVersion in the .vbproj.
         Dim targetMethod = context.SemanticModel.GetSymbolInfo(invocationExpression).Symbol
         If targetMethod Is Nothing Then Return
-        If targetMethod.ContainingNamespace Is Nothing OrElse Not targetMethod.ContainingNamespace.ToDisplayString.StartsWith("Windows.") Then Return
-        If targetMethod.ContainingType.Name = "ApiInformation" Then Return
-        Dim targetAssembly = targetMethod.ContainingAssembly.Name
-        If targetAssembly = "Windows.Foundation.FoundationContract" OrElse
-                targetAssembly = "Windows.Foundation.UniversalApiContract" OrElse
-                targetAssembly = "Windows.Networking.Connectivity.WwanContract" Then Return
-        ' Some WinRT types like Windows.UI.Color get projected to come from this assembly:
-        If targetAssembly = "System.Runtime.WindowsRuntime" Then Return
-        ' HACK: I don't want to give warnings for 8.1 or PCL code. In those two targets, every Windows
-        ' type is found in Windows.winmd, so that's how we'll prevent it:
-        If targetAssembly = "Windows" Then Return
-
+        If Not IsTargetPlatformSpecific(targetMethod) Then Return
 
         ' Is this invocation outside a method?
         Dim containingMember = invocationExpression.FirstAncestorOrSelf(Of MethodBlockBaseSyntax)
         Dim containingMethod = TryCast(containingMember, MethodBlockSyntax)
-        If containingMethod Is Nothing Then Return ' to consider: should we report anything here?
+        If containingMethod Is Nothing Then Return ' TODO: report something here?
 
-        ' Does the containing method/type/assembly claim to be platform-specific?
+        ' Does the containing method/constructor/property claim to be platform-specific?
         Dim containingMethodSymbol = context.SemanticModel.GetDeclaredSymbol(containingMethod)
         If containingMethodSymbol Is Nothing Then Return
         If HasPlatformSpecificAttribute(containingMethodSymbol) Then Return
-        Dim ancestorTypeSymbol = containingMethodSymbol.ContainingType
-        While ancestorTypeSymbol IsNot Nothing
-            If HasPlatformSpecificAttribute(ancestorTypeSymbol) Then Return
-            ancestorTypeSymbol = ancestorTypeSymbol.ContainingType
-        End While
-        If HasPlatformSpecificAttribute(containingMethodSymbol.ContainingAssembly) Then Return
 
         ' Is this invocation properly guarded? See readme.txt for explanations.
         If IsProperlyGuarded(invocationExpression, context.SemanticModel) Then Return
@@ -111,6 +89,35 @@ Public Class PlatformSpecificAnalyzerVB
             If attr.AttributeClass.Name.EndsWith("SpecificAttribute") Then Return True
         Next
         Return False
+    End Function
+
+    Shared Function IsTargetPlatformSpecific(symbol As ISymbol) As Boolean
+        If symbol.ContainingNamespace?.ToDisplayString.StartsWith("Windows.") Then
+            If symbol.ContainingType.Name = "ApiInformation" Then Return False
+
+            ' HACK: these three target assemblies hard-code what's found in
+            ' C:\Program Files (x86)\Windows Kits\10\Platforms\UAP\10.0.10240.0\Platform.xml
+            ' Once future versions of the Windows SDK come up, we should update that list.
+            Dim targetAssembly = symbol.ContainingAssembly.Name
+            If targetAssembly = "Windows.Foundation.FoundationContract" OrElse
+                targetAssembly = "Windows.Foundation.UniversalApiContract" OrElse
+                targetAssembly = "Windows.Networking.Connectivity.WwanContract" Then Return False
+
+            ' Some WinRT types like Windows.UI.Color get projected to come from this assembly:
+            If targetAssembly = "System.Runtime.WindowsRuntime" Then Return False
+
+            ' HACK: I don't want to give warnings for 8.1 or PCL code. In those two targets, every Windows
+            ' type is found in Windows.winmd, so that's how we'll prevent it:
+            If targetAssembly = "Windows" Then Return False
+
+            ' Otherwise, it came from a platform-specific part of Windows:
+            Return True
+
+        Else
+            If HasPlatformSpecificAttribute(symbol) Then Return True
+            Return False
+        End If
+
     End Function
 
     Function IsProperlyGuarded(node As SyntaxNode, semanticModel As SemanticModel) As Boolean
@@ -192,14 +199,6 @@ Public Class PlatformSpecificFixerVB
             context.RegisterCodeFix(act2, diagnostic)
         End If
 
-        ' Mark the type as platform-specific?
-        Dim containingType = containingMember.FirstAncestorOrSelf(Of ClassBlockSyntax)
-        If containingType IsNot Nothing Then
-            Dim className = "Class " & containingType.ClassStatement.Identifier.Text
-            Dim act3 = CodeAction.Create($"Mark '{className}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(containingType.ClassStatement, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c), "PlatformSpecificClass")
-            context.RegisterCodeFix(act3, diagnostic)
-        End If
-
         ' Mark some of the conditions as platform-specific?
         Dim semanticModel = Await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(False)
         For Each symbol In PlatformSpecificAnalyzerVB.GetGuards(invocationExpression, semanticModel)
@@ -244,6 +243,7 @@ Public Class PlatformSpecificFixerVB
         Dim targetMethod = semanticModel.GetSymbolInfo(invocationExpression).Symbol
         If targetMethod Is Nothing Then Return document
         Dim targetContainingType = targetMethod.ContainingType.ToDisplayString()
+        If Not targetContainingType.StartsWith("Windows.") Then targetContainingType = "???"
 
         Dim oldStatement = invocationExpression.FirstAncestorOrSelf(Of StatementSyntax)()
         Dim oldLeadingTrivia = oldStatement.GetLeadingTrivia()

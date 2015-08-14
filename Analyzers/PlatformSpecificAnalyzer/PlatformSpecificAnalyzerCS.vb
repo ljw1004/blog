@@ -56,41 +56,19 @@ Public Class PlatformSpecificAnalyzerCS
     Public Sub AnalyzeInvocation(context As SyntaxNodeAnalysisContext, reports As Dictionary(Of Integer, Location))
         Dim invocationExpression = CType(context.Node, InvocationExpressionSyntax)
 
-        ' Is this an invocation of a Windows.* method that's outside the UWP common platform?
-        ' HACK: this code works for the current 10069 SDK of UWP. At VS2015 RTM, the list
-        ' of common target assemblies might have to be tweaked. And when the next revision of
-        ' the UWP platform comes out, then we'll have to look into picking up versions
-        ' and looking at TargetMinVersion in the .vbproj.
         Dim targetMethod = context.SemanticModel.GetSymbolInfo(invocationExpression).Symbol
         If targetMethod Is Nothing Then Return
-        If targetMethod.ContainingNamespace Is Nothing OrElse Not targetMethod.ContainingNamespace.ToDisplayString.StartsWith("Windows.") Then Return
-        If targetMethod.ContainingType.Name = "ApiInformation" Then Return
-        Dim targetAssembly = targetMethod.ContainingAssembly.Name
-        If targetAssembly = "Windows.Foundation.FoundationContract" OrElse
-                targetAssembly = "Windows.Foundation.UniversalApiContract" OrElse
-                targetAssembly = "Windows.Networking.Connectivity.WwanContract" Then Return
-        ' Some WinRT types like Windows.UI.Color get projected to come from this assembly:
-        If targetAssembly = "System.Runtime.WindowsRuntime" Then Return
-        ' HACK: I don't want to give warnings for 8.1 or PCL code. In those two targets, every Windows
-        ' type is found in Windows.winmd, so that's how we'll prevent it:
-        If targetAssembly = "Windows" Then Return
-
+        If Not PlatformSpecificAnalyzerVB.IsTargetPlatformSpecific(targetMethod) Then Return
 
         ' Is this invocation outside a method?
         Dim containingMember = invocationExpression.FirstAncestorOrSelf(Of MemberDeclarationSyntax)
         Dim containingMethod = TryCast(containingMember, MethodDeclarationSyntax)
         If containingMethod Is Nothing Then Return ' to consider: should we report anything here?
 
-        ' Does the containing method/type/assembly claim to be platform-specific?
+        ' Does the containing method/constructor/property claim to be platform-specific?
         Dim containingMethodSymbol = context.SemanticModel.GetDeclaredSymbol(containingMethod)
         If containingMethodSymbol Is Nothing Then Return
-        If HasPlatformSpecificAttribute(containingMethodSymbol) Then Return
-        Dim ancestorTypeSymbol = containingMethodSymbol.ContainingType
-        While ancestorTypeSymbol IsNot Nothing
-            If HasPlatformSpecificAttribute(ancestorTypeSymbol) Then Return
-            ancestorTypeSymbol = ancestorTypeSymbol.ContainingType
-        End While
-        If HasPlatformSpecificAttribute(containingMethodSymbol.ContainingAssembly) Then Return
+        If PlatformSpecificAnalyzerVB.HasPlatformSpecificAttribute(containingMethodSymbol) Then Return
 
         ' Is this invocation properly guarded? See readme.txt for explanations.
         If IsProperlyGuarded(invocationExpression, context.SemanticModel) Then Return
@@ -106,17 +84,10 @@ Public Class PlatformSpecificAnalyzerCS
         reports(line) = loc
     End Sub
 
-    Shared Function HasPlatformSpecificAttribute(symbol As ISymbol) As Boolean
-        For Each attr In symbol.GetAttributes
-            If attr.AttributeClass.Name.EndsWith("SpecificAttribute") Then Return True
-        Next
-        Return False
-    End Function
-
     Function IsProperlyGuarded(node As SyntaxNode, semanticModel As SemanticModel) As Boolean
         For Each symbol In GetGuards(node, semanticModel)
             If symbol.ContainingType?.Name = "ApiInformation" Then Return True
-            If HasPlatformSpecificAttribute(symbol) Then Return True
+            If PlatformSpecificAnalyzerVB.HasPlatformSpecificAttribute(symbol) Then Return True
         Next
         Return False
     End Function
@@ -185,14 +156,6 @@ Public Class PlatformSpecificFixerCS
             context.RegisterCodeFix(act2, diagnostic)
         End If
 
-        ' Mark the type as platform-specific?
-        Dim containingType = containingMember.FirstAncestorOrSelf(Of ClassDeclarationSyntax)
-        If containingType IsNot Nothing Then
-            Dim className = "class " & containingType.Identifier.Text
-            Dim act3 = CodeAction.Create($"Mark '{className}' as platform-specific", Function(c) AddPlatformSpecificAttributeAsync(containingType, Function(n, a) n.AddAttributeLists(a), context.Document.Project.Solution, c), "PlatformSpecificClass")
-            context.RegisterCodeFix(act3, diagnostic)
-        End If
-
         ' Mark some of the conditions as platform-specific?
         Dim semanticModel = Await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(False)
         For Each symbol In PlatformSpecificAnalyzerCS.GetGuards(invocationExpression, semanticModel)
@@ -237,6 +200,7 @@ Public Class PlatformSpecificFixerCS
         Dim targetMethod = semanticModel.GetSymbolInfo(invocationExpression).Symbol
         If targetMethod Is Nothing Then Return document
         Dim targetContainingType = targetMethod.ContainingType.ToDisplayString()
+        If Not targetContainingType.StartsWith("Windows.") Then targetContainingType = "???"
 
         Dim oldStatement = invocationExpression.FirstAncestorOrSelf(Of StatementSyntax)()
         Dim oldLeadingTrivia = oldStatement.GetLeadingTrivia()

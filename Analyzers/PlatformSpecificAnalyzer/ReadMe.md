@@ -73,7 +73,7 @@ attributes that end in `Specific` are treated as identical by this analyzer.
 Bugs
 ------
 
-* This analyzer currently only examines platform invocations to check whether they're
+* This analyzer currently only examines invocations to check whether they're
 platform-specific. WinRT only has a limited number of operations, and I believe the
 other operations to check are just *constructions* and *property-access* and
 *AddHandler*. (I believe it's not necessary to check for when you access fields of
@@ -83,8 +83,6 @@ have a value of platform-specific type, nor when you assign null to it.)
 * In VB it wasn't picking up `X.Y` as an invocation `X.Y()`. It should, but this becomes
 moot once the previous bug is fixed.
 
-* It doesn't seem to recognize `PlatformSpecific` attribute on methods, for transitivity.
-
 * This analyzer currently only examines operations within methods to see whether they're
 platform-specific. It should also check operations within property accessors, and within
 constructors, and inside field/autoprop initializers. (Note that the quick-fix actions
@@ -93,14 +91,11 @@ available to each will be different.)
 * By transitivity, if operations are allowed within any of those things due to a class-level
 or assembly-level `[PlatformSpecific]` attribute, then the analyzer would have to check
 accesses to those things. I'm inclined not to bother, and to simply disallow use of
-ungaurded platform-specific operations inside bodies that are hard to check. For instance:
+unguarded platform-specific operations inside bodies that are hard to check. For instance:
 would it check user-defined conversions??
 
 * This analyzer fails to fire when you invoke a method that's defined inside a class marked
 as `[PlatformSpecific]`. Also inside an assembly marked that way. It should.
-
-* For VS2015 RTM, NuGet packages for UWP will work differently. (not yet known how). So at
-RTM we'll have to rewrite the .nuspec file.
 
 * Its handling of "else if" is a bit dodgy. In VB it only considers the first "If" condition
 out of a series of if/elseif/elseif/else. In C# it looks up all the conditions preceding
@@ -257,3 +252,8 @@ or an appropriately-annotated field/property. This would have almost no false po
 That's why I instead picked the heuristic explained above in the "Technical specification"
 section.
 
+It's not feasible to support marking a class/assembly as PlatformSpecific (with the
+implication that all members of it are themselves PlatformSpecific). This would be okay
+for pure WinRT types, but .NET allows so much richer things in its types - e.g. user-defined
+conversions - so that if the type itself were platform-specific then we'd have to check
+a scary-large-number of subtle ways that it and its members might be used.
