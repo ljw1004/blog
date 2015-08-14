@@ -81,12 +81,14 @@ Public Class PlatformSpecificAnalyzerVB
             ' NameOf(<target>)
             Return
         Else
-            ' f(Of <target>)(...)
-            ' Dim x As <target> = ...
-            ' as well as normal access of properties/fields (which are the only ones I care about)
+            ' f(Of <target>)(...)  -- no warning
+            ' Dim x As <target> = ...  -- no warning
+            ' property access -- warning
+            ' field access -- no warning
+            ' method access without arguments -- warning
             Dim target = context.SemanticModel.GetSymbolInfo(context.Node).Symbol
             If target Is Nothing Then Return
-            If target.Kind <> SymbolKind.Field AndAlso target.Kind <> SymbolKind.Property Then Return
+            If target.Kind <> SymbolKind.Property AndAlso target.Kind <> SymbolKind.Method Then Return
             If Not IsTargetPlatformSpecific(target) Then Return
         End If
 

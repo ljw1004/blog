@@ -61,8 +61,6 @@
     <Import Include="Microsoft.CodeAnalysis.Diagnostics" />
     <Import Include="Microsoft.CodeAnalysis.Rename" />
     <Import Include="Microsoft.CodeAnalysis.Text" />
-    <Import Include="Microsoft.CodeAnalysis.VisualBasic" />
-    <Import Include="Microsoft.CodeAnalysis.VisualBasic.Syntax" />
     <Import Include="Microsoft.VisualBasic" />
     <Import Include="System" />
     <Import Include="System.Collections" />
@@ -172,7 +170,7 @@
   -->
   <Target Name="AfterBuild">
     <Copy SkipUnchangedFiles="true" SourceFiles="bin\$(Configuration)\PlatformSpecific.dll" DestinationFiles="bin\$(Configuration)\nupkg\lib\uap\PlatformSpecific.dll" />
-    <Copy SkipUnchangedFiles="true" SourceFiles="bin\$(Configuration)\PlatformSpecificAnalyzer.dll" DestinationFiles="bin\$(Configuration)\nupkg\analyzers\dotnet\PlatformSpecific.dll" />
+    <Copy SkipUnchangedFiles="true" SourceFiles="bin\$(Configuration)\PlatformSpecificAnalyzer.dll" DestinationFiles="bin\$(Configuration)\nupkg\analyzers\dotnet\PlatformSpecificAnalyzer.dll" />
     <Copy SkipUnchangedFiles="true" SourceFiles="nupkg\install.ps1" DestinationFiles="bin\$(Configuration)\nupkg\tools\install.ps1" />
     <Copy SkipUnchangedFiles="true" SourceFiles="nupkg\uninstall.ps1" DestinationFiles="bin\$(Configuration)\nupkg\tools\uninstall.ps1" />
     <Copy SkipUnchangedFiles="true" SourceFiles="nupkg\PlatformSpecificAnalyzer.nuspec" DestinationFiles="bin\$(Configuration)\nupkg\PlatformSpecificAnalyzer.nuspec" />

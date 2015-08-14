@@ -3,18 +3,14 @@
 Module Module1
     Sub Main()
         f()
-        Dim x = p
-
     End Sub
 
-    <PlatformSpecific>
     Event e As Action
 
     Dim b As Boolean = False
 
     Property q As Integer = Windows.Stuff.Dummy.dummy2()
 
-    <PlatformSpecific>
     Property p As Integer
         Get
             Windows.Stuff.Dummy.dummy2()
@@ -28,8 +24,7 @@ Module Module1
     Sub f(x As Integer)
     End Sub
 
-    <PlatformSpecific>
-    Sub f()
+    Function f() As Integer
         If Windows.Foundation.Metadata.ApiInformation.IsTypePresent("a") Then
             Windows.Stuff.Dummy.dummy2()
         End If
@@ -37,22 +32,31 @@ Module Module1
             Windows.Stuff.Dummy.dummy2()
         End If
         Dim x As New C
-    End Sub
+        Return 1
+    End Function
+
+    Public Property c1 As C
+        Get
+            Return New C
+        End Get
+        Set(value As C)
+        End Set
+    End Property
+
 End Module
 
 Class C
-    Sub g()
+    Function g() As Integer
         If Windows.Foundation.Metadata.ApiInformation.IsTypePresent("a") Then
             Windows.Stuff.Dummy.dummy2()
         End If
         Windows.Stuff.Dummy.dummy2()
-    End Sub
+        Return 1
+    End Function
 
-    <PlatformSpecific>
     Sub New()
         Windows.Stuff.Dummy.dummy2()
     End Sub
-
 End Class
 
 Namespace Global.Windows.Stuff

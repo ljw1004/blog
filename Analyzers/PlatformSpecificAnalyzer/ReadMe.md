@@ -72,36 +72,11 @@ attributes that end in `Specific` are treated as identical by this analyzer.
 The above discussion is a bit loose about exactly what things are checked.
 Places the attribute can go: {methods, properties, fields, constructors}.
 WinRT things that might be platform-specific: {methods, property accessors, fields, constructors, events}.
-Expressions that are checked: {invocations, constructions, property accessors, field accessors, AddHandler}.
+Expressions that are checked: {invocations, constructions, property accesses, field accesses, AddHandler}.
 Expressions within these things are checked: {methods, properties, fields, constructors, C# getter-only
 autoprops, autoprop initializers, field initializers}. Everything apart from the last two
 (initializers) can have a [*Specific] attribute.
 
-
-Bugs
-------
-
-
-* This analyzer currently only examines invocations to check whether they're
-platform-specific. WinRT only has a limited number of operations, and I believe the
-other operations to check are just *constructions* and *property-access* and
-*AddHandler*. (I believe it's not necessary to check for when you access fields of
-structs, nor enum values. I also believe it's not necessary to check when you merely
-have a value of platform-specific type, nor when you assign null to it.)
-
-* In VB it wasn't picking up `X.Y` as an invocation `X.Y()`. It should, but this becomes
-moot once the previous bug is fixed.
-
-* This analyzer currently only examines operations within methods to see whether they're
-platform-specific. It should also check operations within property accessors, and within
-constructors, and inside field/autoprop initializers. (Note that the quick-fix actions
-available to each will be different.)
-
-* Its handling of "else if" is a bit dodgy. In VB it only considers the first "If" condition
-out of a series of if/elseif/elseif/else. In C# it looks up all the conditions preceding
-the current block. I don't really know which is better. Should it account for "if not ApiPresent"?
-Or should it only accept platform-specific operations in a branch whose immediate guard
-was good? I don't have a good idea.
 
 
 
@@ -109,7 +84,7 @@ Feature backlog
 ------------------
 
 * The analyzer should also deal with "UWP min-version". Let's hold off on that until Microsoft
-actually releases a new version of UWP with new contracts. It will require the analyzer
+actually releases a second version of UWP with new contracts. It will require the analyzer
 to read from the .vbproj/.csproj to discover `TargetPlatformMinVersion`, and then read through
 `Windows Kits\10\Platforms\UAP\version\platform.xml` to discover versions of which contracts
 is in TargetPlatformMinVersion.
@@ -136,16 +111,6 @@ upon further reflection, I think this whole feature request might be wrong appro
 adaptivity is that you don't just say `if (xbox)`. Instead you do an API-by-API check of whether
 a given API is present.
 
-* It might be nice to recognize `[PlatformSpecific]` on parameters. But maybe that's just
-getting altogether too fussy. We can't track it on locals, so tracking it on parameters
-might feel odd.
-
-* Currently you can have a `[PlatformSpecific]` method which handles, say, a button click.
-It will crash if you click the button on the wrong platform. We might wish to say that
-`[PlatformSpecific]` simply isn't allowed on *any* method which looks like a WinRT event
-handler. I don't know what the best solution is here. Maybe it's fine to do nothing.
-After all, the user has explicitly written `[PlatformSpecific]` in their code, and it's
-now their responsibility.
 
 
 Design decisions
@@ -255,3 +220,9 @@ implication that all members of it are themselves PlatformSpecific). This would 
 for pure WinRT types, but .NET allows so much richer things in its types - e.g. user-defined
 conversions - so that if the type itself were platform-specific then we'd have to check
 a scary-large-number of subtle ways that it and its members might be used.
+
+There isn't a clean good way to handle "else if". In VB it only considers the first "If" condition
+out of a series of if/elseif/elseif/else. In C# it looks up all the conditions preceding
+the current block. I don't really know which is better. Should it account for "if not ApiPresent"?
+Or should it only accept platform-specific operations in a branch whose immediate guard
+was good? I don't have a good idea.

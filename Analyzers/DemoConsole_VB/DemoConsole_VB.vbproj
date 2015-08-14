@@ -47,9 +47,6 @@
     <OptionInfer>On</OptionInfer>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="PlatformSpecific">
-      <HintPath>..\DummyTestLauncher\bin\Debug\PlatformSpecific.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Deployment" />
@@ -75,9 +72,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="My Project\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Analyzer Include="..\DummyTestLauncher\bin\Debug\PlatformSpecificAnalyzer.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
