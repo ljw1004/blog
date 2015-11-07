@@ -25,50 +25,58 @@ Imports Microsoft.CodeAnalysis.CSharp.Syntax
 Public Class PlatformSpecificAnalyzerCS
     Inherits DiagnosticAnalyzer
 
-    Friend Shared Rule As New DiagnosticDescriptor("UWP001", "Platform-specific", "Platform-specific code", "Safety", DiagnosticSeverity.Warning, True)
+    Friend Shared RulePlatform As New DiagnosticDescriptor("UWP001", "Platform-specific", "Platform-specific code", "Safety", DiagnosticSeverity.Warning, True)
+    Friend Shared RuleVersion As New DiagnosticDescriptor("UWP002", "Version-specific", "Version-specific code", "Safety", DiagnosticSeverity.Warning, True)
 
     Public Overrides ReadOnly Property SupportedDiagnostics As ImmutableArray(Of DiagnosticDescriptor)
         Get
-            Return ImmutableArray.Create(Rule)
+            Return ImmutableArray.Create(RulePlatform, RuleVersion)
         End Get
     End Property
 
     Public Overrides Sub Initialize(context As AnalysisContext)
-        ' context.RegisterSyntaxNodeAction(AddressOf AnalyzeInvocation)
-        ' This would be simplest. It just generates multiple diagnostics per line
-        ' However, until bug https: //github.com/dotnet/roslyn/issues/3311 in Roslyn is fixed,
-        ' it also gives duplicate "Supress" codefixes.
-        ' So until then, we'll do work to generate only a single diagnostic per line:
-        context.RegisterCodeBlockStartAction(Of SyntaxKind)(AddressOf AnalyzeCodeBlockStart)
+        context.RegisterCompilationStartAction(AddressOf AnalyzeCompilationStart)
     End Sub
 
-    Public Sub AnalyzeCodeBlockStart(context As CodeBlockStartAnalysisContext(Of SyntaxKind))
-        Dim reports As New Dictionary(Of Integer, Location)
-        context.RegisterSyntaxNodeAction(Sub(c) AnalyzeExpression(c, reports), SyntaxKind.IdentifierName)
-        context.RegisterSyntaxNodeAction(Sub(c) AnalyzeExpression(c, reports), SyntaxKind.SimpleMemberAccessExpression)
-        context.RegisterSyntaxNodeAction(Sub(c) AnalyzeExpression(c, reports), SyntaxKind.QualifiedName)
-        context.RegisterCodeBlockEndAction(
-            Sub(c)
-                For Each span In reports.Values
-                    c.ReportDiagnostic(Diagnostic.Create(Rule, span))
-                Next
+    Public Sub AnalyzeCompilationStart(context0 As CompilationStartAnalysisContext)
+        Dim projMinVersion As String = Nothing
+
+        ' It would be simplest just to context.RegisterSyntaxNodeAction(...) right here.
+        ' However, it just generates multiple diagnostics per line, and
+        ' until bug https://github.com/dotnet/roslyn/issues/3311 in Roslyn is fixed,
+        ' then it would also duplicate the "Supress" codefixes. Yuck. We'll use the
+        ' following workaround for now, and will revert to the simpler version once
+        ' VS2015 Update1 comes out.
+        context0.RegisterCodeBlockStartAction(Of SyntaxKind)(
+            Sub(context)
+                Dim reports As New Dictionary(Of Integer, Diagnostic)
+                context.RegisterSyntaxNodeAction(Sub(c) AnalyzeExpression(c, reports, projMinVersion), SyntaxKind.IdentifierName)
+                context.RegisterSyntaxNodeAction(Sub(c) AnalyzeExpression(c, reports, projMinVersion), SyntaxKind.SimpleMemberAccessExpression)
+                context.RegisterSyntaxNodeAction(Sub(c) AnalyzeExpression(c, reports, projMinVersion), SyntaxKind.QualifiedName)
+                context.RegisterCodeBlockEndAction(
+                    Sub(c)
+                        For Each diagnostic In reports.Values
+                            c.ReportDiagnostic(diagnostic)
+                        Next
+                    End Sub)
             End Sub)
     End Sub
 
-    Public Sub AnalyzeExpression(context As SyntaxNodeAnalysisContext, reports As Dictionary(Of Integer, Location))
+    Public Sub AnalyzeExpression(context As SyntaxNodeAnalysisContext, reports As Dictionary(Of Integer, Diagnostic), ByRef projMinVersion As String)
         If context.Node.Parent.Kind = SyntaxKind.SimpleMemberAccessExpression Then Return ' will be handled at higher level
         If context.Node.Parent.Kind = SyntaxKind.QualifiedName Then Return
+        Dim platform As Platform
 
         If context.Node.Parent.Kind = SyntaxKind.InvocationExpression AndAlso context.Node Is CType(context.Node.Parent, InvocationExpressionSyntax).Expression Then
             ' <target>(...)
             Dim invocationExpression = CType(context.Node.Parent, InvocationExpressionSyntax)
             Dim target = context.SemanticModel.GetSymbolInfo(invocationExpression).Symbol ' points to the method after overload resolution
-            If Not PlatformSpecificAnalyzerVB.IsTargetPlatformSpecific(target) Then Return
+            platform = PlatformSpecificAnalyzerVB.GetApiTarget(target)
         ElseIf context.Node.Parent.Kind = SyntaxKind.ObjectCreationExpression AndAlso context.Node Is CType(context.Node.Parent, ObjectCreationExpressionSyntax).Type Then
             ' New <target>
             Dim objectCreationExpression = CType(context.Node.Parent, ObjectCreationExpressionSyntax)
             Dim target = context.SemanticModel.GetSymbolInfo(objectCreationExpression).Symbol ' points to the constructor after overload resolution
-            If Not PlatformSpecificAnalyzerVB.IsTargetPlatformSpecific(target) Then Return
+            platform = PlatformSpecificAnalyzerVB.GetApiTarget(target)
         Else
             ' f<target>(...)
             ' <target> x = ...
@@ -79,11 +87,14 @@ Public Class PlatformSpecificAnalyzerCS
             Dim target = context.SemanticModel.GetSymbolInfo(context.Node).Symbol
             If target Is Nothing Then Return
             If target.Kind <> SymbolKind.Method AndAlso target.Kind <> SymbolKind.Event AndAlso target.Kind <> SymbolKind.Property Then Return
-            If Not PlatformSpecificAnalyzerVB.IsTargetPlatformSpecific(target) Then Return
+            platform = PlatformSpecificAnalyzerVB.GetApiTarget(target)
         End If
 
+        ' Some quick escapes
+        If platform.Kind = PlatformKind.Unchecked Then Return
+        If platform.Kind = PlatformKind.Uwp AndAlso platform.Version = "10240" Then Return
 
-        ' Is this expression inside a method/constructor/property that claims to be platform-specific?
+        ' Is this expression inside a method/constructor/property that claims to be specific?
         Dim containingBlock = context.Node.FirstAncestorOrSelf(Of BlockSyntax)
         Dim containingMember As MemberDeclarationSyntax = containingBlock?.FirstAncestorOrSelf(Of BaseMethodDeclarationSyntax) ' for constructors and methods
         If containingBlock Is Nothing OrElse TypeOf containingBlock?.Parent Is AccessorDeclarationSyntax Then containingMember = context.Node.FirstAncestorOrSelf(Of PropertyDeclarationSyntax)
@@ -101,12 +112,20 @@ Public Class PlatformSpecificAnalyzerCS
             Next
         End If
 
+        ' Some things we can't judge whether to report until after we've looked
+        ' up the project version...
+        If platform.Kind = PlatformKind.Uwp AndAlso platform.Version <> "10240" Then
+            If projMinVersion Is Nothing Then projMinVersion = PlatformSpecificAnalyzerVB.GetTargetPlatformMinVersion(context.SemanticModel.Compilation, context.Node.SyntaxTree, ".csproj")
+            If projMinVersion Is Nothing Then projMinVersion = "10240"
+            If projMinVersion IsNot Nothing AndAlso CInt(platform.Version) <= CInt(projMinVersion) Then Return
+        End If
+
         ' We'll report only a single diagnostic per line, the first.
         Dim loc = context.Node.GetLocation
         If Not loc.IsInSource Then Return
         Dim line = loc.GetLineSpan().StartLinePosition.Line
-        If reports.ContainsKey(line) AndAlso reports(line).SourceSpan.Start <= loc.SourceSpan.Start Then Return
-        reports(line) = loc
+        If reports.ContainsKey(line) AndAlso reports(line).Location.SourceSpan.Start <= loc.SourceSpan.Start Then Return
+        reports(line) = Diagnostic.Create(If(platform.Kind = PlatformKind.Uwp, RuleVersion, RulePlatform), loc)
     End Sub
 
     Function IsProperlyGuarded(node As SyntaxNode, semanticModel As SemanticModel) As Boolean
