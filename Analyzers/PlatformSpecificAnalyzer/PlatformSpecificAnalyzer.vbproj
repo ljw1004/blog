@@ -131,6 +131,7 @@
     <None Include="nupkg\PlatformSpecificAnalyzer.png" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="PlatformSpecificAnalyzer.vb" />
     <Compile Include="PlatformSpecificAnalyzerCS.vb" />
     <Compile Include="PlatformSpecificAnalyzerVB.vb" />
   </ItemGroup>

@@ -13,13 +13,13 @@ Explanation
 -------------
 
 When you're writing a UWP app, it's hard to know whether a given API is
-platform-specific (and hence needs an "adaptivity check") or if it's part
+platform-specific or version-specific (and hence needs an "adaptivity check") or if it's part
 of core UWP. All you can do is either read the docs rigorously, or run your
 code on all different platforms to see if it crashes.
 
 This analyzer fixes that problem.
 
-If ever your code calls into a platform-specific API, this analyzer verifies
+If ever your code calls into a platform- or version-specific API, this analyzer verifies
 that you've done an adaptivity check around it -- if you haven't then it reports
 a warning. It also provides a handy "quick-fix" to insert the correct check,
 by pressing Ctrl+Dot or clicking on the lightbulb.
@@ -49,14 +49,15 @@ entire app is adaptivity-safe.
 Technical specification
 -------------------------
 
-Some platform methods come from a specific UWP platform extension SDK.
+Some platform methods come from a specific UWP platform extension SDK,
+or from a version of UWP that's higher than the TargetPlatformMinVersion in your vbproj/csproj.
 And some methods might have the [PlatformSpecific] attribute on them.
 And some fields/properties might have the [PlatformSpecific] attribute too.
 
 This analyzer checks that any invocation of a method that's in Windows.* namespace
 but outside the common UWP platform, and any invocation of a method with a
 [*Specific] attribute on it, either (1) is in a method marked as [*Specific],
-or (2) is "properly guarded" as defined below.
+not necessarily the same same attribute, or (2) is "properly guarded" as defined below.
 
 *Properly Guarded*. You must either have the invocation itself or a Return statement
 inside the positive branch of an `If` block whose conditional includes a "proper guard".
@@ -65,9 +66,11 @@ a type called ApiInformation, or an access of a field/property that has
 a `[*Specific]` attribute on it.
 
 The package provides one attribute `[System.Runtime.CompilerServices.PlatformSpecific]`,
-and this is the one that the code-fixes suggest to insert. But you can chose to define
+and assumes this is the right attribute to add in its quick-fix,
+but you can chose to define
 your own more descriptive attributes, e.g. `[MyNamespace.XboxSpecific]`, and all
 attributes that end in `Specific` are treated as identical by this analyzer.
+The code action to insert a codefix will use whatever attribute the code claims to need.
 
 The above discussion is a bit loose about exactly what things are checked.
 Places the attribute can go: {methods, properties, fields, constructors}.
@@ -83,33 +86,11 @@ autoprops, autoprop initializers, field initializers}. Everything apart from the
 Feature backlog
 ------------------
 
-* The analyzer should also deal with "UWP min-version". Let's hold off on that until Microsoft
-actually releases a second version of UWP with new contracts. It will require the analyzer
-to read from the .vbproj/.csproj to discover `TargetPlatformMinVersion`, and then read through
-`Windows Kits\10\Platforms\UAP\version\platform.xml` to discover versions of which contracts
-is in TargetPlatformMinVersion.
-This will yield a list of contract names (which are the same as assembly names) and versions.
-Then it can use Roslyn to look through the metadata that your app references, figure out
-which assembly it came from, and figure out whether it's in the MinVersion. I'm not sure how
-to deal with type-forwarders. I wonder if the attribute should say `[PlatformSpecific(version)]`?
-Or should it just use the plain flat `[PlatformSpecific]` attribute for everything outside
-the MinVersion? This latter choice is simpler. If you lower your min, then you'd have to put the
-attribute in more places. If you increase the min, the analyzer could detect cases where an
-existing attribute is no longer needed.
-
-* It might be nice to be more specific about *which* platform. Maybe create a few more attributes
-`[MobileSpecific]`, `[DesktopSpecific]`, `[XboxSpecific]` and so on, all descending from the
-common base class. The analyzer would need hard-coded knowledge of which attributes apply
-to which Platform Extension SDK. It would need to read .vbproj/.csproj to find all `<SDKReference>`
-directives, and then read from `Windows Kits\10\ExtensionSDKs\sdk\version\SDKManifest.xml` to
-find the list of contract names (assembly names) and versions associated with that platform.
-Then for any API access it would have to figure out which of the PlatformSDKs contain that API.
-(There might be several.) I also don't yet know how
-versions will work. Will users also need to have a `TargetExtensionSDKMinVersion`? Or will
-that be inferred from the main UWP TargetPlatformMinVersion? Let's wait and see. Actually,
-upon further reflection, I think this whole feature request might be wrong approach. The whole point of correct
-adaptivity is that you don't just say `if (xbox)`. Instead you do an API-by-API check of whether
-a given API is present.
+* Roslyn doesn't provide a way to read vbproj/csproj files. For now, I've hacked around it by guessing the project
+filename, and polling for it no more than once every 30 seconds or when I detect it's been modified. Unfortunately
+this precludes my analyzer from being a PCL (they don't support File IO), and it requires the proj file to be saved
+rather than just edited in the Project Properties dialog, and it requires each text editor buffer to be closed
+and reloaded to refresh all the warnings inside it. That's ugly!
 
 
 
@@ -226,3 +207,15 @@ out of a series of if/elseif/elseif/else. In C# it looks up all the conditions p
 the current block. I don't really know which is better. Should it account for "if not ApiPresent"?
 Or should it only accept platform-specific operations in a branch whose immediate guard
 was good? I don't have a good idea.
+
+I decided against using more specific attributes such as `[MobileSpecific]`, `[DesktopSpecific]`
+and so on. That's partly because an API can happily be a member of several different platforms,
+but mostly because the whole point of correct adaptivity is that you don't just
+say `if (xbox)`. Instead you do an API-by-API check of whether a given API is present.
+That said, if the user does chose to use their own attributes, then the analyzer will happily
+propagate them in its code-action.
+
+I decided against providing a code-action that updates the project's TargetPlatformMinVersion.
+I don't think that's a friendly way to go about adaptivity, and don't want to steer people into it.
+
+
