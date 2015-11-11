@@ -51,6 +51,19 @@ namespace DemoUWP_CS
         {
             label1.Text = $"Ringer: {CallControl.GetDefault()?.HasRinger}";
         }
+
+        private async void button10586_Click(object sender, RoutedEventArgs e)
+        {
+            var holo = Windows.Graphics.Holographic.HolographicSpace.CreateForCoreWindow(Windows.UI.Core.CoreWindow.GetForCurrentThread());
+            var gesture = new Windows.UI.Input.Spatial.SpatialGestureRecognizer(Windows.UI.Input.Spatial.SpatialGestureSettings.Tap);
+            var space = await Windows.Perception.Spatial.SpatialAnchorManager.RequestStoreAsync();
+            var folder = await Windows.Storage.DownloadsFolder.CreateFileForUserAsync(null, "download.png");
+            var telemetry = Windows.System.Profile.PlatformDiagnosticsAndUsageDataSettings.CanCollectDiagnostics(Windows.System.Profile.PlatformDataCollectionLevel.Enhanced);
+            var hook = Windows.UI.Input.KeyboardDeliveryInterceptor.GetForCurrentView();
+            var jumps = Windows.UI.StartScreen.JumpList.IsSupported();
+            Windows.ApplicationModel.Store.Preview.StoreConfiguration.PurchasePromptingPolicy = null;
+        }
     }
 }
+
 

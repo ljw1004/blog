@@ -13,5 +13,6 @@
         <Button x:Name="buttonMobile" FontSize="20" Content="MobileSDK" Margin="4"/>
         <Button x:Name="buttonMobileDesktop" FontSize="20" Content="MobileSDK+DesktopSDK" Margin="4"/>
         <Button x:Name="buttonDesktop" FontSize="20" Content="DesktopSDK" Margin="4"/>
+        <Button x:Name="button10586" FontSize="20" Content="10586 SDK" Margin="4"/>
     </StackPanel>
 </Page>

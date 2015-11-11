@@ -25,5 +25,15 @@ Public NotInheritable Class MainPage
         label1.Text = $"Ringer: {CallControl.GetDefault()?.HasRinger}"
     End Sub
 
+    Private Async Sub button10586_Click(sender As Object, e As RoutedEventArgs) Handles button10586.Click
+        Dim holo = Windows.Graphics.Holographic.HolographicSpace.CreateForCoreWindow(Windows.UI.Core.CoreWindow.GetForCurrentThread())
+        Dim folder = Await Windows.Storage.DownloadsFolder.CreateFileForUserAsync(Nothing, "download.png")
+        Windows.ApplicationModel.Store.Preview.StoreConfiguration.PurchasePromptingPolicy = Nothing
+        Dim space = Await Windows.Perception.Spatial.SpatialAnchorManager.RequestStoreAsync()
+        Dim gesture As New Windows.UI.Input.Spatial.SpatialGestureRecognizer(Windows.UI.Input.Spatial.SpatialGestureSettings.Tap)
+        Dim telemetry = Windows.System.Profile.PlatformDiagnosticsAndUsageDataSettings.CanCollectDiagnostics(Windows.System.Profile.PlatformDataCollectionLevel.Enhanced)
+        Dim hook = Windows.UI.Input.KeyboardDeliveryInterceptor.GetForCurrentView()
+        Dim jumps = Windows.UI.StartScreen.JumpList.IsSupported()
+    End Sub
 End Class
 
