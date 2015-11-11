@@ -83,17 +83,6 @@ autoprops, autoprop initializers, field initializers}. Everything apart from the
 
 
 
-Feature backlog
-------------------
-
-* Roslyn doesn't provide a way to read vbproj/csproj files. For now, I've hacked around it by guessing the project
-filename, and polling for it no more than once every 30 seconds or when I detect it's been modified. Unfortunately
-this precludes my analyzer from being a PCL (they don't support File IO), and it requires the proj file to be saved
-rather than just edited in the Project Properties dialog, and it requires each text editor buffer to be closed
-and reloaded to refresh all the warnings inside it. That's ugly!
-
-
-
 Design decisions
 ------------------
 

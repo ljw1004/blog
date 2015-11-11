@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?> 
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"> 
+  <PropertyGroup>
+    <AdditionalFileItemNames>PlatformSpecificAnalyzerInfo</AdditionalFileItemNames>
+  </PropertyGroup>
+  <ItemGroup>
+    <PlatformSpecificAnalyzerInfo Include="tpmv_$(TargetPlatformMinVersion).tpmv">
+      <Visible>False</Visible>
+    </PlatformSpecificAnalyzerInfo>
+  </ItemGroup>
+</Project>

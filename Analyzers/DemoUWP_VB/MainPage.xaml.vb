@@ -4,10 +4,6 @@ Imports Windows.System.UserProfile
 Public NotInheritable Class MainPage
     Inherits Page
 
-    Sub New()
-        InitializeComponent()
-    End Sub
-
     Async Sub MobileDesktop_Click(sender As Object, e As RoutedEventArgs) Handles buttonMobileDesktop.Click
         label1.Text = $"Name: {Await UserInformation.GetDisplayNameAsync()}"
 

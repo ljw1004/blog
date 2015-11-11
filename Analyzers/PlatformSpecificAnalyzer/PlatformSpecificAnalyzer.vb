@@ -7,6 +7,7 @@
 '     "C:\Users\lwischik\Source\Repos\blog\Analyzers\DemoUWP_VB\DemoUWP_VB.sln" /RootSuffix Analyzer
 ' Note: I want to migrate this analyzer over to a PCL. But PCLs don't support the debug tab: https://github.com/dotnet/roslyn/issues/4542
 
+Imports System.Collections.Immutable
 Imports System.IO
 Imports System.Runtime.CompilerServices
 Imports Microsoft.CodeAnalysis
@@ -138,6 +139,34 @@ Module PlatformSpecificAnalyzer
     Public RulePlatform As New DiagnosticDescriptor("UWP001", "Platform-specific", "Platform-specific code", "Safety", DiagnosticSeverity.Warning, True)
     Public RuleVersion As New DiagnosticDescriptor("UWP002", "Version-specific", "Version-specific code", "Safety", DiagnosticSeverity.Warning, True)
 
+    Function GetTargetPlatformMinVersion(additionalFiles As ImmutableArray(Of AdditionalText)) As Integer?
+        ' When PlatformSpecificAnalyzer is build as a NuGet package, the package includes
+        ' a.targets File with the following lines. The effect is to add a fake file,
+        ' which doesn't show up in SolnExplorer and which doesn't even exist, but whose
+        ' FILENAME encodes the TargetPlatformMinVersion. That way, when the user modifies
+        ' TargetPlatformMinVersion from within the ProjectProperties, msbuild re-evaluates
+        ' the AdditionalFiles, and Roslyn re-runs its analyzers and can pick it up.
+        ' Thanks Jason Malinowski for the hint on how to do this. He instructed me to
+        ' write in the comments "this is a terrible hack and no one should ever copy it".
+        '      <AdditionalFileItemNames>PlatformSpecificAnalyzerInfo</AdditionalFileItemNames>
+        '      <ItemGroup>
+        '        <PlatformSpecificAnalyzerInfo Include = "tpmv_$(TargetPlatformMinVersion).tpmv"><Visible>False</Visible></PlatformSpecificAnalyzerInfo>
+        '      </ItemGroup>
+
+        ' I'm caching the value because, heck, it seems weird to recompute it every time.
+        Static Dim cacheKey As ImmutableArray(Of AdditionalText) = Nothing
+        Static Dim cacheValue As Integer? = Nothing
+        If additionalFiles = cacheKey Then Return cacheValue Else cacheKey = additionalFiles
+        Dim tpmv = additionalFiles.FirstOrDefault(Function(af) af.Path.EndsWith(".tpmv"))?.Path
+        If tpmv Is Nothing Then
+            cacheValue = Nothing : Return Nothing
+        Else
+            tpmv = Path.GetFileNameWithoutExtension(tpmv).Replace("tpmv_10.0.", "").Replace(".0", "")
+            Dim i As Integer : If Integer.TryParse(tpmv, i) Then cacheValue = i : Return i
+            Return Nothing
+        End If
+    End Function
+
     Function GetPlatformSpecificAttribute(symbol As ISymbol) As String
         If symbol Is Nothing Then Return Nothing
         For Each attr In symbol.GetAttributes
@@ -168,58 +197,4 @@ Module PlatformSpecificAnalyzer
     End Sub
 
 End Module
-
-Class TargetPlatformMinVersion
-    Private projfile As String
-    Private version As String
-    Private lastCheck As DateTime
-    Private lastWriteTime As DateTime
-    Private watcher As FileSystemWatcher
-
-    Public Shared Function [Get](comp As Compilation, tree As SyntaxTree, ext As String) As String
-        ' Hack: because of https://github.com/dotnet/roslyn/issues/6627 it's impossible
-        ' to get information from the csproj in an analyzer. So I'm going to hack around it...
-        ' I've heard bad things about FileSystemWatcher, so in addition to receiving its notifications, I'm also
-        ' going to poll (capped at once every 30 seconds)
-
-        ' Note that this first TryGetValue path doesn't hit the filesystem.
-        Dim dir = Path.GetDirectoryName(tree.FilePath)
-        Dim cacheKey = $"{dir}\{comp.AssemblyName}{ext}"
-        Static Dim cache As New Dictionary(Of String, TargetPlatformMinVersion)
-        Dim entry As TargetPlatformMinVersion = Nothing
-        If cache.TryGetValue(cacheKey, entry) AndAlso entry.lastCheck + TimeSpan.FromSeconds(30) > DateTime.Now Then Return entry.version
-
-        If entry Is Nothing Then entry = New TargetPlatformMinVersion With {.lastCheck = DateTime.Now} : cache.Add(cacheKey, entry)
-
-        ' We don't have a reliable way to get the project file. So I'm going to hack it.
-        ' projFile is the key that's used for the TryGet dictionary, while fn is our
-        ' best guess as to the actual location of the proj file.
-        If entry.projfile Is Nothing Then
-            entry.projfile = cacheKey
-            If Not File.Exists(entry.projfile) Then dir = Path.GetDirectoryName(dir) : entry.projfile = $"{dir}\{comp.AssemblyName}{ext}"
-            If Not File.Exists(entry.projfile) Then dir = Path.GetDirectoryName(dir) : entry.projfile = $"{dir}\{comp.AssemblyName}{ext}"
-        End If
-        If Not File.Exists(entry.projfile) Then entry.version = Nothing : Return entry.version
-
-        ' Set up a file watcher
-        If entry.watcher Is Nothing Then
-            entry.watcher = New FileSystemWatcher With {.Path = Path.GetDirectoryName(entry.projfile), .Filter = Path.GetFileName(entry.projfile), .NotifyFilter = NotifyFilters.LastWrite, .EnableRaisingEvents = True}
-            AddHandler entry.watcher.Changed, Sub() entry.lastCheck = DateTime.Now - TimeSpan.FromSeconds(30)
-        End If
-
-        ' But our primary mechanism is checking the file on-demand (throttled above to once every 30s, or once each proj-file-save, whichever is sooner)
-        Dim lastWriteTime = File.GetLastWriteTime(entry.projfile) : If entry.lastWriteTime = lastWriteTime Then Return entry.version
-        Dim lines As String() = Nothing
-        Try
-            lines = File.ReadAllLines(entry.projfile)
-        Catch ex As IOException
-            Return entry.version
-        End Try
-        Dim line = lines.FirstOrDefault(Function(s) s.Trim.StartsWith("<TargetPlatformMinVersion>"))
-        entry.version = line?.Replace("<TargetPlatformMinVersion>", "").Replace("</TargetPlatformMinVersion>", "").Replace("</>", "").Replace("10.0.", "").Replace(".0", "").Trim()
-        entry.lastWriteTime = lastWriteTime
-        entry.lastCheck = DateTime.Now
-        Return entry.version
-    End Function
-End Class
 

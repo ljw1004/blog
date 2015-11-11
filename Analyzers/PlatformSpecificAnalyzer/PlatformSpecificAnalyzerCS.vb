@@ -75,8 +75,8 @@ Public Class PlatformSpecificAnalyzerCS
 
         ' Some things we can't judge whether to report until after we've looked up the project version...
         If plat.Kind = PlatformKind.Uwp AndAlso plat.Version <> "10240" Then
-            Dim projMinVersion = TargetPlatformMinVersion.Get(context.SemanticModel.Compilation, context.Node.SyntaxTree, ".csproj")
-            If projMinVersion Is Nothing OrElse CInt(projMinVersion) >= CInt(plat.Version) Then Return
+            Dim projMinVersion = GetTargetPlatformMinVersion(context.Options.AdditionalFiles)
+            If projMinVersion Is Nothing OrElse projMinVersion.Value >= CInt(plat.Version) Then Return
         End If
 
         ' We'll report only a single diagnostic per line, the first.
