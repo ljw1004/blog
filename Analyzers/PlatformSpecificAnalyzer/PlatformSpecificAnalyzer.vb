@@ -139,7 +139,7 @@ Module PlatformSpecificAnalyzer
     Public RulePlatform As New DiagnosticDescriptor("UWP001", "Platform-specific", "Platform-specific code", "Safety", DiagnosticSeverity.Warning, True)
     Public RuleVersion As New DiagnosticDescriptor("UWP002", "Version-specific", "Version-specific code", "Safety", DiagnosticSeverity.Warning, True)
 
-    Function GetTargetPlatformMinVersion(additionalFiles As ImmutableArray(Of AdditionalText)) As Integer?
+    Function GetTargetPlatformMinVersion(additionalFiles As ImmutableArray(Of AdditionalText)) As Integer
         ' When PlatformSpecificAnalyzer is build as a NuGet package, the package includes
         ' a.targets File with the following lines. The effect is to add a fake file,
         ' which doesn't show up in SolnExplorer and which doesn't even exist, but whose
@@ -155,16 +155,16 @@ Module PlatformSpecificAnalyzer
 
         ' I'm caching the value because, heck, it seems weird to recompute it every time.
         Static Dim cacheKey As ImmutableArray(Of AdditionalText) = Nothing
-        Static Dim cacheValue As Integer? = Nothing
+        Static Dim cacheValue As Integer = 10240 ' if we don't find that terrible hack, assume 10240
         If additionalFiles = cacheKey Then Return cacheValue Else cacheKey = additionalFiles
         Dim tpmv = additionalFiles.FirstOrDefault(Function(af) af.Path.EndsWith(".tpmv"))?.Path
         If tpmv Is Nothing Then
-            cacheValue = Nothing : Return Nothing
+            cacheValue = 10240
         Else
             tpmv = Path.GetFileNameWithoutExtension(tpmv).Replace("tpmv_10.0.", "").Replace(".0", "")
-            Dim i As Integer : If Integer.TryParse(tpmv, i) Then cacheValue = i : Return i
-            Return Nothing
+            Dim i As Integer : cacheValue = If(Integer.TryParse(tpmv, i), i, 10240)
         End If
+        Return cacheValue
     End Function
 
     Function GetPlatformSpecificAttribute(symbol As ISymbol) As String

@@ -74,8 +74,8 @@ The code action to insert a codefix will use whatever attribute the code claims 
 
 The above discussion is a bit loose about exactly what things are checked.
 Places the attribute can go: {methods, properties, fields, constructors}.
-WinRT things that might be platform-specific: {methods, property accessors, fields, constructors, events}.
-Expressions that are checked: {invocations, constructions, property accesses, field accesses, AddHandler}.
+WinRT things that might be platform-specific: {methods, property accessors, enum members, constructors, events}.
+Expressions that are checked: {invocations, constructions, property accesses, enum member access, AddHandler}.
 Expressions within these things are checked: {methods, properties, fields, constructors, C# getter-only
 autoprops, autoprop initializers, field initializers}. Everything apart from the last two
 (initializers) can have a [*Specific] attribute.

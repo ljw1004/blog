@@ -76,7 +76,7 @@ Public Class PlatformSpecificAnalyzerCS
         ' Some things we can't judge whether to report until after we've looked up the project version...
         If plat.Kind = PlatformKind.Uwp AndAlso plat.Version <> "10240" Then
             Dim projMinVersion = GetTargetPlatformMinVersion(context.Options.AdditionalFiles)
-            If projMinVersion Is Nothing OrElse projMinVersion.Value >= CInt(plat.Version) Then Return
+            If projMinVersion >= CInt(plat.Version) Then Return
         End If
 
         ' We'll report only a single diagnostic per line, the first.
@@ -103,12 +103,13 @@ Public Class PlatformSpecificAnalyzerCS
             ' <target> x = ...
             ' Action x = <target>  -- note that following code does pick the right overload
             ' <target> += delegate -- the following code does recognize events
-            ' nameof(<target>) -- this should really be allowed, but I can't be bothered
-            ' Note that all FIELD ACCESS is allowed to platform-specific fields.
+            ' nameof(<target>) -- I think it's nicer to report on this, even if not technically needed
+            ' Field access? I'll disallow it for enum values, and allow it for everything else
             Dim target = sm.GetSymbolInfo(node).Symbol
             If target Is Nothing Then Return Nothing
-            If target.Kind <> SymbolKind.Method AndAlso target.Kind <> SymbolKind.Event AndAlso target.Kind <> SymbolKind.Property Then Return Nothing
-            Return target
+            If target.Kind = SymbolKind.Method OrElse target.Kind = SymbolKind.Event OrElse target.Kind = SymbolKind.Property Then Return target
+            If target.Kind = SymbolKind.Field AndAlso target.ContainingType.TypeKind = TypeKind.Enum Then Return target
+            Return Nothing
         End If
     End Function
 
@@ -173,9 +174,11 @@ Public Class PlatformSpecificFixerCS
             Dim root = Await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(False)
             Dim semanticModel = Await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(False)
 
-            ' Which node are we interested in? -- the largest IdentifierName/SimpleMemberAccess/QualifiedName that encompasses the bottom node...
+            ' Which node are we interested in? -- if the squiggle is over A.B().C,
+            ' then we need the largest IdentifierName/SimpleMemberAccess/QualifiedName
+            ' that encompasses "C" itself
             Dim diagnostic = context.Diagnostics.First
-            Dim span = diagnostic.Location.SourceSpan
+            Dim span As New Text.TextSpan(diagnostic.Location.SourceSpan.End - 1, 1)
             Dim node = root.FindToken(span.Start).Parent
             While node.Kind <> SyntaxKind.IdentifierName AndAlso node.Kind <> SyntaxKind.SimpleMemberAccessExpression AndAlso node.Kind <> SyntaxKind.QualifiedName
                 node = node.Parent

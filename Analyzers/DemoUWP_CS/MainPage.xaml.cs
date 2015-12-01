@@ -62,6 +62,7 @@ namespace DemoUWP_CS
             var hook = Windows.UI.Input.KeyboardDeliveryInterceptor.GetForCurrentView();
             var jumps = Windows.UI.StartScreen.JumpList.IsSupported();
             Windows.ApplicationModel.Store.Preview.StoreConfiguration.PurchasePromptingPolicy = null;
+            var size = Windows.Graphics.Display.DisplayInformation.GetForCurrentView().DiagonalSizeInInches;
         }
     }
 }

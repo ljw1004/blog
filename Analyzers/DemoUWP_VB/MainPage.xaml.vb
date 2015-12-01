@@ -34,6 +34,7 @@ Public NotInheritable Class MainPage
         Dim telemetry = Windows.System.Profile.PlatformDiagnosticsAndUsageDataSettings.CanCollectDiagnostics(Windows.System.Profile.PlatformDataCollectionLevel.Enhanced)
         Dim hook = Windows.UI.Input.KeyboardDeliveryInterceptor.GetForCurrentView()
         Dim jumps = Windows.UI.StartScreen.JumpList.IsSupported()
+        Dim size = Windows.Graphics.Display.DisplayInformation.GetForCurrentView().DiagonalSizeInInches
     End Sub
 End Class
 
