@@ -1,0 +1,24 @@
+﻿<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>Analyzer.XamlAppTips</id>
+    <version>1.0.0.0</version>
+    <title>Analyzer.XamlAppTips</title>
+    <authors>Lucian Wischik</authors>
+    <owners>Lucian Wischik</owners>
+    <licenseUrl>https://raw.githubusercontent.com/ljw1004/dotnet-code-analyzer/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/ljw1004/dotnet-code-analyzer</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/ljw1004/dotnet-code-analyzer/master/DotnetCodeAnalyzer.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Analyzer for XAML and Windows Store App tips</description>
+    <copyright>(c) 2014 Lucian Wischik</copyright>
+    <tags>roslyn C# VB C#6 VB14 xaml analyzer diagnostic</tags>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System" targetFramework="" />
+    </frameworkAssemblies>
+  </metadata>
+  <files>
+    <file src="*.dll" target="tools\analyzers\" exclude="**\Microsoft.CodeAnalysis.*;**\System.Collections.Immutable.*;**\System.Reflection.Metadata.*" />
+    <file src="tools\*.ps1" target="tools\" />
+  </files>
+</package>
