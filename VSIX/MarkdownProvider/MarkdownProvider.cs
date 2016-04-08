@@ -88,9 +88,13 @@ namespace MarkdownSolutionExplorerProvider
         private static readonly string[] KnownMdFileExtensions = { ".md", ".markdown", ".spec", ".cpt" };
 
         private static bool IsMdFile(GraphNode node)
-            => node.HasCategory(CodeNodeCategories.ProjectItem) &&
+        {
+            var localPath = node.Id.GetNestedValueByName<Uri>(CodeGraphNodeIdName.File).LocalPath;
+
+            return node.HasCategory(CodeNodeCategories.ProjectItem) &&
                KnownMdFileExtensions.Any(knownMdFileExtension =>
-                   node.Id.GetNestedValueByName<Uri>(CodeGraphNodeIdName.File).LocalPath.EndsWith(knownMdFileExtension));
+                   localPath.EndsWith(knownMdFileExtension));
+        }
 
         private IEnumerable<Tuple<string,SourceLocation>> GetMdHeadings(GraphNode file)
         {
