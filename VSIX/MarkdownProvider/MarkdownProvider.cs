@@ -85,7 +85,7 @@ namespace MarkdownSolutionExplorerProvider
             }
         }
 
-        private static readonly string[] KnownMdFileExtensions = { ".md", ".markdown" };
+        private static readonly string[] KnownMdFileExtensions = { ".md", ".markdown", ".spec", ".cpt" };
 
         private static bool IsMdFile(GraphNode node)
             => node.HasCategory(CodeNodeCategories.ProjectItem) &&
