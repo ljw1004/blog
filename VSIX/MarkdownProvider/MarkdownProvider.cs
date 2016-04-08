@@ -5,10 +5,9 @@ using System.IO;
 using System.Linq;
 using System.Windows.Threading;
 using Microsoft.VisualStudio.GraphModel;
+using Microsoft.VisualStudio.GraphModel.CodeSchema;
 using Microsoft.VisualStudio.GraphModel.Schemas;
 using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.GraphModel.CodeSchema;
-using System.Diagnostics;
 
 namespace MarkdownSolutionExplorerProvider
 {
@@ -86,10 +85,12 @@ namespace MarkdownSolutionExplorerProvider
             }
         }
 
+        private static readonly string[] KnownMdFileExtensions = { ".md" };
 
         private static bool IsMdFile(GraphNode node)
             => node.HasCategory(CodeNodeCategories.ProjectItem) &&
-               node.Id.GetNestedValueByName<Uri>(CodeGraphNodeIdName.File).LocalPath.EndsWith(".md");
+               KnownMdFileExtensions.Any(knownMdFileExtension =>
+                   node.Id.GetNestedValueByName<Uri>(CodeGraphNodeIdName.File).LocalPath.EndsWith(knownMdFileExtension));
 
         private IEnumerable<Tuple<string,SourceLocation>> GetMdHeadings(GraphNode file)
         {
