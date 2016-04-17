@@ -1,0 +1,12 @@
+﻿{
+  "version": "1.0.0-*",
+  "frameworks": {
+    "net45": {}
+  },
+  "runtimes": {
+    "win": {}
+  },
+  "dependencies": {
+    "Newtonsoft.Json": "8.0.3"
+  }
+}
