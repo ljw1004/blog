@@ -103,9 +103,16 @@ public static class Checkpoint
         Action lambda = () =>
         {
             // sm.builder.AwaitOnCompleted<CHILD_AWAITER_TYPE, SM_TYPE>(ref child_awaiter, ref sm);
+// TODO: this method crashes in the call to Expression.Call.
+// I need to compile the code from C# to see what is the correct form of expression-tree to generate...
             var methodInfo = builderAwaitOnCompleted.MakeGenericMethod(awaited.AwaiterForAwaitingThisStateMachine.GetType(), sm.GetType());
-            Expression.Call(Expression.Field(Expression.Constant(sm), builderField), methodInfo, 
-            // builderAwaitOnCompleted.MakeGenericMethod(awaited.AwaiterForAwaitingThisStateMachine.GetType(), sm.GetType()).Invoke(builder, new object[] { awaited.AwaiterForAwaitingThisStateMachine, sm });
+            var smVar = Expression.Variable(awaited.StateMachine.GetType(), "sm");
+            var awaiterVar = Expression.Variable(awaited.AwaiterForAwaitingThisStateMachine.GetType(), "awaiter");
+            var ass1 = Expression.Assign(smVar, Expression.Constant(awaited.StateMachine));
+            var ass2 = Expression.Assign(awaiterVar, Expression.Constant(awaited.AwaiterForAwaitingThisStateMachine));
+            var call1 = Expression.Call(Expression.Field(Expression.Constant(sm), builderField), methodInfo, awaiterVar, smVar);
+            var block = Expression.Block(new[] { smVar, awaiterVar }, ass1, ass2, call1);
+            Expression.Lambda<Action>(block).Compile().Invoke();
         }; 
         if (awaitedValue == null) awaited.LeafActionToStartWork = lambda;
         else lambda();
