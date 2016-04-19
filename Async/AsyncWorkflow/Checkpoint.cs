@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -31,7 +32,7 @@ public static class Checkpoint
         // So for some reason (presumably boxing of builder structs) the tasks I'm wiring up
         // when I restore the async callstack are not the right ones.
 
-        var am = new AsyncMethod(sm.LeafStateMachine, sm.LeafBuilder);
+        var am = new AsyncMethod(sm.LeafStateMachine);
         var am2 = am.GetAsyncMethodThatsAwaitingThisOne();
 
         sm.LeafActionToStartWork.Invoke();
@@ -40,13 +41,12 @@ public static class Checkpoint
 
     struct ReadStateMachineResult
     {
-        public IAsyncStateMachine StateMachine;
-        public Task Task;
-        public object AwaiterForAwaitingThisStateMachine;
+        public IAsyncStateMachine StateMachine; // is a boxed state machine whose builder is wired up right
+        public Task Task; // is the task from that boxed copy of the state machine
+        public object AwaiterForAwaitingThisStateMachine; // (might be a struct that has to be copied in place)
         //
         public Action LeafActionToStartWork;
-        public IAsyncStateMachine LeafStateMachine;
-        public object LeafBuilder;
+        public IAsyncStateMachine LeafStateMachine; // same boxed copy
     }
 
     private static ReadStateMachineResult ReadStateMachine(JObject json, string indent = "")
@@ -87,21 +87,34 @@ public static class Checkpoint
         }
         sm.GetType().GetField(awaiterField, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).SetValue(sm, awaited.AwaiterForAwaitingThisStateMachine);
 
-        var builderType = (sm.GetType().GetField("<>t__builder") ?? sm.GetType().GetField("$Builder")).FieldType;
+        var builderField = sm.GetType().GetField("<>t__builder") ?? sm.GetType().GetField("$Builder");
+        var builderType = builderField.FieldType;
         var builderCreate = builderType.GetMethod("Create", BindingFlags.Public | BindingFlags.Static);
         var builderSetStateMachine = builderType.GetMethod("SetStateMachine", BindingFlags.Public | BindingFlags.Instance);
         var builderTask = builderType.GetProperty("Task", BindingFlags.Public | BindingFlags.Instance);
         var builderAwaitOnCompleted = builderType.GetMethod("AwaitOnCompleted", BindingFlags.Public | BindingFlags.Instance);
-        var builder = builderCreate.Invoke(null, new object[] { });
-        builderSetStateMachine.Invoke(builder, new object[] { sm });
-        Action lambda = () => builderAwaitOnCompleted.MakeGenericMethod(awaited.AwaiterForAwaitingThisStateMachine.GetType(), sm.GetType()).Invoke(builder, new object[] { awaited.AwaiterForAwaitingThisStateMachine, sm });
+        
+        // sm.builder = BuilderType.Create()
+        builderField.SetValue(sm, builderCreate.Invoke(null, new object[] { }));
+        // sm.builder.SetStateMachine(sm)
+        Expression.Lambda<Action>(Expression.Call(Expression.Field(Expression.Constant(sm), builderField), builderSetStateMachine, Expression.Constant(sm))).Compile().Invoke();
+
+
+        Action lambda = () =>
+        {
+            // sm.builder.AwaitOnCompleted<CHILD_AWAITER_TYPE, SM_TYPE>(ref child_awaiter, ref sm);
+            var methodInfo = builderAwaitOnCompleted.MakeGenericMethod(awaited.AwaiterForAwaitingThisStateMachine.GetType(), sm.GetType());
+            Expression.Call(Expression.Field(Expression.Constant(sm), builderField), methodInfo, 
+            // builderAwaitOnCompleted.MakeGenericMethod(awaited.AwaiterForAwaitingThisStateMachine.GetType(), sm.GetType()).Invoke(builder, new object[] { awaited.AwaiterForAwaitingThisStateMachine, sm });
+        }; 
         if (awaitedValue == null) awaited.LeafActionToStartWork = lambda;
         else lambda();
 
-
-        var task = builderTask.GetValue(builder) as Task;
+        // task = sm.Builder.Task
+        var task = Expression.Lambda<Func<object>>(Expression.Property(Expression.Field(Expression.Constant(sm), builderField), builderTask)).Compile().Invoke() as Task;
         var taskType = task.GetType();
         var taskGetAwaiter = taskType.GetMethod("GetAwaiter", BindingFlags.Public | BindingFlags.Instance);
+        // task.GetAwaiter();
         var taskAwaiter = taskGetAwaiter.Invoke(task, new object[] { });
 
         Console.WriteLine($"{indent}RESUMED {json["asyncMethodName"]} with taskID = {(task as Task).Id}");
@@ -113,8 +126,8 @@ public static class Checkpoint
             Task = task,
             AwaiterForAwaitingThisStateMachine = taskAwaiter,
             LeafActionToStartWork = awaited.LeafActionToStartWork,
-            LeafStateMachine = awaited.LeafStateMachine ?? sm,
-            LeafBuilder = awaited.LeafBuilder ?? builder
+            LeafStateMachine = awaited.LeafStateMachine ?? sm
+            //LeafBuilder = awaited.LeafBuilder ?? builder
         };
 
     }
@@ -263,24 +276,24 @@ public static class Checkpoint
     class AsyncMethod
     {
         private IAsyncStateMachine _stateMachine;
-        private object _builder;
+        private FieldInfo _builderField;
+        private PropertyInfo _builderTaskField;
 
-        public AsyncMethod(IAsyncStateMachine stateMachine, object builder)
+        public AsyncMethod(IAsyncStateMachine stateMachine)
         {
             _stateMachine = stateMachine;
-            _builder = builder;
+            _builderField = _stateMachine?.GetType().GetField("<>t__builder") ?? _stateMachine?.GetType().GetField("$Builder");
+            _builderTaskField = _builderField.FieldType.GetProperty("Task", BindingFlags.Public | BindingFlags.Instance);
+            if (_stateMachine == null || _builderField == null || _builderTaskField == null) throw new ArgumentException("Not a state machine", nameof(stateMachine));
         }
 
-        public AsyncMethod(Action awaiterOnCompletedContinuationAction)
+        public AsyncMethod(Action awaiterOnCompletedContinuationAction) : this(TryGetStateMachineForDebugger(awaiterOnCompletedContinuationAction).Target as IAsyncStateMachine)
         {
-            _stateMachine = TryGetStateMachineForDebugger(awaiterOnCompletedContinuationAction).Target as IAsyncStateMachine;
-            _builder = _stateMachine == null ? null : GetBuilder(_stateMachine);
-            if (_builder == null) throw new ArgumentException("Not the continuation action of an awaiter's OnCompleted method", nameof(awaiterOnCompletedContinuationAction));
         }
 
         public AsyncMethod GetAsyncMethodThatsAwaitingThisOne()
         {
-            var task = _builder.GetType().GetProperty("Task").GetValue(_builder) as Task;
+            var task = Expression.Lambda<Func<object>>(Expression.Property(Expression.Field(Expression.Constant(_stateMachine), _builderField), _builderTaskField)).Compile().Invoke();
             if (task == null) return null;
 
             var continuationDelegates = GetDelegatesFromContinuationObject(task);
@@ -294,9 +307,9 @@ public static class Checkpoint
                 stateMachine = TryGetStateMachineForDebugger(continuationDelegate).Target as IAsyncStateMachine;
             }
 
-            var builder = GetBuilder(stateMachine);
-            if (builder == null) return null;
-            return new AsyncMethod(stateMachine, builder);
+            var builderField = stateMachine?.GetType().GetField("<>t__builder") ?? stateMachine?.GetType().GetField("$Builder");
+            if (builderField == null) return null;
+            return new AsyncMethod(stateMachine);
         }
 
         public override string ToString() => Name;
@@ -307,7 +320,7 @@ public static class Checkpoint
         {
             get
             {
-                var task = _builder.GetType().GetProperty("Task").GetValue(_builder) as Task;
+                var task = Expression.Lambda<Func<Task>>(Expression.Property(Expression.Field(Expression.Constant(_stateMachine), _builderField), _builderTaskField)).Compile().Invoke();
 
                 var t = _stateMachine.GetType();
                 var s = t.Name;
