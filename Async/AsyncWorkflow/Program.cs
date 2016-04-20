@@ -1,15 +1,6 @@
 ﻿using System;
 using System.IO;
-using System.Linq.Expressions;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-
-struct TestStateMachine : IAsyncStateMachine
-{
-    public AsyncTaskMethodBuilder builder;
-    public void MoveNext() { }
-    public void SetStateMachine(IAsyncStateMachine stateMachine) { }
-}
 
 
 class Program
@@ -17,23 +8,7 @@ class Program
     static Random RND = new Random();
 
     static void Main()
-    {   
-        Expression<Action<TaskAwaiter, TestStateMachine>> qlambda2 = (awaiter2, sm2) => sm2.builder.AwaitOnCompleted<TaskAwaiter, TestStateMachine>(ref awaiter2, ref sm2);
-
-        var paramAwaiter = Expression.Parameter(typeof(TaskAwaiter), "awaiter");
-        var paramSm = Expression.Parameter(typeof(TestStateMachine), "sm");
-        var args = new Expression[] { paramAwaiter, paramSm };
-        var parms = new ParameterExpression[] { paramAwaiter, paramSm };
-        Expression<Action<TaskAwaiter, TestStateMachine>> expression =
-            Expression.Lambda<Action<TaskAwaiter, TestStateMachine>>(
-                Expression.Call(
-                    Expression.Field(paramSm, typeof(TestStateMachine).GetField("builder")),
-                    typeof(AsyncTaskMethodBuilder).GetMethod("AwaitOnCompleted"),
-                    args),
-                parms);
-        var lw = expression.Compile();
-        lw
-
+    {
         if (File.Exists("a.json")) WorkerAsync().GetAwaiter().GetResult();
         else MainAsync().GetAwaiter().GetResult();
     }
@@ -55,24 +30,23 @@ class Program
     {
         await Task.Delay(100);
         Console.WriteLine("PHASE 1");
-        await TestAsync(1, 5);
+        await TestAsync("phase1", 1, 5);
         Console.WriteLine("PHASE 2");
-        await TestAsync(1, 10);
+        await TestAsync("phase2", 1, 10);
     }
 
 
-    static async Task<string> TestAsync(int min, int max)
+    static async Task<string> TestAsync(string desc, int min, int max)
     {
         for (int i = min; i < max; i++)
         {
-            Console.WriteLine(i);
+            Console.WriteLine($"{desc} - {i}");
             await Task.Delay(100);
 
             int resumeCount = await Checkpoint.Save();
             // This saves the method's state, and also the state all the way up the async callstack
 
-            if (resumeCount == 0) Console.WriteLine("first time through the method");
-            else Console.WriteLine("resuming from a saved checkpoint");
+            if (resumeCount > 0) Console.WriteLine("   ... resuming from a saved checkpoint");
             // The "resumeCount" says how many times we've been asked to resume from that particular
             // checkpoint. If the computer crashed abruptly now, we'd trust a worker to eventually
             // resume from the checkpoint, in which case resumeCount would be >0.
