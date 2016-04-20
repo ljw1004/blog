@@ -1,7 +1,15 @@
 ﻿using System;
 using System.IO;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+
+struct TestStateMachine : IAsyncStateMachine
+{
+    public AsyncTaskMethodBuilder builder;
+    public void MoveNext() { }
+    public void SetStateMachine(IAsyncStateMachine stateMachine) { }
+}
 
 
 class Program
@@ -9,7 +17,23 @@ class Program
     static Random RND = new Random();
 
     static void Main()
-    {
+    {   
+        Expression<Action<TaskAwaiter, TestStateMachine>> qlambda2 = (awaiter2, sm2) => sm2.builder.AwaitOnCompleted<TaskAwaiter, TestStateMachine>(ref awaiter2, ref sm2);
+
+        var paramAwaiter = Expression.Parameter(typeof(TaskAwaiter), "awaiter");
+        var paramSm = Expression.Parameter(typeof(TestStateMachine), "sm");
+        var args = new Expression[] { paramAwaiter, paramSm };
+        var parms = new ParameterExpression[] { paramAwaiter, paramSm };
+        Expression<Action<TaskAwaiter, TestStateMachine>> expression =
+            Expression.Lambda<Action<TaskAwaiter, TestStateMachine>>(
+                Expression.Call(
+                    Expression.Field(paramSm, typeof(TestStateMachine).GetField("builder")),
+                    typeof(AsyncTaskMethodBuilder).GetMethod("AwaitOnCompleted"),
+                    args),
+                parms);
+        var lw = expression.Compile();
+        lw
+
         if (File.Exists("a.json")) WorkerAsync().GetAwaiter().GetResult();
         else MainAsync().GetAwaiter().GetResult();
     }

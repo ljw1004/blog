@@ -7,6 +7,16 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
+// TODO:
+// (1) The "AsyncMethod" class should be replaced by a set of extension methods on IAsyncStateMachine
+// (2) The Json serializer should be replaced by sticking everything into a AsyncMethodState class
+//     which is nested and serialized all in one go (so as to allow sharing of references from
+//     one method to another)
+// (3) Support Task.WhenAll/Task.WhenAny. This will involve digging down into tasks, and will
+//     only work in a single-threaded execution context.
+// (4) Support ConfigureAwait(). Needs a bit more state stored in the AsyncMethodState class.
+
+
 public static class Checkpoint
 {
     public enum Disposition
@@ -48,6 +58,7 @@ public static class Checkpoint
         public Action LeafActionToStartWork;
         public IAsyncStateMachine LeafStateMachine; // same boxed copy
     }
+
 
     private static ReadStateMachineResult ReadStateMachine(JObject json, string indent = "")
     {
@@ -103,16 +114,21 @@ public static class Checkpoint
         Action lambda = () =>
         {
             // sm.builder.AwaitOnCompleted<CHILD_AWAITER_TYPE, SM_TYPE>(ref child_awaiter, ref sm);
-// TODO: this method crashes in the call to Expression.Call.
-// I need to compile the code from C# to see what is the correct form of expression-tree to generate...
-            var methodInfo = builderAwaitOnCompleted.MakeGenericMethod(awaited.AwaiterForAwaitingThisStateMachine.GetType(), sm.GetType());
-            var smVar = Expression.Variable(awaited.StateMachine.GetType(), "sm");
-            var awaiterVar = Expression.Variable(awaited.AwaiterForAwaitingThisStateMachine.GetType(), "awaiter");
-            var ass1 = Expression.Assign(smVar, Expression.Constant(awaited.StateMachine));
-            var ass2 = Expression.Assign(awaiterVar, Expression.Constant(awaited.AwaiterForAwaitingThisStateMachine));
-            var call1 = Expression.Call(Expression.Field(Expression.Constant(sm), builderField), methodInfo, awaiterVar, smVar);
-            var block = Expression.Block(new[] { smVar, awaiterVar }, ass1, ass2, call1);
-            Expression.Lambda<Action>(block).Compile().Invoke();
+            // TODO: this method crashes in the call to Expression.Call.
+            // I need to compile the code from C# to see what is the correct form of expression-tree to generate...
+            Expression<Action<TaskAwaiter, TestStateMachine>> qlambda2 = (awaiter2, sm2) => sm2.builder.AwaitOnCompleted<TaskAwaiter, TestStateMachine>(ref awaiter2, ref sm2);
+
+            var methodInfo = typeof(AsyncTaskMethodBuilder).GetMethod("AwaitOnCompleted").MakeGenericMethod(typeof(TaskAwaiter), typeof(TestStateMachine));
+
+
+            //var methodInfo = builderAwaitOnCompleted.MakeGenericMethod(awaited.AwaiterForAwaitingThisStateMachine.GetType(), sm.GetType());
+            //var smVar = Expression.Variable(awaited.StateMachine.GetType(), "sm");
+            //var awaiterVar = Expression.Variable(awaited.AwaiterForAwaitingThisStateMachine.GetType(), "awaiter");
+            //var ass1 = Expression.Assign(smVar, Expression.Constant(awaited.StateMachine));
+            //var ass2 = Expression.Assign(awaiterVar, Expression.Constant(awaited.AwaiterForAwaitingThisStateMachine));
+            //var call1 = Expression.Call(Expression.Field(Expression.Constant(sm), builderField), methodInfo, awaiterVar, smVar);
+            //var block = Expression.Block(new[] { smVar, awaiterVar }, ass1, ass2, call1);
+            //Expression.Lambda<Action>(block).Compile().Invoke();
         }; 
         if (awaitedValue == null) awaited.LeafActionToStartWork = lambda;
         else lambda();
