@@ -44,8 +44,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Needles.cs" />
+    <Compile Include="PerfTests.cs" />
+    <Compile Include="PerfTestsData.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="TestData.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />

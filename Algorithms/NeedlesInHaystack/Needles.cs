@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 
 /// <summary>
-/// String search utility, to find all the "needles" in a "haystack"
+/// String search utility, to find all the "needles" in a "haystack".
+/// An instance of this class embodies a compiled set of needles ready for searching further haystacks.
 /// </summary>
 public class Needles
 {
@@ -26,6 +27,7 @@ public class Needles
         /// </summary>
         public int Needle;
 
+        public Result(int start, int needle) { Start = start;  Needle = needle; }
     }
 
     /// <summary>
@@ -40,13 +42,12 @@ public class Needles
     }
 
 
-    private IList<string> needles;
-    private Tuple<int, char> oneMatch = Tuple.Create(-1, '\0');
-    private Tuple<int, char, char> twoMatch = Tuple.Create(-1, '\0', '\0');
-    private Tuple<int, char, char, char> threeMatch = Tuple.Create(-1, '\0', '\0', '\0');
-    private Dictionary<long,List<int>> threePlusMatches = new Dictionary<long, List<int>>();
-
-
+    /// <summary>
+    /// If you need to find the same set of needles in many haystacks, it's more efficient
+    /// to compile the needles first using this method.
+    /// </summary>
+    /// <param name="needles">The needles to search for</param>
+    /// <returns>A compiled needle-searcher, able to search future haystacks</returns>
     public static Needles Compile(IList<string> needles)
     {
         if (needles == null) throw new ArgumentNullException(nameof(needles));
@@ -57,43 +58,45 @@ public class Needles
         {
             var needle = needles[ni];
             if (string.IsNullOrEmpty(needle)) throw new ArgumentNullException(nameof(needles));
-            if (needle.Length == 1) n.oneMatch = Tuple.Create(ni, needle[0]);
-            else if (needle.Length == 2) n.twoMatch = Tuple.Create(ni, needle[0], needle[1]);
-            else if (needle.Length == 3) n.threeMatch = Tuple.Create(ni, needle[0], needle[1], needle[2]);
+            if (needle.Length == 1) n.match1 = Tuple.Create(ni, needle[0]);
+            else if (needle.Length == 2) n.match2 = Tuple.Create(ni, needle[0], needle[1]);
+            else if (needle.Length == 3) n.match3 = Tuple.Create(ni, needle[0], needle[1], needle[2]);
             else
             {
                 long three = needle[0] | ((long)needle[1] << 16) | ((long)needle[2] << 32);
-                if (!n.threePlusMatches.ContainsKey(three)) n.threePlusMatches[three] = new List<int>();
-                n.threePlusMatches[three].Add(ni);
+                if (!n.matchN.ContainsKey(three)) n.matchN[three] = new List<int>();
+                n.matchN[three].Add(ni);
             }
         }
         return n;
     }
 
 
+    /// <summary>
+    /// Finds all the needles in a "haystack"
+    /// </summary>
+    /// <param name="haystack">The haystack to search inside</param>
+    /// <returns>A sequence that combines both matched and unmatched spans of the haystack, in order of appearance.</returns>
     public IEnumerable<Result> Find(string haystack)
     {
         if (haystack == null) throw new ArgumentNullException(nameof(haystack));
 
         var underConsiderations = new LinkedList<Result>();
-        int reportNeedle = -1, reportLength = -1;
-        var xcount = 0;
-        for (int ic = 0; ic < haystack.Length; ic++)
+        int count=0, reportNeedle = -1, reportLength = -1;
+
+        for (int i = 0; i < haystack.Length; i++, count++)
         {
-
-            var c = haystack[ic];
-            xcount++;
-
+            var c = haystack[i];
             for (LinkedListNode<Result> uc = underConsiderations.First; uc != null;)
             {
                 var needle = needles[uc.Value.Needle];
                 if (needle[uc.Value.Start] == c)
                 {
-                    uc.Value = new Result { Needle = uc.Value.Needle, Start = uc.Value.Start + 1 };
+                    uc.Value = new Result(uc.Value.Start + 1, uc.Value.Needle);
                     if (uc.Value.Start == needle.Length)
                     {
-                        if (xcount > needle.Length) yield return new Result { Needle = needle.Length - xcount, Start = ic + 1 - xcount };
-                        yield return new Result { Needle = uc.Value.Needle, Start = ic + 1 - needle.Length };
+                        if (count > needle.Length) yield return new Result(i + 1 - count, needle.Length - count);
+                        yield return new Result(i + 1 - needle.Length, uc.Value.Needle);
                         goto nextchar;
                     }
                     uc = uc.Next;
@@ -106,30 +109,26 @@ public class Needles
                 }
             }
 
-            if (oneMatch.Item2 == c)
+            if (match1.Item2 == c)
             {
-                reportNeedle = oneMatch.Item1; reportLength = 1;
+                reportNeedle = match1.Item1; reportLength = 1;
             }
-            else if (ic + 1 < haystack.Length && twoMatch.Item2 == c && twoMatch.Item3 == haystack[ic + 1])
+            else if (i + 1 < haystack.Length && match2.Item2 == c && match2.Item3 == haystack[i + 1])
             {
-                reportNeedle = twoMatch.Item1; reportLength = 2;
+                reportNeedle = match2.Item1; reportLength = 2;
             }
-            else if (ic + 2 < haystack.Length)
+            else if (i + 2 < haystack.Length)
             {
-                if (threeMatch.Item2 == c && threeMatch.Item3 == haystack[ic + 1] && threeMatch.Item4 == haystack[ic + 2])
+                if (match3.Item2 == c && match3.Item3 == haystack[i + 1] && match3.Item4 == haystack[i + 2])
                 {
-                    reportNeedle = threeMatch.Item1; reportLength = 3;
+                    reportNeedle = match3.Item1; reportLength = 3;
                 }
                 else
                 {
-                    long three = c | ((long)haystack[ic + 1] << 16) | ((long)haystack[ic + 2] << 32);
-                    List<int> l; if (threePlusMatches.TryGetValue(three, out l))
+                    long three = c | ((long)haystack[i + 1] << 16) | ((long)haystack[i + 2] << 32);
+                    List<int> l; if (matchN.TryGetValue(three, out l))
                     {
-                        foreach (var i in l)
-                        {
-                            var uc = new Result { Needle = i, Start = 1 };
-                            underConsiderations.AddLast(uc);
-                        }
+                        foreach (var ni in l) underConsiderations.AddLast(new Result(1, ni));
                     }
                     continue;
                 }
@@ -138,16 +137,22 @@ public class Needles
             {
                 continue;
             }
-            if (xcount > 1) yield return new Result { Needle = 1 - xcount, Start = ic + 1 - xcount };
-            yield return new Result { Needle = reportNeedle, Start = ic };
-            ic += reportLength - 1;
+            if (count > 1) yield return new Result(i + 1 - count, 1 - count);
+            yield return new Result(i, reportNeedle);
+            i += reportLength - 1;
             nextchar:
-            xcount = 0;
+            count = 0;
             underConsiderations.Clear();
         }
 
-        if (xcount > 0) yield return new Result { Needle = -xcount, Start = haystack.Length - xcount };
+        if (count > 0) yield return new Result(haystack.Length - count, -count);
     }
+
+    private IList<string> needles;
+    private Tuple<int, char> match1 = Tuple.Create(-1, '\0');
+    private Tuple<int, char, char> match2 = Tuple.Create(-1, '\0', '\0');
+    private Tuple<int, char, char, char> match3 = Tuple.Create(-1, '\0', '\0', '\0');
+    private Dictionary<long, List<int>> matchN = new Dictionary<long, List<int>>();
 
 }
 
