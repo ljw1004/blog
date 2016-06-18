@@ -109,6 +109,11 @@ public class Needles
                 }
             }
 
+            // PERF: I tried having the main "for i" loop only go up to haystack.Length-3 to avoid testing
+            // length each iteration. That gave about 10% perf improvement but made for way uglier code.
+            // PERF: We could also keep a rolling "key", which gets shifted left 16 bits each time.
+            // PERF: I tried having "match4" as well but that didn't help.
+            // PERF: I tried having each match be a "long", but that didn't help.
             if (match1.Item2 == c)
             {
                 reportNeedle = match1.Item1; reportLength = 1;
@@ -125,8 +130,9 @@ public class Needles
                 }
                 else
                 {
-                    long three = c | ((long)haystack[i + 1] << 16) | ((long)haystack[i + 2] << 32);
-                    List<int> l; if (matchN.TryGetValue(three, out l))
+                    long key = c | ((long)haystack[i + 1] << 16) | ((long)haystack[i + 2] << 32);
+                    // PERF: 25% of this algorithm's time is in TryGetValue
+                    List<int> l; if (matchN.TryGetValue(key, out l))
                     {
                         foreach (var ni in l) underConsiderations.AddLast(new Result(1, ni));
                     }
