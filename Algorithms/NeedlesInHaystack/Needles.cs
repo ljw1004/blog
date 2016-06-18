@@ -95,7 +95,7 @@ public class Needles
                     uc.Value = new Result(uc.Value.Start + 1, uc.Value.Needle);
                     if (uc.Value.Start == needle.Length)
                     {
-                        if (count > needle.Length) yield return new Result(i + 1 - count, needle.Length - count);
+                        if (count > needle.Length) yield return new Result(i - count, needle.Length - count - 1);
                         yield return new Result(i + 1 - needle.Length, uc.Value.Needle);
                         goto nextchar;
                     }
@@ -137,11 +137,11 @@ public class Needles
             {
                 continue;
             }
-            if (count > 1) yield return new Result(i + 1 - count, 1 - count);
+            if (count > 0) yield return new Result(i - count, -count);
             yield return new Result(i, reportNeedle);
             i += reportLength - 1;
             nextchar:
-            count = 0;
+            count = -1;
             underConsiderations.Clear();
         }
 
