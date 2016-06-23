@@ -29,9 +29,9 @@ We awaited `t` with the intent that this code print `B` after waiting 1000ms. Bu
 If you can answer 'yes' to both questions then congratulations -- you're an async expert!
 If you can't then you should download this analyzer! It introduces two new warnings:
 
-[warn when the return type of an await statement is itself a Task](demo1.png)
+![warn when the return type of an await statement is itself a Task](demo1.png)
 
-[warn on implicit conversion from Task<Task> to Task](demo2.png)
+![warn on implicit conversion from Task<Task> to Task](demo2.png)
 
 
 
