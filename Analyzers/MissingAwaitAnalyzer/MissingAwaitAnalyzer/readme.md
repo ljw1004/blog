@@ -26,7 +26,7 @@ We awaited `t` with the intent that this code print `B` after waiting 1000ms. Bu
 
 *Can you see why?*
 
-If you can answer both questions then congratulations -- you're an async expert!
+If you can answer 'yes' to both questions then congratulations -- you're an async expert!
 If you can't then you should download this analyzer!
 
 
