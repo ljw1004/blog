@@ -4,11 +4,7 @@
 > * Download Analyzer NuGet: [MissingAwaitAnalyzer](https://www.nuget.org/packages/MissingAwaitAnalyzer)
 
 ```cs
-await Task.Factory.StartNew(async () =>
-{
-    await Task.Delay(10);
-    Console.WriteLine("A");
-});
+await Task.Factory.StartNew(async () => { await Task.Delay(10); Console.WriteLine("A"); });
 Console.WriteLine("B");
 ```
 
