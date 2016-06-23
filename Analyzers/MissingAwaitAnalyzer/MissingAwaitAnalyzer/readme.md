@@ -36,9 +36,8 @@ If you can't then you should download this analyzer! It introduces two new warni
 This analyzer detects any statements of the form `await expr;` where the returned
 value is itself a `Task`. In those cases it suggests that maybe you want to do `await await expr`.
 
-> Note: in this particular case, a better suggestion would have been to use `Task.Run` instead of `Task.New`.
+> Note: in this particular case, a better suggestion would have been to use `Task.Run` instead of `Task.Factory.StartNew`.
 
 It also detects any implicit conversions from `Task<Task>` to `Task>`
 and suggests that you do this conversion either with an `await` (which is probably what you wanted)
 or an explicit cast.
-
