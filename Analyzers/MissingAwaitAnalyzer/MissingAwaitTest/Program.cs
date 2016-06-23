@@ -10,18 +10,8 @@ class Program
 
     static async Task MainAsync()
     {
-        Task<Task> tt = Task.Factory.StartNew(async () =>
-        {
-            await Task.Delay(10);
-            Console.WriteLine("A");
-        });
-
-        await tt; // we want a warning here
-        // When we encounter an ExpressionStatement
-        // where the expression is an AwaitExpression
-        // and where the expression's type is Task or Task<T> (or any awaitable)
-        // then give a warning
-
+        Task t = await Task.Run(async () => { Console.WriteLine("A"); return Task.Delay(1000); });
+        await t;
         Console.WriteLine("B");
     }
 }
