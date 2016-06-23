@@ -32,29 +32,54 @@ namespace MissingAwaitAnalyzer
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(AwaitTaskTask, ImplicitTaskTask);
 
-        public override void Initialize(AnalysisContext context)
+        public class WellKnownTypeCache
         {
-            context.RegisterSyntaxNodeAction(AnalyzeStatementExpression, SyntaxKind.ExpressionStatement);
-            context.RegisterSyntaxNodeAction(AnalyzeImplicitConversion, SyntaxKind.MethodDeclaration);
+            private INamedTypeSymbol tTask, tTask1;
+            private SemanticModel semanticModel;
+            
+            public INamedTypeSymbol GetTask(SemanticModel semanticModel)
+            {
+                if (semanticModel != this.semanticModel) { this.semanticModel = semanticModel; tTask = null; tTask1 = null; }
+                if (tTask == null) tTask = semanticModel.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
+                return tTask;
+            }
+
+            public INamedTypeSymbol GetGenericTask(SemanticModel semanticModel)
+            {
+                if (semanticModel != this.semanticModel) { this.semanticModel = semanticModel; tTask = null; tTask1 = null; }
+                if (tTask1 == null) tTask1 = semanticModel.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
+                return tTask1;
+            }
+
         }
 
-        private void AnalyzeImplicitConversion(SyntaxNodeAnalysisContext context)
+        public override void Initialize(AnalysisContext context)
         {
-            var visitor = new ImplicitConversionWalker() { context = context };
+            var cache = new WellKnownTypeCache();
+            context.RegisterSyntaxNodeAction(ctx => AnalyzeStatementExpression(cache, ctx), SyntaxKind.ExpressionStatement);
+            context.RegisterSyntaxNodeAction(ctx => AnalyzeImplicitConversion(cache, ctx), SyntaxKind.MethodDeclaration);
+        }
+
+        private void AnalyzeImplicitConversion(WellKnownTypeCache cache, SyntaxNodeAnalysisContext context)
+        {
+            var visitor = new ImplicitConversionWalker() { cache=cache, context = context };
             visitor.Visit(context.Node);
         }
 
         class ImplicitConversionWalker : CSharpSyntaxWalker
         {
             public SyntaxNodeAnalysisContext context;
+            public WellKnownTypeCache cache;
             public override void Visit(SyntaxNode node)
             {
                 if (node is ExpressionSyntax)
                 {
                     var tinfo = context.SemanticModel.GetTypeInfo(node);
-                    if ((object)tinfo.Type != null && tinfo.Type != tinfo.ConvertedType
-                        && tinfo.ConvertedType.ToDisplayString() == "System.Threading.Tasks.Task"
-                        && tinfo.Type.ToDisplayString().StartsWith("System.Threading.Tasks.Task<System.Threading.Tasks.Task"))
+                    var tSrc = tinfo.Type as INamedTypeSymbol;
+                    var tDst = tinfo.ConvertedType as INamedTypeSymbol;
+                    if (tSrc != null && tDst != null
+                        && (object)tSrc.ConstructedFrom == cache.GetGenericTask(context.SemanticModel)
+                        && (object)tDst == cache.GetTask(context.SemanticModel))
                     {
                         context.ReportDiagnostic(Diagnostic.Create(ImplicitTaskTask, node.GetLocation()));
                         return;
@@ -64,7 +89,7 @@ namespace MissingAwaitAnalyzer
             }
         }
 
-        public void AnalyzeStatementExpression(SyntaxNodeAnalysisContext context)
+        public void AnalyzeStatementExpression(WellKnownTypeCache cache, SyntaxNodeAnalysisContext context)
         {
             // If we encounter "await e;" where the result type of the await is a Task ...
             var expression = (context.Node as ExpressionStatementSyntax).Expression;
@@ -73,8 +98,7 @@ namespace MissingAwaitAnalyzer
             var typeInfo = context.SemanticModel.GetTypeInfo(expression);
             var type = typeInfo.Type as INamedTypeSymbol;
             if (type == null) return;
-            var typeName = type.ToDisplayString();
-            if (!typeName.StartsWith("System.Threading.Tasks.Task")) return;
+            if ((object)type != cache.GetTask(context.SemanticModel) && (object)type.ConstructedFrom != cache.GetGenericTask(context.SemanticModel)) return;
 
             // and if "e" didn't have the form "Task.WhenAny(...)" ...
             var awaitOperand = (expression as AwaitExpressionSyntax).Expression;
@@ -86,8 +110,7 @@ namespace MissingAwaitAnalyzer
                     var targetSymbol = context.SemanticModel.GetSymbolInfo(targetNode).Symbol;
                     if (targetSymbol != null)
                     {
-                        var targetName = targetSymbol.ToDisplayString();
-                        if (targetName.StartsWith("System.Threading.Tasks.Task.WhenAny(")) return;
+                        if ((object)targetSymbol.ContainingType == cache.GetTask(context.SemanticModel) && targetSymbol.Name == "WhenAny") return;
                     }
                 }
             }

@@ -17,7 +17,7 @@ We awaited the task, with the intent that this code print `A` first and then `B`
 *Can you see why?*
 
 ```cs
-Task t = await Task.Run(async () => { Console.WriteLine("A"); return Task.Delay(1000); });
+Task t = Task.Run(async () => { Console.WriteLine("A"); return Task.Delay(1000); });
 await t;
 Console.WriteLine("B");
 ```
