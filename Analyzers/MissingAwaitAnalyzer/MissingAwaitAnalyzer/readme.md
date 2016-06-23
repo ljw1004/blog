@@ -1,6 +1,8 @@
 ﻿Missing Await Analyzer
 ========================
 
+> * Download NuGet package [MissingAwaitAnalyzer](https://www.nuget.org/packages/MissingAwaitAnalyzer)
+
 ```cs
 await Task.Factory.StartNew(async () =>
 {

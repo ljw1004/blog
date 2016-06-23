@@ -3,17 +3,16 @@
   <metadata>
     <id>MissingAwaitAnalyzer</id>
     <version>1.0.0-alpha</version>
-    <title>MissingAwaitAnalyzer</title>
+    <title>Missing Await Analyzer</title>
     <authors>lwischik</authors>
     <owners>lwischik</owners>
-    <licenseUrl>http://LICENSE_URL_HERE_OR_DELETE_THIS_LINE</licenseUrl>
-    <projectUrl>http://PROJECT_URL_HERE_OR_DELETE_THIS_LINE</projectUrl>
-    <iconUrl>http://ICON_URL_HERE_OR_DELETE_THIS_LINE</iconUrl>
+    <licenseUrl>https://raw.githubusercontent.com/ljw1004/blog/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/ljw1004/blog/blob/master/Analyzers/MissingAwaitAnalyzer/MissingAwaitAnalyzer/readme.md</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/ljw1004/blog/master/Analyzers/MissingAwaitAnalyzer/MissingAwaitAnalyzer/MissingAwaitAnalyzer.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>MissingAwaitAnalyzer</description>
-    <releaseNotes>Summary of changes made in this release of the package.</releaseNotes>
-    <copyright>Copyright</copyright>
-    <tags>MissingAwaitAnalyzer, analyzers</tags>
+    <description>Warns in advanced cases where you're missing an await</description>
+    <copyright>Copyright Lucian Wischik</copyright>
+    <tags>await, C#, analyzer, async</tags>
     <frameworkAssemblies>
       <frameworkAssembly assemblyName="System" targetFramework="" />
     </frameworkAssemblies>
