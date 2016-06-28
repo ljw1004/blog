@@ -1,0 +1,18 @@
+﻿{
+  "dependencies": {
+    "Microsoft.CodeAnalysis": "1.2.2",
+    "Microsoft.VisualStudio.LanguageServices": "1.2.2",
+    "Microsoft.VisualStudio.Shell.14.0": "14.2.25123",
+    "Microsoft.VisualStudio.Text.UI.Wpf": "14.2.25123",
+    "System.Collections.Immutable": "1.1.37",
+    "System.ComponentModel": "4.0.1",
+    "VSSDK.ComponentModelHost": "12.0.4",
+    "VSSDK.DTE": "7.0.4"
+  },
+  "frameworks": {
+    "net46": {}
+  },
+  "runtimes": {
+    "win": {}
+  }
+}
