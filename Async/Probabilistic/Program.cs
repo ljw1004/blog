@@ -3,6 +3,7 @@ static class Program {
   static void Main()
   {
     // Sampling.MainAsync().GetAwaiter().GetResult();
-    Distributions.Test();
+    // Distributions.Test();
+    AwaitDistributions.Test();
   }
 }

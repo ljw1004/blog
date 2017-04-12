@@ -18,7 +18,7 @@ static class Distributions {
       foreach (var (p, state) in Normalize(FinalStateOfReadingsThatMatchFast(observed))) {
         Console.WriteLine($"p({state}) = {p:.000}");
       }
-      Console.WriteLine($"{count} traces in {s.Elapsed.TotalSeconds:.00} seconds");
+      Console.WriteLine($"{count} traces in {s.Elapsed.TotalSeconds} seconds");
 
       Console.WriteLine("*** NAIVE FULL-STATE EXPLORATION");
       s = Stopwatch.StartNew();
@@ -136,8 +136,8 @@ static class Distributions {
     return values.Select(v => (1.0/values.Count, v));
   }
 
-  static IEnumerable<(double, int)> UniformRange(int min, int count) {
-    for (int i=min; i<min+count; i++) {
+  static IEnumerable<(double, int)> UniformRange(int start, int count) {
+    for (int i=start; i<start+count; i++) {
       yield return (1.0 / count, i);
     }
   }

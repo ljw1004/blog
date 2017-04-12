@@ -158,7 +158,7 @@ public class AsyncSampleableBuilder<T>
             {
                 var awaiter = _current.Task.GetAwaiter();
                 if (awaiter.IsCompleted) return awaiter.GetResult();
-                throw new InvalidOperationException("IAsyncSampleableMT< - must await MoveNext() before obtaining Current");
+                throw new InvalidOperationException("IAsyncSampleable<T> - must await MoveNext() before obtaining Current");
             }
         }
 
